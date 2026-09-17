@@ -1,0 +1,29 @@
+# Dependencias
+node_modules/
+
+# Segredos — nunca versionar (RNF16, RNF17)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Artefatos de build do Hardhat
+contratos/artifacts/
+contratos/cache/
+contratos/typechain-types/
+contratos/coverage/
+contratos/coverage.json
+contratos/gas-report.txt
+
+# Saidas de execucao do oraculo
+oraculo/dados/fila.json
+oraculo/dados/publicacoes.jsonl
+oraculo/dados/*.log
+
+# Sistema operacional / editores
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

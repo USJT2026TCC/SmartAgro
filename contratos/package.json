@@ -1,0 +1,24 @@
+{
+  "name": "agrosmart-contratos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Contratos inteligentes do AgroSmart: apolice de seguro agricola indexado e registro de oraculos autorizados.",
+  "scripts": {
+    "compilar": "hardhat compile",
+    "testar": "hardhat test",
+    "gas": "REPORT_GAS=true hardhat test",
+    "gas:win": "cross-env REPORT_GAS=true hardhat test",
+    "no": "hardhat node",
+    "implantar:local": "hardhat run scripts/implantar.js --network localhost",
+    "implantar:sepolia": "hardhat run scripts/implantar.js --network sepolia",
+    "demo:estiagem": "hardhat run scripts/demo-estiagem.js --network localhost"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.17",
+    "prettier": "^3.9.8",
+    "prettier-plugin-solidity": "^2.4.1"
+  }
+}
