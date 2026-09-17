@@ -1,4 +1,4 @@
-﻿const { expect } = require("chai");
+const { expect } = require("chai");
 const { ethers } = require("hardhat");
 /**
  * Testes do registro de oraculos autorizados.

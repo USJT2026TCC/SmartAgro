@@ -1,4 +1,4 @@
-﻿const { expect } = require("chai");
+const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { Situacao, VALOR_INDENIZACAO, b32, montarTermos, publicar } = require("./helpers");
 

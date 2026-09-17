@@ -21,11 +21,17 @@ const path = require("node:path");
 const { ethers, network } = require("hardhat");
 
 async function main() {
-  const [seguradora, contaOraculo] = await ethers.getSigners();
+  const contas = await ethers.getSigners();
+  const [seguradora] = contas;
 
-  // Em rede local o segundo signatario serve de oraculo. Em rede publica, o
-  // endereco vem do .env, porque a chave do oraculo e de outra pessoa da equipe.
-  const enderecoOraculo = process.env.ENDERECO_ORACULO || contaOraculo?.address;
+  // Convencao das contas em rede local, seguida tambem pelos scripts de apolice
+  // e pelo .env do oraculo:
+  //   conta 0 = seguradora    conta 1 = produtor    conta 2 = oraculo
+  //
+  // O oraculo precisa ser um endereco distinto do produtor: se fossem o mesmo,
+  // quem publica o indice seria tambem quem recebe a indenizacao, e a separacao
+  // de papeis que o RNF12 exige deixaria de existir na demonstracao.
+  const enderecoOraculo = process.env.ENDERECO_ORACULO || contas[2]?.address;
 
   if (!enderecoOraculo) {
     throw new Error(

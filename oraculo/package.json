@@ -1,0 +1,22 @@
+{
+  "name": "agrosmart-oraculo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Servico de oraculo do AgroSmart: consolida, assina e publica os indices de campo nos contratos da apolice.",
+  "main": "src/index.js",
+  "scripts": {
+    "testar": "node --test \"test/*.test.js\"",
+    "publicar": "node src/index.js publicar",
+    "ciclo": "node src/index.js ciclo",
+    "ouvir": "node src/index.js ouvir",
+    "fila": "node src/index.js fila",
+    "formatar": "prettier --write \"src/**/*.js\" \"test/**/*.js\""
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.8"
+  }
+}

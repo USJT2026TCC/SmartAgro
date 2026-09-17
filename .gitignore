@@ -16,10 +16,16 @@ contratos/coverage/
 contratos/coverage.json
 contratos/gas-report.txt
 
-# Saidas de execucao do oraculo
+# Saidas de execucao do oraculo: estado local, nao codigo-fonte
 oraculo/dados/fila.json
 oraculo/dados/publicacoes.jsonl
+oraculo/dados/reputacao.json
 oraculo/dados/*.log
+
+# Enderecos de rede local mudam a cada `npx hardhat node`. Os de rede de teste
+# publica (sepolia*.json) sao versionados de proposito: a banca precisa poder
+# conferir no explorador de blocos qual contrato foi implantado.
+contratos/implantacoes/localhost*.json
 
 # Sistema operacional / editores
 Thumbs.db
