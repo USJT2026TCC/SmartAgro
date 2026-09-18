@@ -33,3 +33,11 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# Build do aplicativo
+app/dist/
+
+# Gerado por `npm run enderecos` a partir de contratos/implantacoes/.
+# Nao e versionado porque carrega enderecos da maquina de quem implantou; o
+# script roda automaticamente antes de `npm run dev` e `npm run build`.
+app/src/cadeia/implantacoes.json

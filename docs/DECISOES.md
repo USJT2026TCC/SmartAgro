@@ -222,6 +222,54 @@ a contagem. Há teste verificando que cada cenário mede exatamente o que declar
 **Por que importa:** o cenário é o instrumento do experimento. Um instrumento que mede diferente
 do que diz medir invalida os números do capítulo de resultados.
 
+### 2.8 Limite contratual com 71 wei a mais, por ponto flutuante
+
+**Sintoma:** a tela de cotação mostrava 1,08 ETH, e a proposta gravava `1080000000000000071` wei
+em vez de `1080000000000000000`.
+
+**Causa:** `180 × 0,006` em ponto flutuante binário dá 1,0800000000000000710, e converter para
+wei só no fim preserva o erro.
+
+**Correção:** a conta passou a ser feita inteiramente em BigInt, sobre wei, com a área convertida
+para centésimos de hectare para admitir fração sem sair dos inteiros.
+
+**Por que importa:** são frações de centavo, mas é um valor contratual que não fecha com o
+documento, e uma vez implantado não há como corrigir. É também o tipo de defeito que passa
+despercebido em qualquer conferência visual, porque a tela arredonda e mostra o número certo.
+
+### 2.9 Sobra do pagamento escalonado presa no contrato para sempre
+
+**Sintoma:** no modo escalonado acionando em 50%, o contrato pagava metade do limite e retinha a
+outra metade. `resgatarGarantia` exigia situação `ATIVA`, e a apólice já estava `LIQUIDADA` —
+então a sobra ficava inacessível para sempre.
+
+**Causa:** o RF25 foi implementado depois do resgate da garantia, e a interação entre os dois
+passou despercebida. Todos os testes existentes usavam pagamento integral, em que a sobra é zero.
+
+**Correção:** `resgatarGarantia` passou a ter duas portas — `ATIVA` com vigência vencida, e
+`LIQUIDADA` de imediato, porque depois da liquidação nenhuma publicação é aceita e aquele saldo
+jamais será devido a ninguém. A apólice liquidada continua `LIQUIDADA` depois do resgate: trocar
+para `ENCERRADA` apagaria, da leitura do estado, o fato de ter havido pagamento.
+
+**Por que importa:** é perda permanente de valor da seguradora, em um caminho que a suíte não
+cobria porque nenhum teste exercitava pagamento parcial seguido de resgate. Foi encontrado
+executando o fluxo completo pela interface, não pelos testes — o que justifica ter feito esse
+percurso à mão antes de dar a integração por pronta.
+
+### 2.10 Endereços autorizados sumindo da tela
+
+**Sintoma:** a tela de oráculos dizia "Nenhum endereço jamais autorizado neste registro", embora
+a implantação tivesse autorizado um.
+
+**Causa:** `implantar.js` anotava o `blocoInicial` depois de tudo implantado. As consultas de
+evento partem desse número, então o `OraculoAutorizado` emitido durante a própria implantação
+ficava fora da janela de busca.
+
+**Correção:** o bloco passou a ser anotado antes da primeira implantação.
+
+**Por que importa:** não havia erro nenhum na tela — apenas uma lista vazia, que parecia estado
+legítimo. Na demonstração, levaria à conclusão de que o registro não tinha oráculo autorizado.
+
 ---
 
 ## 3. O que falta antes da implantação em Sepolia
@@ -241,10 +289,14 @@ Constam como itens de reserva no Quadro 19 da documentação de software.
 
 | Requisito | Por que pode esperar |
 |---|---|
-| RF09 — linha do tempo reconstruída dos eventos | Os mesmos dados são verificáveis no explorador de blocos durante a demonstração |
 | RF10 — cancelamento antes da vigência | Não participa do fluxo de apuração e liquidação |
 | RF27 — notificação de acionamento e pagamento | Não afeta a decisão de pagamento, apenas a comunicação. Os eventos já são emitidos e capturáveis |
 | RF28 — contestação da avaliação automática | Exige retificação do índice em cadeia, de complexidade incompatível com o prazo |
+
+O **RF09** (linha do tempo reconstruída dos eventos) também constava como reserva, e foi
+implementado. Com os contratos já emitindo os eventos, montar a linha do tempo na tela de detalhe
+da apólice custou pouco, e entrega a parte do RNF20 que o usuário efetivamente vê: o histórico
+remontado da rede, auditável sem depender da palavra da seguradora.
 
 O RF17 (encaminhamento ao perito por baixa confiança) também constava como reserva, mas a parte
 que cabe ao oráculo — suspender a publicação do índice de dano abaixo do limiar de confiança —

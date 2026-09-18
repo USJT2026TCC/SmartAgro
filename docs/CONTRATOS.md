@@ -72,23 +72,43 @@ Exemplo do modo escalonado, com gatilho em 30 dias e limiar integral em 60:
 | 45 | 75% |
 | 60 ou mais | 100% |
 
-A função `simularPercentual(indiceClimatico, indiceDanoBps)` é pública e de leitura. A tela de
-cotação do aplicativo a usa para mostrar ao produtor, antes do aceite, exatamente o que aciona
-e o que não aciona o pagamento (RNF06) — com a garantia de ser **a mesma regra** que executa a
-liquidação, e não uma reimplementação no front-end que poderia divergir.
+A função `simularPercentual(indiceClimatico, indiceDanoBps)` é pública e de leitura. O aplicativo
+a usa para mostrar ao produtor, antes do aceite, exatamente o que aciona e o que não aciona o
+pagamento (RNF06).
 
-### 2.3 Funções
+Na tela de cotação, porém, ainda não existe contrato implantado para consultar, e a regra precisa
+estar reimplementada em JavaScript. `contratos/test/RegraDeGatilho.test.js` compara as duas
+implementações caso a caso — cinco configurações de apólice × 13 valores de índice climático × 11
+de índice de dano — de modo que mexer em um dos lados sem mexer no outro quebre a suíte. Detalhes
+em [APLICATIVO.md](APLICATIVO.md), seção 2.
+
+### 2.3 O resgate da garantia
+
+Há dois casos em que o lastro volta para a seguradora:
+
+- **Apólice `ATIVA`, vigência vencida.** Até o fim da vigência a condição ainda pode ser acionada,
+  e retirar a garantia deixaria a apólice sem como pagar. A apólice passa a `ENCERRADA`.
+
+- **Apólice `LIQUIDADA` com saldo remanescente.** No modo escalonado o pagamento pode ser parcial;
+  o que sobra fica retido sem finalidade, porque depois da liquidação nenhuma publicação é aceita.
+  Sem esta porta, a diferença entre o limite e o valor pago ficaria presa no contrato para sempre.
+  A apólice **continua `LIQUIDADA`**: trocar para `ENCERRADA` apagaria, da leitura do estado, o
+  fato de ter havido pagamento.
+
+Um segundo resgate é barrado pelo saldo zerado (`SemSaldoParaResgatar`).
+
+### 2.4 Funções
 
 | Função | Quem pode chamar | Situação exigida |
 |---|---|---|
 | `depositarGarantia()` | seguradora | `AGUARDANDO_GARANTIA` |
 | `publicarIndices(...)` | oráculo autorizado | `ATIVA` |
-| `resgatarGarantia()` | seguradora | `ATIVA` e vigência vencida |
+| `resgatarGarantia()` | seguradora | `ATIVA` com vigência vencida, **ou** `LIQUIDADA` com saldo |
 | `verTermos()` | qualquer um | leitura |
 | `publicacao(periodo)` | qualquer um | leitura |
 | `simularPercentual(...)` | qualquer um | leitura |
 
-### 2.4 As proteções
+### 2.5 As proteções
 
 **Controle de acesso (RF18, RNF12).** `publicarIndices` consulta o `OracleRegistry` a cada
 chamada. Endereço não autorizado é revertido com `OrigemNaoAutorizada`. Um oráculo revogado
@@ -149,19 +169,19 @@ cd contratos && npx cross-env REPORT_GAS=true npx hardhat test
 
 | Contrato | Gas | % do limite do bloco |
 |---|---:|---:|
-| `ApoliceFactory` | 2.220.045 | 3,7% |
-| `ApolicePolicy` | 1.477.941 | 2,5% |
-| `OracleRegistry` | 321.795 | 0,5% |
+| `ApoliceFactory` | 2.241.625 | 3,7% |
+| `ApolicePolicy` | 1.499.539 | 2,5% |
+| `OracleRegistry` | 321.819 | 0,5% |
 
 ### Chamadas
 
 | Contrato | Função | Mínimo | Máximo | Médio |
 |---|---|---:|---:|---:|
-| `ApoliceFactory` | `emitirApolice` | 1.462.559 | 1.496.999 | 1.487.022 |
-| `ApolicePolicy` | `publicarIndices` | 172.165 | 249.094 | 216.658 |
+| `ApoliceFactory` | `emitirApolice` | 1.482.606 | 1.517.046 | 1.507.069 |
+| `ApolicePolicy` | `publicarIndices` | 172.165 | 249.094 | 219.826 |
 | `ApolicePolicy` | `depositarGarantia` | — | — | 47.132 |
-| `ApolicePolicy` | `resgatarGarantia` | — | — | 39.435 |
-| `OracleRegistry` | `autorizar` | 52.947 | 70.059 | 69.765 |
+| `ApolicePolicy` | `resgatarGarantia` | 34.574 | 39.619 | 36.816 |
+| `OracleRegistry` | `autorizar` | 52.947 | 70.059 | 69.812 |
 | `OracleRegistry` | `revogar` | 28.678 | 31.059 | 29.278 |
 | `OracleRegistry` | `transferirSeguradora` | — | — | 28.499 |
 
@@ -205,7 +225,7 @@ contracts/          100% statements · 100% branches · 100% functions · 100% l
   OracleRegistry.sol      100 / 100 / 100 / 100
 ```
 
-81 testes. Os contratos em `mocks/` são excluídos do relatório por `.solcover.js`: existem
+94 testes. Os contratos em `mocks/` são excluídos do relatório por `.solcover.js`: existem
 apenas para encenar ataques nos testes e nunca são implantados em rede.
 
 ```bash
@@ -226,10 +246,11 @@ cd contratos && npx hardhat coverage
 | Avaliação da condição e liquidação | 5 | RF23, RF24, RF26 |
 | Operadores da condição | 4 | — |
 | Pagamento escalonado | 7 | RF25 |
-| Resgate da garantia | 5 | — |
+| Resgate da garantia, incluindo a sobra do escalonado | 11 | RF25 |
 | Registro de oráculos | 13 | RF18, RNF12 |
 | Fábrica de apólices | 7 | RF07 |
 | Segurança: reentrância e atomicidade | 8 | RNF11, RNF15 |
+| Equivalência com a regra do aplicativo | 7 | RNF06 |
 
 ---
 

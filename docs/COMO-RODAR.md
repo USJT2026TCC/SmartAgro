@@ -42,6 +42,10 @@ cd SmartAgro/contratos && npm install
 cd ../oraculo && npm install
 ```
 
+```bash
+cd ../app && npm install
+```
+
 ## 3. Rodar os testes
 
 Os testes não precisam de rede nem de configuração.
@@ -50,7 +54,7 @@ Os testes não precisam de rede nem de configuração.
 cd contratos && npx hardhat test
 ```
 
-Esperado: **81 passing**.
+Esperado: **94 passing**.
 
 ```bash
 cd oraculo && npm test
@@ -195,6 +199,63 @@ cd oraculo && node src/index.js estatisticas
 
 ---
 
+## 5A. A demonstração completa, pelo aplicativo
+
+Este é o roteiro de cinco minutos do capítulo 1 do manual da equipe. Precisa de **três
+terminais** e do navegador.
+
+### Terminal 1 — a rede local
+
+```bash
+cd contratos && npx hardhat node
+```
+
+### Terminal 2 — implantar
+
+```bash
+cd contratos && npx hardhat run scripts/implantar.js --network localhost
+```
+
+Não é preciso emitir a apólice por script: ela será contratada pelo aplicativo.
+
+### Terminal 3 — o aplicativo
+
+```bash
+cd app && npm run dev
+```
+
+Abra `http://localhost:5173`. Sem MetaMask instalada, use
+`http://localhost:5173/?carteira=simulada&conta=1` — a faixa de aviso deixa claro que a carteira
+é simulada, então isso serve para desenvolvimento, não para a apresentação.
+
+### No navegador
+
+1. **Entrar como produtor** (`produtor` / `agrosmart`). Em *Minha carteira*, conectar e assinar
+   o vínculo.
+2. **Simular e contratar**: escolher o talhão, o produto escalonado e conferir a tabela de
+   exemplos. Enviar a proposta.
+3. **Sair e entrar como seguradora** (`seguradora` / `agrosmart`), com a carteira da conta 0.
+4. Em *Propostas*: **Emitir apólice na rede** e depois **Depositar garantia**. O endereço do
+   contrato aparece na tela.
+5. Abrir a apólice pelo link **Ver apólice** e deixar essa tela visível.
+
+### Terminal 2 — o oráculo publica
+
+Preencha `oraculo/.env` com a chave da conta 2 e o endereço da apólice mostrado no passo 4:
+
+```bash
+cd oraculo && node src/index.js ciclo --cenario estiagem_severa
+```
+
+Enquanto o oráculo publica, **a linha do tempo na tela cresce sozinha**, sem recarregar: o índice
+sobe 28 → 29 → 30, e na terceira publicação aparece "Indenização transferida ao produtor — sem
+intervenção humana".
+
+No modo escalonado, o pagamento é de 50% do limite. A seguradora pode então resgatar a sobra pelo
+botão que aparece na própria apólice.
+
+---
+
 ## 6. Verificar o comportamento sob falha (RF21)
 
 Essa é uma das quatro medidas experimentais previstas no manual da equipe.
@@ -297,6 +358,9 @@ e qualquer pessoa pode conferir sem depender da palavra de ninguém.
 | `PeriodoJaPublicado` | Esse período já entrou na cadeia | Use outro `--periodo`; é o RF20 funcionando |
 | Cobertura com números baixos sem motivo | Cache do `solidity-coverage` | `npx hardhat clean` antes de `npx hardhat coverage` |
 | O comando termina de imprimir e não devolve o terminal | Versão antiga, anterior ao `provider.destroy()` | Atualize o repositório |
+| O aplicativo abre, mas nenhuma apólice aparece | Os endereços no app estão desatualizados | Rode `npm run enderecos` em `app` depois de reimplantar |
+| `Nenhum contrato implantado nesta rede` na tela de login | O script de implantação não rodou | Rode `implantar.js` e depois `npm run enderecos` |
+| Botão de emitir desabilitado | A carteira conectada não é a da seguradora | Troque para a conta 0 do `hardhat node` |
 | `nonce has already been used` | Versão antiga, anterior ao `NonceManager` | Atualize o repositório |
 
 ---

@@ -27,15 +27,19 @@ que a condição de pagamento é uma função computável sobre grandezas medida
 
 | Módulo | Situação | Conteúdo |
 |---|---|---|
-| [`contratos/`](contratos) | **Pronto** | Apólice, registro de oráculos e fábrica em Solidity, com 81 testes e 100% de cobertura |
+| [`contratos/`](contratos) | **Pronto** | Apólice, registro de oráculos e fábrica em Solidity, com 94 testes e 100% de cobertura |
 | [`oraculo/`](oraculo) | **Pronto** | Consolidação dos índices, assinatura, publicação, fila de retomada e registro de custos, com 56 testes |
+| [`app/`](app) | **Pronto** | Aplicativo do produtor, painel da seguradora e revisão do perito, em React, integrados aos contratos |
 | `backend/` | A fazer | API, ingestão e banco (Sprint 2–3) |
 | `simulador/` | A fazer | Simulador de sensores em Python + MQTT (HU04) |
 | `visao/` | A fazer | Modelo de visão computacional e API de inferência (HU11) |
-| `app/` | A fazer | Aplicativo do produtor e painel da seguradora (Sprint 3) |
 
 Enquanto o simulador oficial não existe, o oráculo usa uma fonte simulada própria
 (`oraculo/src/fonteSimulada.js`), determinística, com os três cenários previstos na HU04.
+
+Enquanto o back-end não existe, o aplicativo guarda login, talhões e propostas no navegador. As
+duas peças provisórias estão marcadas na própria interface. Apólice, índices e pagamento vivem na
+cadeia, e é de lá que o aplicativo os lê.
 
 ## A fronteira
 
@@ -70,14 +74,14 @@ git clone https://github.com/USJT2026TCC/SmartAgro.git
 cd SmartAgro
 ```
 
-Demonstração completa em rede local, sem configurar nada:
+Demonstração dos contratos em rede local, sem configurar nada:
 
 ```bash
 cd contratos && npm install && npx hardhat run scripts/demo-estiagem.js
 ```
 
-O roteiro passo a passo, incluindo o serviço de oráculo e a rede Sepolia, está em
-[docs/COMO-RODAR.md](docs/COMO-RODAR.md).
+Para ver a coisa inteira — contratar pelo aplicativo, o oráculo publicando e o pagamento
+acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), seção 5A.
 
 ## Documentação
 
@@ -86,6 +90,7 @@ O roteiro passo a passo, incluindo o serviço de oráculo e a rede Sepolia, est�
 | [docs/ARQUITETURA.md](docs/ARQUITETURA.md) | Como as peças se encaixam e por que a fronteira fica onde fica |
 | [docs/CONTRATOS.md](docs/CONTRATOS.md) | Referência dos contratos, tabela de gas e rastreabilidade de requisitos |
 | [docs/ORACULO.md](docs/ORACULO.md) | Referência do serviço de oráculo, módulo por módulo |
+| [docs/APLICATIVO.md](docs/APLICATIVO.md) | Referência do aplicativo, tela por tela |
 | [docs/COMO-RODAR.md](docs/COMO-RODAR.md) | Passo a passo, da instalação à demonstração na Sepolia |
 | [docs/DECISOES.md](docs/DECISOES.md) | Decisões de projeto, alternativas descartadas e defeitos encontrados |
 | `docs/AgroSmart_Documentacao_Software.docx` | Documentação acadêmica: requisitos, UML, planejamento |
@@ -94,11 +99,13 @@ O roteiro passo a passo, incluindo o serviço de oráculo e a rede Sepolia, est�
 ## Estado dos testes
 
 ```
-contratos   81 testes · 100% de statements, branches, funções e linhas
+contratos   94 testes · 100% de statements, branches, funções e linhas
 oraculo     56 testes
 ```
 
-Nenhum dos dois depende de rede externa para rodar.
+Nenhum dos dois depende de rede externa para rodar. Sete dos testes de contrato comparam, caso a
+caso, a regra de acionamento do contrato com a reimplementação em JavaScript que o aplicativo usa
+na tela de cotação — para que a tela não prometa um valor que o contrato não vai pagar.
 
 ## Segurança
 

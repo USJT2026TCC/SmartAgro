@@ -730,15 +730,105 @@ describe("ApolicePolicy", function () {
         .withArgs(estranho.address);
     });
 
-    it("recusa resgate depois da liquidacao", async function () {
-      const { apolice, seguradora, oraculo, termos } = await cenarioApoliceAtiva();
+    it("recusa resgate apos pagamento integral, porque nao sobrou saldo", async function () {
+      const { apolice, seguradora, oraculo } = await cenarioApoliceAtiva();
 
       await publicar(apolice, oraculo, 20261001, 40);
-      await time.increaseTo(Number(termos.vigenciaFim) + 1);
+      expect(await apolice.garantiaRetida()).to.equal(0);
+
+      await expect(apolice.connect(seguradora).resgatarGarantia()).to.be.revertedWithCustomError(
+        apolice,
+        "SemSaldoParaResgatar",
+      );
+    });
+
+    it("recusa resgate na situacao AGUARDANDO_GARANTIA", async function () {
+      const [seguradora, produtor, oraculo] = await ethers.getSigners();
+
+      const registry = await ethers.deployContract("OracleRegistry", [seguradora.address]);
+      await registry.connect(seguradora).autorizar(oraculo.address);
+
+      const termos = await montarTermos({
+        produtor: produtor.address,
+        registry: await registry.getAddress(),
+      });
+
+      const apolice = await ethers.deployContract("ApolicePolicy", [seguradora.address, termos]);
 
       await expect(apolice.connect(seguradora).resgatarGarantia())
         .to.be.revertedWithCustomError(apolice, "SituacaoInvalida")
-        .withArgs(Situacao.LIQUIDADA, Situacao.ATIVA);
+        .withArgs(Situacao.AGUARDANDO_GARANTIA, Situacao.ATIVA);
+    });
+
+    // O modo escalonado paga parte do limite. O restante nao tem mais destino:
+    // depois da liquidacao nenhuma publicacao e aceita, entao ele jamais sera
+    // devido a ninguem. Sem esta devolucao, ficaria preso no contrato para sempre.
+    describe("sobra do pagamento escalonado (RF25)", function () {
+      async function cenarioLiquidadoParcialmente() {
+        const cenario = await cenarioApoliceAtiva({
+          modoPagamento: ModoPagamento.ESCALONADO,
+          limiarClimatico: 30,
+          limiarClimaticoIntegral: 60,
+        });
+
+        // Exatamente no gatilho: paga 50% e retem os outros 50%.
+        await publicar(cenario.apolice, cenario.oraculo, 20261001, 30);
+
+        return cenario;
+      }
+
+      it("o contrato retem a diferenca entre o limite e o valor pago", async function () {
+        const { apolice } = await cenarioLiquidadoParcialmente();
+
+        expect(await apolice.situacao()).to.equal(Situacao.LIQUIDADA);
+        expect(await apolice.valorPago()).to.equal(VALOR_INDENIZACAO / 2n);
+        expect(await apolice.garantiaRetida()).to.equal(VALOR_INDENIZACAO / 2n);
+      });
+
+      it("a seguradora resgata a sobra de imediato, sem esperar a vigencia", async function () {
+        const { apolice, seguradora } = await cenarioLiquidadoParcialmente();
+        const sobra = VALOR_INDENIZACAO / 2n;
+
+        const transacao = apolice.connect(seguradora).resgatarGarantia();
+
+        await expect(transacao).to.changeEtherBalance(seguradora, sobra, { includeFee: false });
+        await expect(transacao)
+          .to.emit(apolice, "GarantiaResgatada")
+          .withArgs(seguradora.address, sobra);
+
+        expect(await apolice.garantiaRetida()).to.equal(0);
+      });
+
+      it("a apolice continua LIQUIDADA depois do resgate da sobra", async function () {
+        const { apolice, seguradora } = await cenarioLiquidadoParcialmente();
+
+        await apolice.connect(seguradora).resgatarGarantia();
+
+        // Trocar para ENCERRADA apagaria, da leitura do estado, o fato de ter
+        // havido pagamento ao produtor.
+        expect(await apolice.situacao()).to.equal(Situacao.LIQUIDADA);
+        expect(await apolice.valorPago()).to.equal(VALOR_INDENIZACAO / 2n);
+        expect(await apolice.periodoAcionador()).to.equal(20261001);
+      });
+
+      it("um segundo resgate da sobra e recusado", async function () {
+        const { apolice, seguradora } = await cenarioLiquidadoParcialmente();
+
+        await apolice.connect(seguradora).resgatarGarantia();
+
+        await expect(apolice.connect(seguradora).resgatarGarantia()).to.be.revertedWithCustomError(
+          apolice,
+          "SemSaldoParaResgatar",
+        );
+      });
+
+      it("apenas a seguradora resgata a sobra", async function () {
+        const { apolice, estranho } = await cenarioLiquidadoParcialmente();
+
+        await expect(apolice.connect(estranho).resgatarGarantia())
+          .to.be.revertedWithCustomError(apolice, "OrigemNaoAutorizada")
+          .withArgs(estranho.address);
+      });
     });
 
     it("recusa segundo resgate", async function () {

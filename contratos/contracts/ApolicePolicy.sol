@@ -190,6 +190,7 @@ contract ApolicePolicy {
     error VigenciaEmCurso(uint64 agora, uint64 fim);
     error FalhaNaTransferencia(address destino, uint256 valor);
     error ReentranciaDetectada();
+    error SemSaldoParaResgatar();
     error DepositoDireto();
 
     // ---------------------------------------------------------------------
@@ -300,22 +301,38 @@ contract ApolicePolicy {
     }
 
     /**
-     * @notice Devolve a garantia a seguradora apos o fim da vigencia sem acionamento.
-     * @dev Sem esta funcao o lastro ficaria preso no contrato para sempre.
+     * @notice Devolve a seguradora o lastro que nao tem mais destino.
+     *
+     * @dev Ha duas portas de entrada, e cada uma cobre um caso diferente:
+     *
+     *  - situacao ATIVA: so depois do fim da vigencia. Ate la a condicao ainda pode
+     *    ser acionada, e retirar a garantia deixaria a apolice sem como pagar.
+     *
+     *  - situacao LIQUIDADA: de imediato. No modo escalonado o pagamento pode ser
+     *    parcial, e o que sobra fica retido sem finalidade — depois da liquidacao
+     *    nenhuma publicacao e mais aceita, entao esse saldo jamais sera devido a
+     *    ninguem. Sem esta porta, a diferenca entre o limite e o valor pago ficaria
+     *    presa no contrato para sempre.
+     *
+     * A apolice liquidada continua LIQUIDADA depois do resgate: trocar para
+     * ENCERRADA apagaria, da leitura do estado, o fato de ter havido pagamento.
+     * Um segundo resgate e barrado pelo saldo zerado.
      */
-    function resgatarGarantia()
-        external
-        naoReentrante
-        somenteSeguradora
-        naSituacao(Situacao.ATIVA)
-    {
-        uint64 agora = uint64(block.timestamp);
-        if (agora <= termos.vigenciaFim) revert VigenciaEmCurso(agora, termos.vigenciaFim);
+    function resgatarGarantia() external naoReentrante somenteSeguradora {
+        if (situacao == Situacao.ATIVA) {
+            uint64 agora = uint64(block.timestamp);
+            if (agora <= termos.vigenciaFim) revert VigenciaEmCurso(agora, termos.vigenciaFim);
+        } else if (situacao != Situacao.LIQUIDADA) {
+            revert SituacaoInvalida(situacao, Situacao.ATIVA);
+        }
 
         uint256 saldo = address(this).balance;
+        if (saldo == 0) revert SemSaldoParaResgatar();
 
-        // Efeito antes da interacao (RNF11).
-        situacao = Situacao.ENCERRADA;
+        // Efeito antes da interacao (RNF11). A apolice liquidada nao muda de
+        // situacao; nela, a protecao contra repeticao e o proprio saldo, que ja
+        // esta zerado quando a chamada reentrante chegaria.
+        if (situacao == Situacao.ATIVA) situacao = Situacao.ENCERRADA;
 
         (bool ok, ) = seguradora.call{value: saldo}("");
         if (!ok) revert FalhaNaTransferencia(seguradora, saldo);

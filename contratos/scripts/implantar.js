@@ -44,6 +44,13 @@ async function main() {
   console.log(`Oraculo.....: ${enderecoOraculo}`);
   console.log("");
 
+  // O bloco e anotado ANTES de qualquer implantacao. Este numero e o ponto de
+  // partida das consultas de evento do aplicativo e do servico de oraculo. Anota-lo
+  // no fim deixaria de fora os eventos emitidos durante a propria implantacao —
+  // entre eles o `OraculoAutorizado` — e a lista apareceria vazia na tela, sem
+  // nenhum erro que explicasse o motivo.
+  const blocoInicial = await ethers.provider.getBlockNumber();
+
   // ---------------------------------------------------------------- registro
   const registry = await ethers.deployContract("OracleRegistry", [seguradora.address]);
   await registry.waitForDeployment();
@@ -64,13 +71,11 @@ async function main() {
   console.log(`ApoliceFactory implantada em ${enderecoFactory}`);
 
   // ---------------------------------------------------------------- registro em disco
-  const bloco = await ethers.provider.getBlockNumber();
-
   const implantacao = {
     rede: network.name,
     chainId: Number((await ethers.provider.getNetwork()).chainId),
     implantadoEm: new Date().toISOString(),
-    blocoInicial: bloco,
+    blocoInicial,
     seguradora: seguradora.address,
     oraculoAutorizado: enderecoOraculo,
     contratos: {
