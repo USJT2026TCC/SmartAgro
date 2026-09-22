@@ -519,3 +519,45 @@ tbody tr:last-child td {
   padding: 6px 16px;
   text-align: center;
 }
+
+/* ------------------------------------------------------------ notificacoes */
+
+.notificacoes {
+  position: relative;
+  text-decoration: none;
+  color: var(--tinta-suave);
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: var(--raio-pequeno);
+}
+
+.notificacoes:hover {
+  background: var(--verde-100);
+  color: var(--verde-700);
+}
+
+.notificacoes .contador {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--terra-600);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 18px;
+}
+
+/* ------------------------------------------------------------ conferencia */
+
+.conferencia-ok {
+  color: var(--sucesso);
+  font-weight: 650;
+}
+
+.conferencia-falha {
+  color: var(--erro);
+  font-weight: 650;
+}

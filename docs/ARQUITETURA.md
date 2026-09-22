@@ -110,16 +110,34 @@ Com a fila em disco, reiniciar o serviço retoma exatamente de onde parou, **pre
 período de referência original**. Isso é o RF21, e está validado por teste e por execução real
 contra um nó derrubado de propósito.
 
+### 3.3 Fora da cadeia — `backend/`
+
+API em Node.js + Express sobre PostgreSQL com PostGIS. Guarda o que a cadeia não deve guardar
+(cadastro, geometria, leituras, imagens, sessões, texto dos termos) e liga as peças fora da
+cadeia entre si. **Não tem chave privada de ninguém**: só confere assinaturas — do produtor ao
+vincular carteira, da fonte ao enviar leituras, e da seguradora ao emitir, relendo a transação
+na cadeia. Um indexador acompanha os eventos e mantém um espelho consultável, mas a autoridade
+continua sendo o contrato. Detalhes em [BACKEND.md](BACKEND.md).
+
+### 3.4 Fora da cadeia — `app/`
+
+Aplicativo React que fala com o backend (sessão, cadastro, propostas) e **diretamente com a
+cadeia** para tudo que envolve valor: a carteira da seguradora assina a emissão e o depósito, e
+a tela da apólice lê estado, índices e linha do tempo da rede. A conferência dos termos (RF08)
+recalcula o resumo no navegador, sem confiar no backend. Detalhes em [APLICATIVO.md](APLICATIVO.md).
+
 ## 4. O fluxo completo, do sensor ao pagamento
 
 Correspondente ao diagrama de sequência da documentação de software (Figura 8, UC07 a UC13):
 
 ```
- 1. sensores          →  leituras brutas do talhão
+ 1. sensores          →  lote de leituras assinado pela chave da fonte
+    backend           →  confere a assinatura e a plausibilidade; grava
  2. consolidador      →  descarta implausíveis, atualiza reputação,
                          conta dias consecutivos sem chuva
  3. modelo de visão   →  índice de dano + confiança + hash do lote
-                         (módulo ainda a implementar)
+                         (módulo ainda a implementar; o backend já recebe
+                          o resultado e retém baixa confiança para o perito)
  4. fila              →  grava a publicação em disco
  ─────────────────────── FRONTEIRA ────────────────────────────────
  5. publicador        →  assina e submete em uma única transação
@@ -132,6 +150,8 @@ Correspondente ao diagrama de sequência da documentação de software (Figura 8
  ───────────────────────────────────────────────────────────────────
 12. registro          →  grava txHash, gas, bloco e latência
 13. fila              →  marca a entrada como concluída
+14. backend           →  recebe o relato do oráculo; o indexador lê os eventos
+                         e notifica produtor e seguradora
 ```
 
 Os passos 6 a 11 acontecem **dentro de uma única transação**. Ou todos completam, ou nenhum
@@ -156,11 +176,10 @@ condicionais exigida pelo RNF14.
 | Peça | Sprint | Nota |
 |---|---|---|
 | Simulador em Python + MQTT | 1 | O oráculo já roda com uma fonte simulada própria |
-| Ingestão e banco (PostgreSQL + PostGIS) | 2 | O polígono do talhão e a checagem de ponto em área |
-| Modelo de visão computacional | 3 | O contrato já aceita índice de dano, hash e versão |
-| Aplicativo React e painel da seguradora | 3 | O contrato já expõe `simularPercentual` para a tela de cotação |
+| Modelo de visão computacional | 3 | O backend já recebe o resultado em `POST /visao/resultados` |
+| Implantação em Sepolia | 4 | Exige endpoint RPC e ETH de teste; ver COMO-RODAR §7 |
 
-A interface com essas peças já está definida nos contratos e no oráculo. O módulo de visão, por
-exemplo, precisa devolver apenas `{ indiceDano, confianca, hashEvidencias, versaoModelo }` — o
-serviço de oráculo já sabe o que fazer com isso, inclusive suspender a publicação do índice de
-dano quando a confiança fica abaixo do limiar (RF17).
+Ingestão e banco (PostgreSQL + PostGIS) e o aplicativo React já estão implementados.
+
+A interface com essas peças já está definida. O simulador precisa seguir o contrato de ingestão
+de [BACKEND.md §5](BACKEND.md), e o módulo de visão o de [BACKEND.md §6](BACKEND.md).

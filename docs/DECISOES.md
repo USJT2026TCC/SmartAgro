@@ -270,6 +270,56 @@ ficava fora da janela de busca.
 **Por que importa:** não havia erro nenhum na tela — apenas uma lista vazia, que parecia estado
 legítimo. Na demonstração, levaria à conclusão de que o registro não tinha oráculo autorizado.
 
+### 2.11 Vínculo de carteira aceitava qualquer assinatura
+
+**Sintoma:** nenhum, e é isso que o torna grave. A primeira versão do vínculo recebia desafio e
+assinatura, recuperava o endereço com `ecrecover` e o gravava como carteira do produtor.
+
+**Causa:** `ecrecover` **sempre** devolve um endereço, para qualquer assinatura bem formada —
+inclusive uma produzida sobre outra mensagem. O servidor gravaria um endereço aleatório, de que
+ninguém tem a chave, e as indenizações daquele produtor iriam para lá.
+
+**Correção:** o produtor passou a enviar também o endereço que declara possuir, e o servidor exige
+que o endereço recuperado seja igual ao declarado (o mesmo princípio do *Sign-In with Ethereum*).
+Um teste assina outra mensagem e confere a recusa.
+
+**Por que importa:** o erro não aparecia em nenhum teste de caminho feliz. Só uma revisão
+perguntando "o que acontece se a assinatura estiver errada?" o encontrou.
+
+### 2.12 Área do talhão 7% maior que a real
+
+**Sintoma:** um polígono de 459,9 ha aparecia com 492,8 ha na tela de cadastro.
+
+**Causa:** o aplicativo calculava a área tratando longitude e latitude como coordenadas planas,
+com um fator de conversão fixo. Longe do equador, isso infla a área.
+
+**Correção:** a área passou a ser calculada pelo PostGIS, sobre o elipsoide
+(`ST_Area(geometria::geography)`), e o limite da apólice usa esse número.
+
+**Por que importa:** o limite da apólice é área × valor por hectare. Com 7% de área a mais, a
+seguradora emitiria cobertura sem lastro correspondente em terra.
+
+### 2.13 Desafio de carteira que voltava a valer
+
+**Causa:** o consumo do desafio (`UPDATE ... SET usado_em`) estava dentro da mesma transação do
+vínculo. Quando o vínculo falhava — endereço já usado por outro produtor, por exemplo — a
+transação era desfeita e o desafio voltava a valer.
+
+**Correção:** o desafio é consumido primeiro, com um `UPDATE ... RETURNING` atômico fora da
+transação. Tentativa falha gasta o desafio, como deve.
+
+### 2.14 Revisão do perito anulada pelo limiar do oráculo
+
+**Sintoma:** o perito liberava uma análise de baixa confiança, e mesmo assim o índice de dano não
+era publicado.
+
+**Causa:** o oráculo aplicava o próprio limiar de confiança sem saber que a análise já tinha sido
+revisada. O humano decidia, e a máquina desfazia a decisão.
+
+**Correção:** o backend envia `liberadaPeloPerito`, e o oráculo não reaplica o limiar nesse caso.
+Uma análise **rejeitada**, ao contrário, nunca chega ao oráculo — por isso a decisão do perito é
+uma coluna própria, e não apenas "revisada sim ou não".
+
 ---
 
 ## 3. O que falta antes da implantação em Sepolia
@@ -290,7 +340,6 @@ Constam como itens de reserva no Quadro 19 da documentação de software.
 | Requisito | Por que pode esperar |
 |---|---|
 | RF10 — cancelamento antes da vigência | Não participa do fluxo de apuração e liquidação |
-| RF27 — notificação de acionamento e pagamento | Não afeta a decisão de pagamento, apenas a comunicação. Os eventos já são emitidos e capturáveis |
 | RF28 — contestação da avaliação automática | Exige retificação do índice em cadeia, de complexidade incompatível com o prazo |
 
 O **RF09** (linha do tempo reconstruída dos eventos) também constava como reserva, e foi
@@ -300,5 +349,9 @@ remontado da rede, auditável sem depender da palavra da seguradora.
 
 O RF17 (encaminhamento ao perito por baixa confiança) também constava como reserva, mas a parte
 que cabe ao oráculo — suspender a publicação do índice de dano abaixo do limiar de confiança —
-já está implementada, porque era uma condição a mais na função que monta a publicação. O fluxo de
-revisão pelo perito, esse sim, continua fora do escopo.
+já está implementada, porque era uma condição a mais na função que monta a publicação. Com o
+backend, o fluxo de revisão pelo perito também foi implementado: a análise fica retida até o
+parecer, e a decisão tem autor e justificativa registrados.
+
+O **RF27** (notificações) saiu da reserva pelo mesmo motivo: o indexador do backend já lia os
+eventos, e transformá-los em avisos para as partes custou uma tabela e uma tela.

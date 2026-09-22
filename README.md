@@ -28,18 +28,18 @@ que a condição de pagamento é uma função computável sobre grandezas medida
 | Módulo | Situação | Conteúdo |
 |---|---|---|
 | [`contratos/`](contratos) | **Pronto** | Apólice, registro de oráculos e fábrica em Solidity, com 94 testes e 100% de cobertura |
-| [`oraculo/`](oraculo) | **Pronto** | Consolidação dos índices, assinatura, publicação, fila de retomada e registro de custos, com 56 testes |
-| [`app/`](app) | **Pronto** | Aplicativo do produtor, painel da seguradora e revisão do perito, em React, integrados aos contratos |
-| `backend/` | A fazer | API, ingestão e banco (Sprint 2–3) |
+| [`oraculo/`](oraculo) | **Pronto** | Consolidação dos índices, assinatura, publicação, fila de retomada e registro de custos, com 65 testes |
+| [`app/`](app) | **Pronto** | Aplicativo do produtor, painel da seguradora e revisão do perito, em React, integrados ao backend e aos contratos |
+| [`backend/`](backend) | **Pronto** | API, PostgreSQL + PostGIS, ingestão assinada, indexador de eventos e notificações, com 87 testes |
 | `simulador/` | A fazer | Simulador de sensores em Python + MQTT (HU04) |
 | `visao/` | A fazer | Modelo de visão computacional e API de inferência (HU11) |
 
 Enquanto o simulador oficial não existe, o oráculo usa uma fonte simulada própria
 (`oraculo/src/fonteSimulada.js`), determinística, com os três cenários previstos na HU04.
 
-Enquanto o back-end não existe, o aplicativo guarda login, talhões e propostas no navegador. As
-duas peças provisórias estão marcadas na própria interface. Apólice, índices e pagamento vivem na
-cadeia, e é de lá que o aplicativo os lê.
+O backend já define o formato que o simulador e o módulo de visão precisam seguir — ver
+[docs/BACKEND.md](docs/BACKEND.md), seções 5 e 6. Apólice, índices e pagamento continuam vivendo
+na cadeia, e é de lá que o aplicativo os lê; o banco é espelho, não autoridade.
 
 ## A fronteira
 
@@ -91,6 +91,7 @@ acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), s
 | [docs/CONTRATOS.md](docs/CONTRATOS.md) | Referência dos contratos, tabela de gas e rastreabilidade de requisitos |
 | [docs/ORACULO.md](docs/ORACULO.md) | Referência do serviço de oráculo, módulo por módulo |
 | [docs/APLICATIVO.md](docs/APLICATIVO.md) | Referência do aplicativo, tela por tela |
+| [docs/BACKEND.md](docs/BACKEND.md) | API, banco, segurança, contrato de ingestão e indexador |
 | [docs/COMO-RODAR.md](docs/COMO-RODAR.md) | Passo a passo, da instalação à demonstração na Sepolia |
 | [docs/ANALISE-ESTATICA.md](docs/ANALISE-ESTATICA.md) | Triagem do Slither, achado por achado (RNF13) |
 | [docs/DECISOES.md](docs/DECISOES.md) | Decisões de projeto, alternativas descartadas e defeitos encontrados |
@@ -101,10 +102,11 @@ acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), s
 
 ```
 contratos   94 testes · 100% de statements, branches, funções e linhas
-oraculo     56 testes
+oraculo     65 testes
+backend     83 testes + 4 de integração com um nó real
 ```
 
-Nenhum dos dois depende de rede externa para rodar. Sete dos testes de contrato comparam, caso a
+Nenhum deles depende de rede externa para rodar. Sete dos testes de contrato comparam, caso a
 caso, a regra de acionamento do contrato com a reimplementação em JavaScript que o aplicativo usa
 na tela de cotação — para que a tela não prometa um valor que o contrato não vai pagar.
 
@@ -112,7 +114,11 @@ na tela de cotação — para que a tela não prometa um valor que o contrato n�
 
 Chave privada e frase de recuperação **nunca** entram no repositório. Cada integrante mantém o
 próprio arquivo `.env`, que está no `.gitignore`. Os modelos ficam em `oraculo/.env.example` e
-`contratos/.env.example`.
+`contratos/.env.example` e `backend/.env.example`.
+
+O backend não guarda chave privada de ninguém: só confere assinaturas. Senhas ficam em bcrypt,
+o segredo do segundo fator é cifrado em repouso, e as leituras de campo só são aceitas com a
+assinatura da fonte que as produziu.
 
 Todo o trabalho acontece em rede de teste. Nenhum valor com lastro monetário real é
 movimentado.

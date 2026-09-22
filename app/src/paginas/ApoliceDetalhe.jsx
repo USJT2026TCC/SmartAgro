@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { ethers } from "ethers";
+
+import { api } from "../api/cliente";
 
 import { useCarteira } from "../cadeia/CarteiraContexto";
 import { useSessao } from "../sessao/SessaoContexto";
-import { PERFIS } from "../sessao/usuarios";
+import { PERFIS } from "../sessao/perfis";
 import { contratoApolice, lerApolice, lerLinhaDoTempo, lerPublicacoes } from "../cadeia/contratos";
 import {
   deBytes32,
@@ -78,6 +81,90 @@ function descreverEvento(evento) {
   }
 }
 
+/**
+ * Conferencia do resumo dos termos (RF08), feita no proprio navegador.
+ *
+ * O texto dos termos vem do backend, que o guardou quando a emissao foi
+ * preparada. O resumo, porem, NAO e o que o backend diz: e recalculado aqui, com
+ * keccak256 sobre o texto, e comparado com o `hashTermos` lido do contrato. Se o
+ * texto guardado tivesse sido alterado depois da emissao, por menor que fosse a
+ * mudanca, os dois resumos deixariam de bater — e a tela mostraria.
+ *
+ * E a prova de que o documento que o produtor aceitou e o mesmo que esta na
+ * cadeia, sem precisar confiar no servidor que guarda o documento.
+ */
+function ConferenciaDosTermos({ descricao, hashNoContrato }) {
+  if (!descricao) {
+    return (
+      <div className="cartao">
+        <h2>Conferencia dos termos</h2>
+        <p className="silencioso">
+          O backend nao tem o texto dos termos desta apolice — ela foi emitida fora do aplicativo. O
+          resumo gravado no contrato continua disponivel acima para conferencia manual.
+        </p>
+      </div>
+    );
+  }
+
+  const recalculado = ethers.keccak256(ethers.toUtf8Bytes(descricao));
+  const confere = recalculado.toLowerCase() === String(hashNoContrato).toLowerCase();
+
+  return (
+    <div className="cartao">
+      <h2>Conferencia dos termos (RF08)</h2>
+      <p className={confere ? "conferencia-ok" : "conferencia-falha"}>
+        {confere
+          ? "O texto dos termos guardado corresponde exatamente ao que foi gravado no contrato."
+          : "ATENCAO: o texto dos termos guardado NAO corresponde ao resumo gravado no contrato."}
+      </p>
+
+      <Campo rotulo="Texto dos termos">
+        <textarea readOnly rows={4} className="mono" value={descricao.split("|").join("\n")} />
+      </Campo>
+
+      <div className="tabela-rolavel">
+        <table>
+          <tbody>
+            <tr>
+              <th>Resumo recalculado neste navegador</th>
+              <td className="mono">{recalculado}</td>
+            </tr>
+            <tr>
+              <th>Resumo gravado no contrato</th>
+              <td className="mono">{hashNoContrato}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <RodapeDaFronteira>
+        O resumo e recalculado aqui, e nao informado pelo servidor. A conferencia nao depende de
+        confiar em quem guarda o documento — so no texto e no contrato.
+      </RodapeDaFronteira>
+    </div>
+  );
+}
+
+/** Procedencia de um indice publicado, segundo o relato do oraculo. */
+function Procedencia({ relato }) {
+  if (!relato) return <span className="silencioso">—</span>;
+
+  const fontes = relato.procedencia?.fontesUsadas ?? [];
+  const descartadas = relato.procedencia?.fontesDescartadas ?? [];
+
+  return (
+    <div className="silencioso">
+      {fontes.length} fonte(s)
+      {descartadas.length > 0 ? `, ${descartadas.length} descartada(s)` : ""}
+      {relato.gas_usado ? <div>gas {Number(relato.gas_usado).toLocaleString("pt-BR")}</div> : null}
+      {relato.latencia_ms !== null && relato.latencia_ms !== undefined ? (
+        <div>{relato.latencia_ms} ms</div>
+      ) : null}
+      {!relato.confirmada_na_cadeia ? <Selo tipo="alerta">nao confirmada</Selo> : null}
+    </div>
+  );
+}
+
 export default function ApoliceDetalhe() {
   const { endereco } = useParams();
   const { provedorLeitura, signatario, conta, rede } = useCarteira();
@@ -90,6 +177,7 @@ export default function ApoliceDetalhe() {
   const [erro, setErro] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [operando, setOperando] = useState(false);
+  const [doBackend, setDoBackend] = useState(null);
 
   const carregar = useCallback(async () => {
     setErro(null);
@@ -104,6 +192,12 @@ export default function ApoliceDetalhe() {
       setApolice(dados);
       setPublicacoes(pubs);
       setLinhaDoTempo(eventos);
+
+      // O que a cadeia nao guarda: o texto dos termos e a procedencia de cada
+      // indice. Apolice desconhecida do backend nao impede a tela de funcionar.
+      api(`/apolices/${endereco}`)
+        .then(setDoBackend)
+        .catch(() => setDoBackend(null));
     } catch (falha) {
       setErro(mensagemDeErro(falha));
     } finally {
@@ -211,6 +305,10 @@ export default function ApoliceDetalhe() {
     conta.toLowerCase() === apolice.seguradora.toLowerCase();
 
   const vigenciaVencida = Date.now() / 1000 > t.vigenciaFim;
+
+  /** Relato do oraculo sobre um periodo: fontes usadas, descartes, gas, latencia. */
+  const relatoDoOraculo = (periodo) =>
+    doBackend?.publicacoes?.find((r) => Number(r.periodo) === Number(periodo)) ?? null;
 
   /**
    * O contrato aceita o resgate em dois casos: apolice ativa com vigencia vencida,
@@ -375,6 +473,7 @@ export default function ApoliceDetalhe() {
                     <th className="numero">Dano</th>
                     <th className="numero">Confianca</th>
                     <th>Evidencias</th>
+                    <th>Procedencia</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -399,6 +498,9 @@ export default function ApoliceDetalhe() {
                           modelo {hashCurto(p.versaoModelo)}
                         </div>
                       </td>
+                      <td>
+                        <Procedencia relato={relatoDoOraculo(p.periodo)} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -413,6 +515,11 @@ export default function ApoliceDetalhe() {
           </RodapeDaFronteira>
         </div>
       </div>
+
+      <ConferenciaDosTermos
+        descricao={doBackend?.conferenciaDosTermos?.descricao ?? null}
+        hashNoContrato={t.hashTermos}
+      />
 
       <div className="cartao">
         <h2>Linha do tempo</h2>

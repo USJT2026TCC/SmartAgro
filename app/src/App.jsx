@@ -4,7 +4,7 @@ import Cabecalho from "./componentes/Cabecalho";
 import RotaProtegida from "./componentes/RotaProtegida";
 import { Aviso } from "./componentes/ui";
 import { useSessao } from "./sessao/SessaoContexto";
-import { PERFIS } from "./sessao/usuarios";
+import { PERFIS } from "./sessao/perfis";
 
 import Entrar from "./paginas/Entrar";
 import ApoliceDetalhe from "./paginas/ApoliceDetalhe";
@@ -16,6 +16,9 @@ import Propostas from "./paginas/seguradora/Propostas";
 import TalhoesEProdutos from "./paginas/seguradora/TalhoesEProdutos";
 import Oraculos from "./paginas/seguradora/Oraculos";
 import RevisaoTecnica from "./paginas/RevisaoTecnica";
+import Fontes from "./paginas/seguradora/Fontes";
+import Notificacoes from "./paginas/Notificacoes";
+import Conta from "./paginas/Conta";
 
 /** Leva cada perfil para a sua tela inicial. */
 function Inicio() {
@@ -135,6 +138,33 @@ export default function App() {
           element={
             <RotaProtegida perfis={[PERFIS.PERITO]}>
               <RevisaoTecnica />
+            </RotaProtegida>
+          }
+        />
+
+        <Route
+          path="/seguradora/fontes"
+          element={
+            <RotaProtegida perfis={[PERFIS.SEGURADORA]}>
+              <Fontes />
+            </RotaProtegida>
+          }
+        />
+
+        {/* Comuns aos tres perfis. */}
+        <Route
+          path="/notificacoes"
+          element={
+            <RotaProtegida>
+              <Notificacoes />
+            </RotaProtegida>
+          }
+        />
+        <Route
+          path="/conta"
+          element={
+            <RotaProtegida>
+              <Conta />
             </RotaProtegida>
           }
         />

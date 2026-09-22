@@ -1,25 +1,21 @@
 import { useEffect, useState } from "react";
 
+import { api } from "../../api/cliente";
 import { useCarteira } from "../../cadeia/CarteiraContexto";
 import { useSessao } from "../../sessao/SessaoContexto";
-import { mensagemDeErro, emEth } from "../../cadeia/formatos";
-import { Aviso, Campo, LinkDaCadeia, NotaDePrototipo } from "../../componentes/ui";
-
-const CHAVE_VINCULO = "agrosmart:vinculo-de-carteira";
+import { emEth, mensagemDeErro } from "../../cadeia/formatos";
+import { Aviso, Campo, LinkDaCadeia } from "../../componentes/ui";
 
 /**
- * Vinculacao da carteira ao cadastro por assinatura de mensagem (RF02, HU07).
+ * Vinculo da carteira ao cadastro por assinatura (RF02, HU07).
  *
- * O ponto da tela e provar a titularidade sem nunca tocar na chave privada. O
- * aplicativo monta um desafio unico, a carteira assina, e a assinatura e conferida
- * recuperando o endereco que a produziu. Se o endereco recuperado for o mesmo que
- * esta conectado, quem assinou detem a chave — sem que a chave saia da carteira.
- *
- * O numero unico dentro do desafio existe para que uma assinatura capturada de uma
- * sessao anterior nao possa ser reapresentada como se fosse nova.
+ * O desafio nasce no servidor, com numero unico e prazo de cinco minutos. A
+ * carteira assina no navegador; o servidor recupera o endereco que assinou e so
+ * grava o vinculo se ele for exatamente o endereco declarado. A chave privada nao
+ * sai da carteira em nenhum momento (RNF17).
  */
 export default function VincularCarteira() {
-  const { usuario } = useSessao();
+  const { usuario, recarregarUsuario } = useSessao();
   const {
     conta,
     temCarteira,
@@ -28,23 +24,15 @@ export default function VincularCarteira() {
     redeCorreta,
     rede,
     trocarDeRede,
-    assinarVinculo,
+    signatario,
     provedorLeitura,
   } = useCarteira();
 
-  const [vinculo, setVinculo] = useState(null);
   const [saldo, setSaldo] = useState(null);
   const [erro, setErro] = useState(null);
+  const [aviso, setAviso] = useState(null);
   const [assinando, setAssinando] = useState(false);
-
-  useEffect(() => {
-    try {
-      const guardado = localStorage.getItem(CHAVE_VINCULO);
-      if (guardado) setVinculo(JSON.parse(guardado));
-    } catch {
-      localStorage.removeItem(CHAVE_VINCULO);
-    }
-  }, []);
+  const [ultimaMensagem, setUltimaMensagem] = useState(null);
 
   useEffect(() => {
     if (!conta) {
@@ -60,32 +48,44 @@ export default function VincularCarteira() {
 
   async function vincular() {
     setErro(null);
+    setAviso(null);
     setAssinando(true);
 
     try {
-      const resultado = await assinarVinculo(usuario.identificador);
-      const registro = {
-        ...resultado,
-        usuario: usuario.identificador,
-        vinculadoEm: new Date().toISOString(),
-      };
+      const { desafioId, mensagem } = await api("/carteira/desafio", { metodo: "POST" });
+      setUltimaMensagem(mensagem);
 
-      localStorage.setItem(CHAVE_VINCULO, JSON.stringify(registro));
-      setVinculo(registro);
+      const assinatura = await signatario.signMessage(mensagem);
+
+      await api("/carteira/vincular", {
+        metodo: "POST",
+        corpo: { desafioId, endereco: conta, assinatura },
+      });
+
+      await recarregarUsuario();
+      setAviso("Titularidade comprovada. A carteira foi vinculada ao seu cadastro.");
     } catch (falha) {
-      setErro(mensagemDeErro(falha));
+      setErro(falha.status ? falha.message : mensagemDeErro(falha));
     } finally {
       setAssinando(false);
     }
   }
 
-  function desvincular() {
-    localStorage.removeItem(CHAVE_VINCULO);
-    setVinculo(null);
+  async function desvincular() {
+    setErro(null);
+    setAviso(null);
+
+    try {
+      await api("/carteira", { metodo: "DELETE" });
+      await recarregarUsuario();
+    } catch (falha) {
+      setErro(falha.message);
+    }
   }
 
-  const vinculoDesatualizado =
-    vinculo && conta && vinculo.endereco.toLowerCase() !== conta.toLowerCase();
+  const vinculada = usuario?.carteira ?? null;
+  const conectadaEhAVinculada =
+    vinculada && conta && vinculada.toLowerCase() === conta.toLowerCase();
 
   return (
     <div className="pagina" style={{ maxWidth: 760 }}>
@@ -96,6 +96,35 @@ export default function VincularCarteira() {
       </p>
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
+      {aviso ? <Aviso tipo="sucesso">{aviso}</Aviso> : null}
+
+      <div className="cartao">
+        <h2>Carteira vinculada ao cadastro</h2>
+
+        {vinculada ? (
+          <>
+            <Campo rotulo="Endereco">
+              <LinkDaCadeia valor={vinculada} tipo="address" curto={false} />
+            </Campo>
+
+            {conta && !conectadaEhAVinculada ? (
+              <Aviso tipo="alerta" titulo="A carteira conectada e outra.">
+                A indenizacao vai para o endereco vinculado acima, e nao para o conectado agora.
+                Para trocar, assine o vinculo com a carteira nova.
+              </Aviso>
+            ) : null}
+
+            <button className="perigo" onClick={desvincular}>
+              Desvincular
+            </button>
+          </>
+        ) : (
+          <Aviso tipo="alerta">
+            Nenhuma carteira vinculada. Sem ela nao e possivel enviar proposta: e para ela que a
+            indenizacao seria transferida.
+          </Aviso>
+        )}
+      </div>
 
       <div className="cartao">
         <h2>Carteira conectada</h2>
@@ -105,12 +134,9 @@ export default function VincularCarteira() {
             Instale a extensao MetaMask e recarregue a pagina.
           </Aviso>
         ) : !conta ? (
-          <>
-            <p>Conecte a carteira para comprovar a titularidade do endereco.</p>
-            <button onClick={conectar} disabled={conectando}>
-              {conectando ? "Conectando…" : "Conectar carteira"}
-            </button>
-          </>
+          <button onClick={conectar} disabled={conectando}>
+            {conectando ? "Conectando…" : "Conectar carteira"}
+          </button>
         ) : (
           <>
             <Campo rotulo="Endereco">
@@ -123,78 +149,39 @@ export default function VincularCarteira() {
 
             {!redeCorreta ? (
               <Aviso tipo="alerta" titulo="Carteira em outra rede.">
-                <p>
-                  O aplicativo opera em <strong>{rede.nome}</strong>. Troque a rede na carteira para
-                  acompanhar as apolices.
-                </p>
                 <button className="secundario pequeno" onClick={trocarDeRede}>
                   Trocar para {rede.nome}
                 </button>
               </Aviso>
             ) : null}
-          </>
-        )}
-      </div>
 
-      <div className="cartao">
-        <h2>Vinculo por assinatura</h2>
+            {!conectadaEhAVinculada ? (
+              <>
+                <p>
+                  Assinar <strong>nao</strong> movimenta valor, nao custa gas e nao autoriza nenhuma
+                  transacao: serve apenas para provar ao servidor que voce controla a chave desse
+                  endereco.
+                </p>
 
-        {vinculo && !vinculoDesatualizado ? (
-          <>
-            <Aviso tipo="sucesso" titulo="Titularidade comprovada.">
-              A assinatura foi conferida e corresponde ao endereco conectado.
-            </Aviso>
+                <button onClick={vincular} disabled={assinando || !signatario}>
+                  {assinando ? "Aguardando a carteira…" : "Assinar e vincular esta carteira"}
+                </button>
+              </>
+            ) : (
+              <Aviso tipo="sucesso">Esta e a carteira vinculada ao seu cadastro.</Aviso>
+            )}
 
-            <Campo rotulo="Endereco vinculado">
-              <LinkDaCadeia valor={vinculo.endereco} tipo="address" curto={false} />
-            </Campo>
-
-            <Campo rotulo="Vinculado em">
-              <div>{new Date(vinculo.vinculadoEm).toLocaleString("pt-BR")}</div>
-            </Campo>
-
-            <Campo
-              rotulo="Mensagem assinada"
-              ajuda="O numero unico impede que uma assinatura antiga seja reapresentada."
-            >
-              <textarea readOnly rows={5} value={vinculo.desafio} className="mono" />
-            </Campo>
-
-            <Campo rotulo="Assinatura">
-              <textarea readOnly rows={3} value={vinculo.assinatura} className="mono" />
-            </Campo>
-
-            <button className="perigo" onClick={desvincular}>
-              Desvincular
-            </button>
-          </>
-        ) : (
-          <>
-            {vinculoDesatualizado ? (
-              <Aviso tipo="alerta" titulo="A carteira conectada mudou.">
-                O vinculo registrado aponta para outro endereco. Assine de novo para atualizar.
-              </Aviso>
+            {ultimaMensagem ? (
+              <Campo
+                rotulo="Ultima mensagem assinada"
+                ajuda="Gerada pelo servidor. O numero unico impede que uma assinatura antiga seja reapresentada."
+              >
+                <textarea readOnly rows={6} value={ultimaMensagem} className="mono" />
+              </Campo>
             ) : null}
-
-            <p>
-              O aplicativo vai pedir a assinatura de uma mensagem. Assinar <strong>nao</strong>{" "}
-              movimenta valor, nao custa gas e nao autoriza nenhuma transacao: serve apenas para
-              provar que voce controla a chave desse endereco.
-            </p>
-
-            <button onClick={vincular} disabled={!conta || assinando}>
-              {assinando ? "Aguardando a carteira…" : "Assinar e vincular"}
-            </button>
           </>
         )}
       </div>
-
-      <NotaDePrototipo>
-        A assinatura e conferida no proprio navegador, porque ainda nao existe API. Isso prova a
-        correspondencia entre assinatura e endereco, mas um cliente adulterado poderia mentir para
-        si mesmo — a verificacao no servidor entra na Sprint 2. A chave privada nunca trafega nem e
-        armazenada em nenhum dos dois casos (RNF17).
-      </NotaDePrototipo>
     </div>
   );
 }

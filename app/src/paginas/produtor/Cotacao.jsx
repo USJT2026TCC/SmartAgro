@@ -1,42 +1,53 @@
-import { useMemo, useState } from "react";
-import { ethers } from "ethers";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
+import { api } from "../../api/cliente";
 import { useSessao } from "../../sessao/SessaoContexto";
-import { useCarteira } from "../../cadeia/CarteiraContexto";
-import { listarProdutos, listarTalhoes, salvarProposta } from "../../dados/armazenamentoLocal";
 import {
   exemplosDeAcionamento,
   MODO_PAGAMENTO,
   OPERADOR,
   percentualDevido,
 } from "../../cadeia/regraDeGatilho";
-import { emEth, emPercentual, paraBytes32 } from "../../cadeia/formatos";
-import { Aviso, Campo, NotaDePrototipo, RodapeDaFronteira } from "../../componentes/ui";
+import { emEth, emPercentual } from "../../cadeia/formatos";
+import { Aviso, Campo, Carregando, RodapeDaFronteira } from "../../componentes/ui";
 
 /**
  * Simulacao de cotacao e envio da proposta (RF06, RNF06, HU10).
  *
- * O coracao da tela sao os exemplos numericos. O RNF06 pede apresentar a condicao
- * contratada em linguagem nao tecnica antes do aceite, com exemplos — e esses
- * exemplos sao calculados por `regraDeGatilho.js`, a mesma regra que o contrato
- * executa. A equivalencia entre as duas implementacoes e verificada por
- * `contratos/test/RegraDeGatilho.test.js`, de modo que a tela nao possa prometer
- * um numero que o contrato nao vai honrar.
+ * O limite e o premio vem do servidor, calculados em BigInt sobre a area que o
+ * PostGIS mediu no elipsoide. Os exemplos numericos do que aciona e do que nao
+ * aciona vem de `regraDeGatilho.js`, a mesma regra do contrato — a equivalencia e
+ * verificada caso a caso por `contratos/test/RegraDeGatilho.test.js`.
  */
 export default function Cotacao() {
   const { usuario } = useSessao();
-  const { conta } = useCarteira();
 
-  const talhoes = useMemo(() => listarTalhoes(), []);
-  const produtos = useMemo(() => listarProdutos(), []);
-
-  const [talhaoId, setTalhaoId] = useState(talhoes[0]?.id ?? "");
+  const [talhoes, setTalhoes] = useState(null);
+  const [produtos, setProdutos] = useState([]);
+  const [talhaoId, setTalhaoId] = useState("");
   const [produtoId, setProdutoId] = useState("");
-  const [areaSegurada, setAreaSegurada] = useState(talhoes[0]?.areaHa ?? 0);
+  const [areaSegurada, setAreaSegurada] = useState("");
+  const [cotacao, setCotacao] = useState(null);
   const [enviada, setEnviada] = useState(null);
   const [erro, setErro] = useState(null);
+  const [enviando, setEnviando] = useState(false);
 
-  const talhao = talhoes.find((t) => t.id === talhaoId) ?? null;
+  useEffect(() => {
+    Promise.all([api("/talhoes"), api("/produtos")])
+      .then(([t, p]) => {
+        setTalhoes(t.talhoes);
+        setProdutos(p.produtos);
+
+        if (t.talhoes[0]) {
+          setTalhaoId(t.talhoes[0].id);
+          setAreaSegurada(String(Number(t.talhoes[0].areaHa).toFixed(2)));
+        }
+      })
+      .catch((falha) => setErro(falha.message));
+  }, []);
+
+  const talhao = talhoes?.find((t) => t.id === talhaoId) ?? null;
 
   // So faz sentido oferecer produtos da cultura plantada no talhao.
   const produtosCompativeis = useMemo(
@@ -46,58 +57,32 @@ export default function Cotacao() {
 
   const produto = produtosCompativeis.find((p) => p.id === produtoId) ?? null;
 
-  /**
-   * Limite contratado e premio, a partir da area e do produto escolhido.
-   *
-   * A conta e feita inteiramente em BigInt, sobre wei. Calcular em ponto flutuante
-   * e converter no fim parece funcionar e nao funciona: 180 x 0,006 da
-   * 1,0800000000000000710 em binario, e o limite gravado no contrato sairia com 71
-   * wei a mais do que a tela mostra. Sao centavos de centavo, mas e um valor
-   * contratual que nao fecha com o documento — e, uma vez implantado, nao ha como
-   * corrigir.
-   *
-   * A area vira centesimos de hectare para admitir fracao sem sair dos inteiros.
-   */
-  const cotacao = useMemo(() => {
-    if (!produto || !areaSegurada) return null;
+  /** Recalcula a cotacao no servidor a cada mudanca de talhao, produto ou area. */
+  useEffect(() => {
+    setCotacao(null);
+    if (!talhaoId || !produtoId || !areaSegurada) return undefined;
 
-    const area = Number(areaSegurada);
-    if (!Number.isFinite(area) || area <= 0) return null;
+    const temporizador = setTimeout(() => {
+      api("/cotacoes", { metodo: "POST", corpo: { talhaoId, produtoId, areaHa: areaSegurada } })
+        .then(({ cotacao: c }) => {
+          setCotacao(c);
+          setErro(null);
+        })
+        .catch((falha) => setErro(falha.message));
+    }, 250);
 
-    const centesimosDeHectare = BigInt(Math.round(area * 100));
-    const porHectareEmWei = ethers.parseEther(String(produto.valorPorHectareEth));
+    return () => clearTimeout(temporizador);
+  }, [talhaoId, produtoId, areaSegurada]);
 
-    const valorIndenizacao = (porHectareEmWei * centesimosDeHectare) / 100n;
-
-    // A taxa vem em percentual com uma casa decimal; 10000 = 100% em centesimos
-    // de ponto percentual.
-    const taxaEmCentesimos = BigInt(Math.round(Number(produto.taxaPremioPct) * 100));
-    const premioWei = (valorIndenizacao * taxaEmCentesimos) / 10_000n;
-
-    return { area, valorIndenizacao, premioWei };
-  }, [produto, areaSegurada]);
-
-  /** Termos no formato que o contrato espera, ja com o limite calculado. */
-  const termos = useMemo(() => {
-    if (!produto || !cotacao || !talhao) return null;
-
-    return {
-      cultura: talhao.cultura,
-      talhao: talhao.nome,
-      operador: produto.operador,
-      modoPagamento: produto.modoPagamento,
-      limiarClimatico: produto.limiarClimatico,
-      limiarClimaticoIntegral: produto.limiarClimaticoIntegral,
-      limiarDanoBps: produto.limiarDanoBps,
-      limiarDanoIntegralBps: produto.limiarDanoIntegralBps,
-      vigenciaDias: produto.vigenciaDias,
-      valorIndenizacao: cotacao.valorIndenizacao,
-    };
-  }, [produto, cotacao, talhao]);
+  /** Termos no formato da regra de gatilho, com o limite cotado pelo servidor. */
+  const termos = useMemo(
+    () => (cotacao ? { ...cotacao.termos, valorIndenizacao: cotacao.valorIndenizacaoWei } : null),
+    [cotacao],
+  );
 
   const exemplos = useMemo(() => (termos ? exemplosDeAcionamento(termos) : []), [termos]);
 
-  /** Descricao da condicao em linguagem corrente (RNF06). */
+  /** A condicao em linguagem corrente (RNF06). */
   const condicaoEmPalavras = useMemo(() => {
     if (!produto) return null;
 
@@ -120,51 +105,34 @@ export default function Cotacao() {
     return `${gatilho}, ${pagamento}`;
   }, [produto]);
 
-  function enviarProposta() {
+  async function enviarProposta() {
     setErro(null);
+    setEnviando(true);
 
-    if (!talhao || !produto || !cotacao) {
-      setErro("Escolha o talhao, o produto e a area antes de enviar.");
-      return;
+    try {
+      const { proposta } = await api("/propostas", {
+        metodo: "POST",
+        corpo: { talhaoId, produtoId, areaHa: areaSegurada },
+      });
+      setEnviada(proposta);
+    } catch (falha) {
+      setErro(falha.message);
+    } finally {
+      setEnviando(false);
     }
+  }
 
-    if (!conta) {
-      setErro(
-        "Conecte e vincule a carteira antes de enviar a proposta: e para ela que a indenizacao seria transferida.",
-      );
-      return;
-    }
-
-    if (Number(areaSegurada) > Number(talhao.areaHa)) {
-      setErro(`A area segurada nao pode exceder os ${talhao.areaHa} ha do talhao.`);
-      return;
-    }
-
-    const proposta = salvarProposta({
-      produtorIdentificador: usuario.identificador,
-      produtorNome: usuario.nome,
-      carteiraProdutor: conta,
-      talhaoId: talhao.id,
-      talhaoNome: talhao.nome,
-      cultura: talhao.cultura,
-      municipio: talhao.municipio,
-      areaHa: Number(areaSegurada),
-      produtoId: produto.id,
-      produtoNome: produto.nome,
-      operador: produto.operador,
-      modoPagamento: produto.modoPagamento,
-      limiarClimatico: produto.limiarClimatico,
-      limiarClimaticoIntegral: produto.limiarClimaticoIntegral,
-      limiarDanoBps: produto.limiarDanoBps,
-      limiarDanoIntegralBps: produto.limiarDanoIntegralBps,
-      vigenciaDias: produto.vigenciaDias,
-      valorIndenizacaoWei: cotacao.valorIndenizacao.toString(),
-      premioWei: cotacao.premioWei.toString(),
-      culturaBytes32: paraBytes32(talhao.cultura),
-      talhaoBytes32: paraBytes32(talhao.nome),
-    });
-
-    setEnviada(proposta);
+  if (talhoes === null) {
+    return (
+      <div className="pagina">
+        <h1>Simular e contratar</h1>
+        {erro ? (
+          <Aviso tipo="erro">{erro}</Aviso>
+        ) : (
+          <Carregando>Carregando seus talhoes…</Carregando>
+        )}
+      </div>
+    );
   }
 
   if (talhoes.length === 0) {
@@ -187,13 +155,20 @@ export default function Cotacao() {
         pagamento.
       </p>
 
+      {!usuario?.carteira ? (
+        <Aviso tipo="alerta" titulo="Carteira nao vinculada.">
+          Voce pode simular, mas para enviar a proposta e preciso{" "}
+          <Link to="/produtor/carteira">vincular a carteira</Link> — e para ela que a indenizacao
+          seria transferida.
+        </Aviso>
+      ) : null}
+
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
 
       {enviada ? (
         <Aviso tipo="sucesso" titulo="Proposta enviada a seguradora.">
           A seguradora precisa emitir a apolice, porque so a carteira dela pode implantar o contrato
-          na rede (RNF12). Assim que ela emitir, a apolice aparece em{" "}
-          <strong>Minhas apolices</strong> com o endereco do contrato.
+          na rede (RNF12). Voce recebera uma notificacao quando a apolice for emitida.
         </Aviso>
       ) : null}
 
@@ -208,13 +183,14 @@ export default function Cotacao() {
               onChange={(e) => {
                 const escolhido = talhoes.find((t) => t.id === e.target.value);
                 setTalhaoId(e.target.value);
-                setAreaSegurada(escolhido?.areaHa ?? 0);
+                setAreaSegurada(String(Number(escolhido?.areaHa ?? 0).toFixed(2)));
                 setProdutoId("");
               }}
             >
               {talhoes.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.nome} — {t.propriedade} ({t.cultura}, {t.areaHa} ha)
+                  {t.identificador} — {t.propriedade.nome} ({t.cultura},{" "}
+                  {Number(t.areaHa).toFixed(1)} ha)
                 </option>
               ))}
             </select>
@@ -223,12 +199,17 @@ export default function Cotacao() {
           <Campo
             rotulo="Area segurada (ha)"
             htmlFor="area"
-            ajuda={talhao ? `O talhao tem ${talhao.areaHa} ha delimitados.` : null}
+            ajuda={
+              talhao
+                ? `O talhao tem ${Number(talhao.areaHa).toFixed(2)} ha, medidos pelo PostGIS sobre o poligono cadastrado.`
+                : null
+            }
           >
             <input
               id="area"
               type="number"
-              min="1"
+              min="0.01"
+              step="0.01"
               max={talhao?.areaHa ?? undefined}
               value={areaSegurada}
               onChange={(e) => setAreaSegurada(e.target.value)}
@@ -256,22 +237,24 @@ export default function Cotacao() {
         <div className="cartao">
           <h2>2. Cotacao</h2>
 
-          {!cotacao ? (
+          {!produto ? (
             <p className="silencioso">Escolha um produto para ver o limite e o premio.</p>
+          ) : !cotacao ? (
+            <Carregando>Calculando…</Carregando>
           ) : (
             <>
               <div className="grade">
                 <div className="indicador">
                   <div className="rotulo">Limite contratado</div>
-                  <div className="valor">{emEth(cotacao.valorIndenizacao)}</div>
+                  <div className="valor">{emEth(cotacao.valorIndenizacaoWei)}</div>
                   <div className="nota">
-                    {cotacao.area} ha x {produto.valorPorHectareEth} ETH/ha
+                    {cotacao.areaSeguradaHa} ha x {produto.valorPorHectareEth} ETH/ha
                   </div>
                 </div>
                 <div className="indicador">
                   <div className="rotulo">Premio</div>
                   <div className="valor">{emEth(cotacao.premioWei)}</div>
-                  <div className="nota">taxa de {produto.taxaPremioPct}% do limite</div>
+                  <div className="nota">taxa de {produto.taxaPremioBps / 100}% do limite</div>
                 </div>
               </div>
 
@@ -283,7 +266,7 @@ export default function Cotacao() {
         </div>
       </div>
 
-      {termos ? (
+      {termos && produto ? (
         <div className="cartao">
           <h2>3. O que aciona o pagamento</h2>
 
@@ -331,35 +314,30 @@ export default function Cotacao() {
           ) : null}
 
           <div className="linha-de-botoes" style={{ marginTop: 16 }}>
-            <button onClick={enviarProposta} disabled={Boolean(enviada)}>
-              {enviada ? "Proposta enviada" : "Enviar proposta a seguradora"}
+            <button
+              onClick={enviarProposta}
+              disabled={Boolean(enviada) || enviando || !usuario?.carteira}
+            >
+              {enviada
+                ? "Proposta enviada"
+                : enviando
+                  ? "Enviando…"
+                  : "Enviar proposta a seguradora"}
             </button>
             {enviada ? (
-              <button
-                className="secundario"
-                onClick={() => {
-                  setEnviada(null);
-                  setProdutoId("");
-                }}
-              >
+              <button className="secundario" onClick={() => setEnviada(null)}>
                 Nova simulacao
               </button>
             ) : null}
           </div>
 
           <RodapeDaFronteira>
-            Os numeros desta tabela vem de <code>regraDeGatilho.js</code>, a mesma regra que o
-            contrato executa. Um teste automatizado compara as duas implementacoes caso a caso, para
-            que a tela nao prometa o que o contrato nao vai pagar.
+            Limite e premio calculados pelo servidor, em inteiros sobre wei. Os exemplos vem de{" "}
+            <code>regraDeGatilho.js</code>, a mesma regra que o contrato executa, conferida por
+            teste automatizado caso a caso.
           </RodapeDaFronteira>
         </div>
       ) : null}
-
-      <NotaDePrototipo>
-        A proposta fica no <code>localStorage</code> deste navegador. Produtor e seguradora em
-        maquinas diferentes nao veem a mesma proposta — o banco compartilhado entra na Sprint 2. A
-        apolice em si, essa nasce na cadeia.
-      </NotaDePrototipo>
     </div>
   );
 }

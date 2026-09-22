@@ -13,6 +13,16 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // O aplicativo chama a API em /api, na mesma origem. Em desenvolvimento, o
+    // Vite repassa ao backend; em producao, o proxy reverso faz o mesmo papel.
+    // Mesma origem significa nenhuma requisicao entre origens, e o CORS deixa
+    // de ser uma superficie de erro de configuracao.
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_ALVO || "http://localhost:3001",
+        changeOrigin: false,
+      },
+    },
   },
   build: {
     outDir: "dist",

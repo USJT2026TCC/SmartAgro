@@ -160,37 +160,6 @@ export function ProvedorCarteira({ children }) {
     }
   }, [rede]);
 
-  /**
-   * Assina uma mensagem para comprovar a titularidade da carteira (RF02, HU07).
-   *
-   * A verificacao acontece no navegador enquanto nao existe back-end. Isso prova
-   * que a assinatura corresponde ao endereco, mas nao substitui a verificacao no
-   * servidor: um cliente adulterado poderia mentir para si mesmo. A verificacao
-   * definitiva entra junto com a API, na Sprint 2.
-   */
-  const assinarVinculo = useCallback(
-    async (identificadorDoUsuario) => {
-      if (!signatario) throw new Error("Conecte a carteira antes de assinar.");
-
-      const desafio =
-        `AgroSmart — vinculo de carteira\n` +
-        `usuario: ${identificadorDoUsuario}\n` +
-        `endereco: ${conta}\n` +
-        `emitido em: ${new Date().toISOString()}\n` +
-        `numero unico: ${ethers.hexlify(ethers.randomBytes(16))}`;
-
-      const assinatura = await signatario.signMessage(desafio);
-      const enderecoRecuperado = ethers.verifyMessage(desafio, assinatura);
-
-      if (enderecoRecuperado.toLowerCase() !== conta.toLowerCase()) {
-        throw new Error("A assinatura nao corresponde ao endereco conectado.");
-      }
-
-      return { desafio, assinatura, endereco: enderecoRecuperado };
-    },
-    [signatario, conta],
-  );
-
   const valor = useMemo(
     () => ({
       rede,
@@ -205,7 +174,6 @@ export function ProvedorCarteira({ children }) {
       conectar,
       desconectar,
       trocarDeRede,
-      assinarVinculo,
       limparErro: () => setErro(null),
     }),
     [
@@ -221,7 +189,6 @@ export function ProvedorCarteira({ children }) {
       conectar,
       desconectar,
       trocarDeRede,
-      assinarVinculo,
     ],
   );
 

@@ -1,112 +1,107 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { useCarteira } from "../../cadeia/CarteiraContexto";
-import { listarApolices } from "../../cadeia/contratos";
-import { deBytes32, emData, emEth, mensagemDeErro } from "../../cadeia/formatos";
-import { listarPropostas, SITUACAO_PROPOSTA } from "../../dados/armazenamentoLocal";
-import { Aviso, Carregando, LinkDaCadeia, SeloSituacao } from "../../componentes/ui";
+import { api } from "../../api/cliente";
+import { useSessao } from "../../sessao/SessaoContexto";
+import { emData, emEth, periodoEmData } from "../../cadeia/formatos";
+import { Aviso, Carregando, LinkDaCadeia, Selo, SeloSituacao } from "../../componentes/ui";
 
 /**
- * Apolices do produtor (UC06).
+ * Apolices e propostas do produtor (UC06).
  *
- * A lista vem da fabrica, na cadeia: `apolicesDoProdutor(endereco)`. Nao ha banco
- * de dados no caminho, e e por isso que a tela exige a carteira conectada — sem
- * endereco nao ha o que consultar.
+ * A lista vem do backend, que o indexador mantem em dia com a cadeia. Isso
+ * dispensa a carteira conectada so para ver o que se tem. O detalhe de cada
+ * apolice continua lendo o contrato direto — la, a fonte e a propria rede.
  */
 export default function MinhasApolices() {
-  const { conta, provedorLeitura, conectar, conectando, temCarteira } = useCarteira();
+  const { usuario } = useSessao();
 
-  const [apolices, setApolices] = useState([]);
+  const [apolices, setApolices] = useState(null);
   const [propostas, setPropostas] = useState([]);
-  const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
 
   const carregar = useCallback(async () => {
-    if (!conta) return;
-
-    setCarregando(true);
     setErro(null);
 
     try {
-      setApolices(await listarApolices(provedorLeitura, { produtor: conta }));
+      const [a, p] = await Promise.all([api("/apolices"), api("/propostas")]);
+      setApolices(a.apolices);
+      setPropostas(p.propostas.filter((x) => x.situacao !== "emitida"));
     } catch (falha) {
-      setErro(mensagemDeErro(falha));
-    } finally {
-      setCarregando(false);
+      setErro(falha.message);
     }
-  }, [conta, provedorLeitura]);
+  }, []);
 
   useEffect(() => {
     carregar();
   }, [carregar]);
 
-  useEffect(() => {
-    setPropostas(listarPropostas().filter((p) => p.situacao === SITUACAO_PROPOSTA.PENDENTE));
-  }, [apolices]);
-
-  if (!temCarteira) {
-    return (
-      <div className="pagina">
-        <h1>Minhas apolices</h1>
-        <Aviso tipo="alerta" titulo="Nenhuma carteira encontrada no navegador.">
-          Instale a extensao MetaMask para acompanhar as apolices.
-        </Aviso>
-      </div>
-    );
-  }
-
-  if (!conta) {
-    return (
-      <div className="pagina">
-        <h1>Minhas apolices</h1>
-        <p>
-          As apolices sao consultadas diretamente na rede, pelo endereco da sua carteira. Conecte
-          para continuar.
-        </p>
-        <button onClick={conectar} disabled={conectando}>
-          {conectando ? "Conectando…" : "Conectar carteira"}
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="pagina">
       <div className="entre">
         <h1>Minhas apolices</h1>
-        <button className="secundario pequeno" onClick={carregar} disabled={carregando}>
+        <button className="secundario pequeno" onClick={carregar}>
           Atualizar
         </button>
       </div>
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
 
-      {propostas.length > 0 ? (
-        <Aviso tipo="informacao" titulo="Proposta aguardando a seguradora.">
-          {propostas.length === 1
-            ? "Voce tem uma proposta enviada, ainda nao emitida."
-            : `Voce tem ${propostas.length} propostas enviadas, ainda nao emitidas.`}{" "}
-          A apolice so aparece aqui depois que a seguradora implanta o contrato na rede.
+      {!usuario?.carteira ? (
+        <Aviso tipo="alerta">
+          Nenhuma carteira vinculada. <Link to="/produtor/carteira">Vincule uma</Link> para poder
+          contratar.
         </Aviso>
       ) : null}
 
-      {carregando && apolices.length === 0 ? (
+      {propostas.length > 0 ? (
+        <div className="cartao tabela-rolavel">
+          <h2>Propostas</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Talhao</th>
+                <th>Produto</th>
+                <th className="numero">Limite</th>
+                <th className="numero">Premio</th>
+                <th>Situacao</th>
+              </tr>
+            </thead>
+            <tbody>
+              {propostas.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.talhao.identificador}</td>
+                  <td>{p.produto.nome}</td>
+                  <td className="numero">{emEth(p.valorIndenizacaoWei)}</td>
+                  <td className="numero">{emEth(p.premioWei)}</td>
+                  <td>
+                    <Selo tipo={p.situacao === "recusada" ? "erro" : "alerta"}>
+                      {p.situacao === "preparada" ? "aguardando assinatura" : p.situacao}
+                    </Selo>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {apolices === null ? (
         <Carregando />
       ) : apolices.length === 0 ? (
         <div className="cartao">
-          <p>Nenhuma apolice emitida para esta carteira ainda.</p>
+          <p>Nenhuma apolice emitida para voce ainda.</p>
           <Link to="/produtor/cotacao">Simular uma cotacao</Link>
         </div>
       ) : (
         <div className="tabela-rolavel cartao">
+          <h2>Apolices</h2>
           <table>
             <thead>
               <tr>
                 <th>Talhao</th>
                 <th>Cultura</th>
-                <th>Condicao</th>
-                <th>Vigencia</th>
+                <th>Emitida em</th>
                 <th className="numero">Limite</th>
                 <th>Situacao</th>
                 <th>Contrato</th>
@@ -114,26 +109,26 @@ export default function MinhasApolices() {
               </tr>
             </thead>
             <tbody>
-              {apolices.map((apolice) => (
-                <tr key={apolice.endereco}>
-                  <td>{deBytes32(apolice.termos.talhao)}</td>
-                  <td>{deBytes32(apolice.termos.cultura)}</td>
-                  <td>{apolice.termos.limiarClimatico} dias sem chuva</td>
+              {apolices.map((a) => (
+                <tr key={a.endereco}>
+                  <td>{a.talhao ?? "—"}</td>
+                  <td>{a.cultura ?? "—"}</td>
+                  <td>{emData(new Date(a.emitidaEm).getTime() / 1000)}</td>
+                  <td className="numero">{emEth(a.valorIndenizacaoWei)}</td>
                   <td>
-                    {emData(apolice.termos.vigenciaInicio)} a {emData(apolice.termos.vigenciaFim)}
-                  </td>
-                  <td className="numero">{emEth(apolice.termos.valorIndenizacao)}</td>
-                  <td>
-                    <SeloSituacao situacao={apolice.situacao} />
-                    {apolice.situacao === 2 ? (
-                      <div className="silencioso">Recebeu {emEth(apolice.valorPago)}</div>
+                    <SeloSituacao situacao={a.situacao} />
+                    {a.situacao === 2 ? (
+                      <div className="silencioso">
+                        Recebeu {emEth(a.valorPagoWei)}
+                        {a.periodoAcionador ? ` em ${periodoEmData(a.periodoAcionador)}` : ""}
+                      </div>
                     ) : null}
                   </td>
                   <td>
-                    <LinkDaCadeia valor={apolice.endereco} tipo="address" />
+                    <LinkDaCadeia valor={a.endereco} tipo="address" />
                   </td>
                   <td>
-                    <Link to={`/apolice/${apolice.endereco}`}>Detalhes</Link>
+                    <Link to={`/apolice/${a.endereco}`}>Detalhes</Link>
                   </td>
                 </tr>
               ))}

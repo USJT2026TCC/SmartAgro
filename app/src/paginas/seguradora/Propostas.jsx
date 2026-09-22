@@ -1,206 +1,169 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ethers } from "ethers";
 
+import { api } from "../../api/cliente";
 import { useCarteira } from "../../cadeia/CarteiraContexto";
 import { contratoApolice, contratoFactory } from "../../cadeia/contratos";
-import { emEth, mensagemDeErro } from "../../cadeia/formatos";
-import {
-  aoMudarDados,
-  atualizarProposta,
-  listarPropostas,
-  SITUACAO_PROPOSTA,
-} from "../../dados/armazenamentoLocal";
-import { Aviso, LinkDaCadeia, NotaDePrototipo, Selo } from "../../componentes/ui";
-
-const DIA_EM_SEGUNDOS = 24 * 60 * 60;
+import { emEth, hashCurto, mensagemDeErro } from "../../cadeia/formatos";
+import { Aviso, Carregando, LinkDaCadeia, Selo } from "../../componentes/ui";
 
 /**
- * Emissao da apolice a partir de uma proposta (RF07, UC05, HU10).
+ * Emissao da apolice a partir de uma proposta (RF07, RF08, UC05).
  *
- * E aqui que o contrato nasce. A transacao e assinada pela carteira da seguradora,
- * porque `emitirApolice` e restrita a ela — o produtor nao pode implantar a propria
- * apolice, e e isso que o RNF12 exige.
+ * Tres passos, cada um com um responsavel diferente:
  *
- * O fluxo tem duas transacoes, de proposito: emitir e depois depositar a garantia.
- * Poderiam ser uma so, mas entao a fabrica precisaria custodiar valor, e o endereco
- * pagador deixaria de ser o da seguradora.
+ *  1. o BACKEND prepara: fixa a vigencia pelo relogio da cadeia, gera o texto
+ *     canonico dos termos e o resumo que vai para o contrato;
+ *  2. a CARTEIRA DA SEGURADORA assina `emitirApolice` — so ela pode, e o backend
+ *     nao tem chave nenhuma;
+ *  3. o BACKEND confere: le o recibo na cadeia e so aceita se o evento veio da
+ *     fabrica oficial e o resumo gravado no contrato for o que ele gerou.
+ *
+ * Depois, a garantia e depositada — tambem pela carteira da seguradora.
  */
+
+const ROTULOS = {
+  pendente: ["alerta", "pendente"],
+  preparada: ["informacao", "preparada, aguardando assinatura"],
+  emitida: ["sucesso", "emitida"],
+  recusada: ["erro", "recusada"],
+};
+
 export default function Propostas() {
   const { signatario, conta, provedorLeitura, redeCorreta, rede, trocarDeRede, conectar } =
     useCarteira();
 
-  const [propostas, setPropostas] = useState([]);
-  const [emitindo, setEmitindo] = useState(null);
+  const [propostas, setPropostas] = useState(null);
+  const [ocupada, setOcupada] = useState(null);
   const [erro, setErro] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [seguradoraDaFabrica, setSeguradoraDaFabrica] = useState(null);
+  const [garantidas, setGarantidas] = useState({});
 
-  const recarregar = useCallback(() => setPropostas(listarPropostas()), []);
+  const carregar = useCallback(async () => {
+    try {
+      const { propostas: lista } = await api("/propostas");
+      setPropostas(lista);
 
-  useEffect(() => {
-    recarregar();
-
-    return aoMudarDados(recarregar);
-  }, [recarregar]);
-
-  useEffect(() => {
-    contratoFactory(provedorLeitura)
-      .seguradora()
-      .then(setSeguradoraDaFabrica)
-      .catch(() => setSeguradoraDaFabrica(null));
+      // A situacao da garantia vive no contrato; o backend ve pelo indexador, mas
+      // com alguns segundos de atraso. Ler direto evita um botao obsoleto na tela.
+      const emitidas = lista.filter((p) => p.apolice);
+      const situacoes = await Promise.all(
+        emitidas.map(async (p) => [
+          p.id,
+          Number(await contratoApolice(p.apolice.endereco, provedorLeitura).situacao()),
+        ]),
+      );
+      setGarantidas(Object.fromEntries(situacoes.map(([id, s]) => [id, s >= 1])));
+    } catch (falha) {
+      setErro(falha.message);
+    }
   }, [provedorLeitura]);
 
-  /**
-   * Monta o resumo criptografico dos termos (RF08).
-   *
-   * O texto precisa ser deterministico e conter tudo o que foi acordado: e ele que,
-   * mais tarde, prova que o documento contratual nao mudou. A mesma cadeia de
-   * caracteres e guardada na proposta, para que a conferencia seja possivel.
-   */
-  function descreverTermos(proposta, vigenciaInicio, vigenciaFim) {
-    return [
-      "AgroSmart",
-      proposta.cultura,
-      proposta.talhaoNome,
-      `${proposta.areaHa} ha`,
-      `gatilho ${proposta.limiarClimatico} dias sem chuva`,
-      `dano ${proposta.limiarDanoBps} bps`,
-      `operador ${proposta.operador}`,
-      `modo ${proposta.modoPagamento}`,
-      `limite ${proposta.valorIndenizacaoWei} wei`,
-      `vigencia ${new Date(vigenciaInicio * 1000).toISOString()} a ${new Date(vigenciaFim * 1000).toISOString()}`,
-      `produtor ${proposta.carteiraProdutor}`,
-    ].join("|");
-  }
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  useEffect(() => {
+    try {
+      contratoFactory(provedorLeitura)
+        .seguradora()
+        .then(setSeguradoraDaFabrica)
+        .catch(() => setSeguradoraDaFabrica(null));
+    } catch {
+      setSeguradoraDaFabrica(null);
+    }
+  }, [provedorLeitura]);
 
   async function emitir(proposta) {
     setErro(null);
     setAviso(null);
-    setEmitindo(proposta.id);
+    setOcupada(proposta.id);
 
     try {
-      const bloco = await provedorLeitura.getBlock("latest");
-      const vigenciaInicio = bloco.timestamp;
-      const vigenciaFim = vigenciaInicio + Number(proposta.vigenciaDias) * DIA_EM_SEGUNDOS;
+      setAviso("1/3 · O servidor esta preparando os termos e o resumo criptografico…");
+      const preparo = await api(`/propostas/${proposta.id}/preparar`, { metodo: "POST" });
 
-      const descricao = descreverTermos(proposta, vigenciaInicio, vigenciaFim);
+      setAviso(
+        `2/3 · Confirme a emissao na carteira. Resumo dos termos: ${hashCurto(preparo.hashTermos)}`,
+      );
+      const transacao = await contratoFactory(signatario).emitirApolice(preparo.termos);
 
-      const termos = {
-        produtor: proposta.carteiraProdutor,
-        // A fabrica sobrescreve com o registro oficial; o valor enviado aqui e
-        // apenas um marcador de posicao.
-        registry: ethers.ZeroAddress,
-        cultura: proposta.culturaBytes32,
-        talhao: proposta.talhaoBytes32,
-        operador: proposta.operador,
-        modoPagamento: proposta.modoPagamento,
-        limiarClimatico: proposta.limiarClimatico,
-        limiarClimaticoIntegral: proposta.limiarClimaticoIntegral,
-        limiarDanoBps: proposta.limiarDanoBps,
-        limiarDanoIntegralBps: proposta.limiarDanoIntegralBps,
-        vigenciaInicio,
-        vigenciaFim,
-        valorIndenizacao: BigInt(proposta.valorIndenizacaoWei),
-        hashTermos: ethers.keccak256(ethers.toUtf8Bytes(descricao)),
-      };
+      setAviso(`2/3 · Transacao enviada (${hashCurto(transacao.hash)}). Aguardando confirmacao…`);
+      await transacao.wait();
 
-      const factory = contratoFactory(signatario);
-
-      setAviso("Confirme a emissao na carteira…");
-      const transacao = await factory.emitirApolice(termos);
-
-      setAviso(`Emissao enviada: ${transacao.hash}. Aguardando confirmacao…`);
-      const recibo = await transacao.wait();
-
-      // O endereco do contrato recem-implantado vem do evento, e nao de um
-      // retorno de funcao: uma transacao nao devolve valor de retorno ao cliente.
-      const evento = recibo.logs
-        .map((log) => {
-          try {
-            return factory.interface.parseLog(log);
-          } catch {
-            return null;
-          }
-        })
-        .find((parseado) => parseado?.name === "ApoliceEmitida");
-
-      const enderecoApolice = evento?.args?.apolice;
-
-      if (!enderecoApolice) {
-        throw new Error("A apolice foi emitida, mas o endereco nao pode ser lido do evento.");
-      }
-
-      atualizarProposta(proposta.id, {
-        situacao: SITUACAO_PROPOSTA.EMITIDA,
-        enderecoApolice,
-        descricaoDosTermos: descricao,
-        hashTermos: termos.hashTermos,
-        txEmissao: recibo.hash,
-        gasEmissao: recibo.gasUsed.toString(),
-        emitidaEm: new Date().toISOString(),
+      setAviso("3/3 · O servidor esta conferindo a emissao na cadeia…");
+      const { apolice } = await api(`/propostas/${proposta.id}/emissao`, {
+        metodo: "POST",
+        corpo: { txHash: transacao.hash },
       });
 
       setAviso(
-        `Apolice implantada em ${enderecoApolice}. Gas da emissao: ${recibo.gasUsed}. Falta depositar a garantia.`,
+        `Apolice implantada em ${apolice.endereco} e conferida pelo servidor: o resumo gravado no contrato bate com os termos acordados. Falta depositar a garantia.`,
       );
-      recarregar();
+      await carregar();
     } catch (falha) {
-      setErro(mensagemDeErro(falha));
+      setErro(falha.status !== undefined ? falha.message : mensagemDeErro(falha));
     } finally {
-      setEmitindo(null);
+      setOcupada(null);
     }
   }
 
   async function depositar(proposta) {
     setErro(null);
     setAviso(null);
-    setEmitindo(proposta.id);
+    setOcupada(proposta.id);
 
     try {
-      const contrato = contratoApolice(proposta.enderecoApolice, signatario);
-
       setAviso("Confirme o deposito da garantia na carteira…");
-      const transacao = await contrato.depositarGarantia({
+      const transacao = await contratoApolice(
+        proposta.apolice.endereco,
+        signatario,
+      ).depositarGarantia({
         value: BigInt(proposta.valorIndenizacaoWei),
       });
-
-      const recibo = await transacao.wait();
-
-      atualizarProposta(proposta.id, {
-        txGarantia: recibo.hash,
-        garantiaDepositadaEm: new Date().toISOString(),
-      });
+      await transacao.wait();
 
       setAviso(
         `Garantia de ${emEth(proposta.valorIndenizacaoWei)} depositada. A apolice esta ativa e pronta para receber indices do oraculo.`,
       );
-      recarregar();
+      await carregar();
     } catch (falha) {
       setErro(mensagemDeErro(falha));
     } finally {
-      setEmitindo(null);
+      setOcupada(null);
     }
   }
 
-  function recusar(proposta) {
-    atualizarProposta(proposta.id, { situacao: SITUACAO_PROPOSTA.RECUSADA });
-    recarregar();
+  async function recusar(proposta) {
+    try {
+      await api(`/propostas/${proposta.id}/recusar`, { metodo: "POST" });
+      await carregar();
+    } catch (falha) {
+      setErro(falha.message);
+    }
   }
 
   const carteiraErrada =
     conta && seguradoraDaFabrica && conta.toLowerCase() !== seguradoraDaFabrica.toLowerCase();
 
+  const podeAssinar = Boolean(signatario) && redeCorreta && !carteiraErrada;
+
   return (
     <div className="pagina">
-      <h1>Propostas</h1>
+      <div className="entre">
+        <h1>Propostas</h1>
+        <button className="secundario pequeno" onClick={carregar}>
+          Atualizar
+        </button>
+      </div>
       <p className="silencioso">
-        Emitir a apolice implanta um contrato novo na rede, parametrizado com a condicao contratada
-        e com a carteira do produtor (RF07).
+        Emitir implanta um contrato novo na rede. O servidor prepara os termos, a sua carteira
+        assina, e o servidor confere na cadeia que o contrato implantado e o que foi acordado.
       </p>
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
-      {aviso ? <Aviso tipo="sucesso">{aviso}</Aviso> : null}
+      {aviso ? <Aviso tipo="informacao">{aviso}</Aviso> : null}
 
       {!conta ? (
         <Aviso tipo="alerta" titulo="Carteira nao conectada.">
@@ -211,9 +174,6 @@ export default function Propostas() {
         </Aviso>
       ) : !redeCorreta ? (
         <Aviso tipo="alerta" titulo="Carteira em outra rede.">
-          <p>
-            O aplicativo opera em <strong>{rede.nome}</strong>.
-          </p>
           <button className="secundario pequeno" onClick={trocarDeRede}>
             Trocar para {rede.nome}
           </button>
@@ -221,42 +181,32 @@ export default function Propostas() {
       ) : carteiraErrada ? (
         <Aviso tipo="erro" titulo="Esta carteira nao e a seguradora da fabrica.">
           A fabrica so aceita emissao de <span className="mono">{seguradoraDaFabrica}</span>.
-          Qualquer outro endereco tem a transacao revertida com <code>NaoEhSeguradora</code> — esse
-          e o controle de acesso do RNF12 funcionando.
+          Qualquer outro endereco tem a transacao revertida com <code>NaoEhSeguradora</code> — o
+          controle de acesso do RNF12 funcionando.
         </Aviso>
       ) : null}
 
-      {propostas.length === 0 ? (
+      {propostas === null ? (
+        <Carregando />
+      ) : propostas.length === 0 ? (
         <div className="cartao">
           <p>Nenhuma proposta recebida.</p>
-          <p className="silencioso">
-            O produtor envia propostas pela tela de cotacao. Entre com o perfil de produtor para
-            criar uma.
-          </p>
+          <p className="silencioso">O produtor envia propostas pela tela de cotacao.</p>
         </div>
       ) : (
-        propostas.map((proposta) => {
-          const jaEmitida = proposta.situacao === SITUACAO_PROPOSTA.EMITIDA;
-          const jaGarantida = Boolean(proposta.txGarantia);
-          const ocupada = emitindo === proposta.id;
+        propostas.map((p) => {
+          const [cor, rotulo] = ROTULOS[p.situacao] ?? ["neutro", p.situacao];
+          const aberta = p.situacao === "pendente" || p.situacao === "preparada";
+          const semGarantia = p.apolice && !garantidas[p.id];
+          const ocupadaAqui = ocupada === p.id;
 
           return (
-            <div className="cartao" key={proposta.id}>
+            <div className="cartao" key={p.id}>
               <div className="entre">
                 <h2>
-                  {proposta.talhaoNome} — {proposta.produtoNome}
+                  {p.talhao.identificador} — {p.produto.nome}
                 </h2>
-                <Selo
-                  tipo={
-                    proposta.situacao === SITUACAO_PROPOSTA.EMITIDA
-                      ? "sucesso"
-                      : proposta.situacao === SITUACAO_PROPOSTA.RECUSADA
-                        ? "erro"
-                        : "alerta"
-                  }
-                >
-                  {proposta.situacao}
-                </Selo>
+                <Selo tipo={cor}>{rotulo}</Selo>
               </div>
 
               <div className="tabela-rolavel">
@@ -265,99 +215,80 @@ export default function Propostas() {
                     <tr>
                       <th>Produtor</th>
                       <td>
-                        {proposta.produtorNome} —{" "}
-                        <LinkDaCadeia valor={proposta.carteiraProdutor} tipo="address" />
+                        {p.produtor.nome} —{" "}
+                        <LinkDaCadeia valor={p.carteiraProdutor} tipo="address" />
                       </td>
                     </tr>
                     <tr>
-                      <th>Talhao</th>
+                      <th>Area segurada</th>
                       <td>
-                        {proposta.areaHa} ha de {proposta.cultura} em {proposta.municipio}
+                        {Number(p.areaSeguradaHa).toFixed(2)} ha de {p.talhao.cultura}
                       </td>
                     </tr>
                     <tr>
                       <th>Condicao</th>
                       <td>
-                        {proposta.limiarClimatico} dias consecutivos sem chuva
-                        {proposta.limiarDanoBps > 0
-                          ? ` ou ${proposta.limiarDanoBps / 100}% de dano`
+                        {p.termos.limiarClimatico} dias consecutivos sem chuva
+                        {p.termos.limiarDanoBps > 0
+                          ? ` ou ${p.termos.limiarDanoBps / 100}% de dano`
                           : ""}
                       </td>
                     </tr>
                     <tr>
-                      <th>Limite</th>
-                      <td>{emEth(proposta.valorIndenizacaoWei)}</td>
+                      <th>Limite / premio</th>
+                      <td>
+                        {emEth(p.valorIndenizacaoWei)} / {emEth(p.premioWei)}
+                      </td>
                     </tr>
-                    <tr>
-                      <th>Premio</th>
-                      <td>{emEth(proposta.premioWei)}</td>
-                    </tr>
-                    <tr>
-                      <th>Vigencia</th>
-                      <td>{proposta.vigenciaDias} dias</td>
-                    </tr>
-                    {jaEmitida ? (
-                      <>
-                        <tr>
-                          <th>Contrato</th>
-                          <td>
-                            <LinkDaCadeia
-                              valor={proposta.enderecoApolice}
-                              tipo="address"
-                              curto={false}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th>Transacao da emissao</th>
-                          <td>
-                            <LinkDaCadeia valor={proposta.txEmissao} tipo="tx" /> · gas{" "}
-                            {proposta.gasEmissao}
-                          </td>
-                        </tr>
-                      </>
+                    {p.hashTermos ? (
+                      <tr>
+                        <th>Resumo dos termos</th>
+                        <td className="mono" title={p.hashTermos}>
+                          {hashCurto(p.hashTermos)}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {p.apolice ? (
+                      <tr>
+                        <th>Contrato</th>
+                        <td>
+                          <LinkDaCadeia valor={p.apolice.endereco} tipo="address" curto={false} />
+                          <div className="silencioso">
+                            emissao <LinkDaCadeia valor={p.apolice.txEmissao} tipo="tx" />
+                          </div>
+                        </td>
+                      </tr>
                     ) : null}
                   </tbody>
                 </table>
               </div>
 
               <div className="linha-de-botoes" style={{ marginTop: 14 }}>
-                {proposta.situacao === SITUACAO_PROPOSTA.PENDENTE ? (
+                {aberta ? (
                   <>
-                    <button
-                      onClick={() => emitir(proposta)}
-                      disabled={ocupada || !signatario || carteiraErrada || !redeCorreta}
-                    >
-                      {ocupada ? "Aguardando a carteira…" : "Emitir apolice na rede"}
+                    <button onClick={() => emitir(p)} disabled={ocupadaAqui || !podeAssinar}>
+                      {ocupadaAqui ? "Emitindo…" : "Emitir apolice na rede"}
                     </button>
-                    <button className="perigo" onClick={() => recusar(proposta)} disabled={ocupada}>
+                    <button className="perigo" onClick={() => recusar(p)} disabled={ocupadaAqui}>
                       Recusar
                     </button>
                   </>
                 ) : null}
 
-                {jaEmitida && !jaGarantida ? (
-                  <button onClick={() => depositar(proposta)} disabled={ocupada || !signatario}>
-                    {ocupada
+                {semGarantia ? (
+                  <button onClick={() => depositar(p)} disabled={ocupadaAqui || !podeAssinar}>
+                    {ocupadaAqui
                       ? "Aguardando a carteira…"
-                      : `Depositar garantia de ${emEth(proposta.valorIndenizacaoWei)}`}
+                      : `Depositar garantia de ${emEth(p.valorIndenizacaoWei)}`}
                   </button>
                 ) : null}
 
-                {jaEmitida ? (
-                  <Link to={`/apolice/${proposta.enderecoApolice}`}>Ver apolice</Link>
-                ) : null}
+                {p.apolice ? <Link to={`/apolice/${p.apolice.endereco}`}>Ver apolice</Link> : null}
               </div>
             </div>
           );
         })
       )}
-
-      <NotaDePrototipo>
-        As propostas vivem no <code>localStorage</code> deste navegador. Para a demonstracao,
-        produtor e seguradora precisam usar o mesmo navegador — basta sair de um perfil e entrar no
-        outro. O banco compartilhado entra na Sprint 2.
-      </NotaDePrototipo>
     </div>
   );
 }

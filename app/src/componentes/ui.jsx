@@ -86,21 +86,6 @@ export function LinkDaCadeia({ valor, tipo = "tx", curto = true }) {
   );
 }
 
-/**
- * Nota que marca, na propria tela, o que e provisorio.
- *
- * O aplicativo tem duas pecas que o back-end vai substituir: o login e o cadastro
- * local. Deixar isso escrito na interface evita que alguem — inclusive a banca —
- * conclua que ja esta pronto o que ainda nao esta.
- */
-export function NotaDePrototipo({ children }) {
-  return (
-    <div className="aviso alerta">
-      <strong>Peca provisoria do prototipo.</strong> {children}
-    </div>
-  );
-}
-
 /** Rodape que lembra de que lado da fronteira o dado da tela veio. */
 export function RodapeDaFronteira({ children }) {
   return <p className="rodape-fronteira">{children}</p>;

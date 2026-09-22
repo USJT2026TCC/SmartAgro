@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { useCarteira } from "../../cadeia/CarteiraContexto";
-import { listarApolices, resumirCarteira } from "../../cadeia/contratos";
-import { deBytes32, emData, emEth, emPercentual, mensagemDeErro } from "../../cadeia/formatos";
+import { api } from "../../api/cliente";
+import { emData, emEth, emPercentual } from "../../cadeia/formatos";
 import { implantacaoDaRede } from "../../cadeia/rede";
 import {
   Aviso,
@@ -15,80 +14,159 @@ import {
 } from "../../componentes/ui";
 
 /**
- * Painel da seguradora: carteira e indicadores (RF15, UC15).
+ * Painel da seguradora: carteira, indicadores e os numeros do experimento
+ * (RF15, UC15).
  *
- * Os numeros sao calculados sobre o que esta na cadeia, nao sobre um relatorio
- * interno. Isso significa que a seguradora ve exatamente a mesma coisa que o
- * produtor e que a fiscalizacao veriam — que e o ponto do arranjo.
+ * Os indicadores vem do backend, que o indexador mantem em dia com a cadeia. As
+ * estatisticas de gas e latencia contam so publicacoes confirmadas na rede — o
+ * relato do oraculo sem o evento correspondente nao entra na conta.
  */
 export default function CarteiraDaSeguradora() {
-  const { provedorLeitura } = useCarteira();
-
-  const [apolices, setApolices] = useState([]);
-  const [carregando, setCarregando] = useState(true);
+  const [relatorio, setRelatorio] = useState(null);
+  const [apolices, setApolices] = useState(null);
+  const [saude, setSaude] = useState(null);
   const [erro, setErro] = useState(null);
 
   const implantacao = useMemo(() => implantacaoDaRede(), []);
 
   const carregar = useCallback(async () => {
-    setCarregando(true);
     setErro(null);
 
     try {
-      setApolices(await listarApolices(provedorLeitura));
+      const [r, a, s] = await Promise.all([
+        api("/relatorios/carteira"),
+        api("/apolices"),
+        api("/saude"),
+      ]);
+      setRelatorio(r);
+      setApolices(a.apolices);
+      setSaude(s);
     } catch (falha) {
-      setErro(mensagemDeErro(falha));
-    } finally {
-      setCarregando(false);
+      setErro(falha.message);
     }
-  }, [provedorLeitura]);
+  }, []);
 
   useEffect(() => {
     carregar();
   }, [carregar]);
 
-  const resumo = useMemo(() => resumirCarteira(apolices), [apolices]);
+  const c = relatorio?.carteira;
+  const p = relatorio?.publicacoes;
 
   return (
     <div className="pagina">
       <div className="entre">
         <h1>Carteira</h1>
-        <button className="secundario pequeno" onClick={carregar} disabled={carregando}>
+        <button className="secundario pequeno" onClick={carregar}>
           Atualizar
         </button>
       </div>
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
 
-      <div className="grade">
-        <Indicador
-          rotulo="Apolices emitidas"
-          valor={resumo.total}
-          nota={`${resumo.ativas} ativas · ${resumo.aguardando} sem garantia`}
-        />
-        <Indicador
-          rotulo="Exposicao atual"
-          valor={emEth(resumo.exposicao)}
-          nota="garantias retidas nos contratos"
-        />
-        <Indicador
-          rotulo="Indenizacoes pagas"
-          valor={emEth(resumo.pago)}
-          nota={`${resumo.liquidadas} apolice(s) liquidada(s)`}
-        />
-        <Indicador
-          rotulo="Taxa de acionamento"
-          valor={emPercentual(Math.round(resumo.taxaDeAcionamento * 10_000))}
-          nota="liquidadas sobre o total emitido"
-        />
-      </div>
+      {saude?.indexador?.ultimoErro ? (
+        <Aviso tipo="alerta" titulo="O indexador nao esta alcancando a rede.">
+          {saude.indexador.ultimoErro.mensagem}. Os numeros abaixo podem estar atrasados em relacao
+          a cadeia.
+        </Aviso>
+      ) : null}
 
-      {carregando && apolices.length === 0 ? (
+      {relatorio?.propostasPendentes > 0 ? (
+        <Aviso tipo="informacao">
+          {relatorio.propostasPendentes} proposta(s) aguardando emissao.{" "}
+          <Link to="/seguradora/propostas">Ver propostas</Link>
+        </Aviso>
+      ) : null}
+
+      {!relatorio ? (
         <Carregando />
-      ) : apolices.length === 0 ? (
+      ) : (
+        <>
+          <div className="grade">
+            <Indicador
+              rotulo="Apolices emitidas"
+              valor={c.apolices}
+              nota={`${c.ativas} ativas · ${c.aguardando_garantia} sem garantia`}
+            />
+            <Indicador rotulo="Limite total contratado" valor={emEth(c.limite_total_wei)} />
+            <Indicador
+              rotulo="Indenizacoes pagas"
+              valor={emEth(c.pago_total_wei)}
+              nota={`${c.liquidadas} apolice(s) liquidada(s)`}
+            />
+            <Indicador
+              rotulo="Taxa de acionamento"
+              valor={emPercentual(Math.round(c.taxaDeAcionamento * 10_000))}
+              nota="liquidadas sobre o total emitido"
+            />
+          </div>
+
+          <div className="cartao" style={{ marginTop: 16 }}>
+            <h2>Custo e latencia da travessia</h2>
+            <p className="silencioso">
+              Os numeros do capitulo de resultados. Contam apenas publicacoes que o indexador ja
+              confirmou na cadeia.
+            </p>
+
+            {p.total === 0 ? (
+              <p className="silencioso">Nenhuma publicacao confirmada ainda.</p>
+            ) : (
+              <div className="grade">
+                <Indicador
+                  rotulo="Publicacoes"
+                  valor={p.total}
+                  nota={`${p.com_acionamento} com pagamento`}
+                />
+                <Indicador
+                  rotulo="Gas medio sem acionar"
+                  valor={Number(p.gas_medio_sem_acionar).toLocaleString("pt-BR")}
+                  nota={`min ${Number(p.gas_minimo).toLocaleString("pt-BR")} · max ${Number(p.gas_maximo).toLocaleString("pt-BR")}`}
+                />
+                <Indicador
+                  rotulo="Gas medio acionando"
+                  valor={Number(p.gas_medio_acionando).toLocaleString("pt-BR")}
+                  nota="inclui a transferencia de valor"
+                />
+                <Indicador
+                  rotulo="Latencia"
+                  valor={p.latencia_media_ms !== null ? `${p.latencia_media_ms} ms` : "—"}
+                  nota={
+                    p.latencia_p95_ms !== null
+                      ? `p95: ${p.latencia_p95_ms} ms`
+                      : "envio ate confirmacao"
+                  }
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="cartao">
+            <h2>Fontes de dados</h2>
+            <div className="grade">
+              <Indicador
+                rotulo="Fontes ativas"
+                valor={`${relatorio.fontes.ativas} de ${relatorio.fontes.total}`}
+              />
+              <Indicador
+                rotulo="Abaixo do limiar de reputacao"
+                valor={relatorio.fontes.abaixo_do_limiar}
+                nota={
+                  relatorio.fontes.abaixo_do_limiar > 0
+                    ? "suas leituras nao entram no indice"
+                    : "todas operando"
+                }
+              />
+            </div>
+            <p>
+              <Link to="/seguradora/fontes">Gerenciar fontes</Link>
+            </p>
+          </div>
+        </>
+      )}
+
+      {apolices === null ? null : apolices.length === 0 ? (
         <div className="cartao">
           <p>Nenhuma apolice emitida ainda.</p>
-          <Link to="/seguradora/propostas">Ver propostas pendentes</Link>
         </div>
       ) : (
         <div className="cartao tabela-rolavel">
@@ -98,33 +176,34 @@ export default function CarteiraDaSeguradora() {
               <tr>
                 <th>Talhao</th>
                 <th>Produtor</th>
-                <th>Condicao</th>
-                <th>Vigencia</th>
+                <th>Emitida em</th>
                 <th className="numero">Limite</th>
-                <th className="numero">Periodos</th>
+                <th className="numero">Pago</th>
                 <th>Situacao</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {apolices.map((apolice) => (
-                <tr key={apolice.endereco}>
+              {apolices.map((a) => (
+                <tr key={a.endereco}>
                   <td>
-                    {deBytes32(apolice.termos.talhao)}
-                    <div className="silencioso">{deBytes32(apolice.termos.cultura)}</div>
+                    {a.talhao ?? "—"}
+                    <div className="silencioso">{a.cultura ?? ""}</div>
                   </td>
                   <td>
-                    <LinkDaCadeia valor={apolice.termos.produtor} tipo="address" />
+                    {a.produtor.nome ?? "—"}
+                    <div>
+                      <LinkDaCadeia valor={a.produtor.carteira} tipo="address" />
+                    </div>
                   </td>
-                  <td>{apolice.termos.limiarClimatico} dias sem chuva</td>
-                  <td>{emData(apolice.termos.vigenciaFim)}</td>
-                  <td className="numero">{emEth(apolice.termos.valorIndenizacao)}</td>
-                  <td className="numero">{apolice.totalPeriodos}</td>
+                  <td>{emData(new Date(a.emitidaEm).getTime() / 1000)}</td>
+                  <td className="numero">{emEth(a.valorIndenizacaoWei)}</td>
+                  <td className="numero">{emEth(a.valorPagoWei)}</td>
                   <td>
-                    <SeloSituacao situacao={apolice.situacao} />
+                    <SeloSituacao situacao={a.situacao} />
                   </td>
                   <td>
-                    <Link to={`/apolice/${apolice.endereco}`}>Detalhes</Link>
+                    <Link to={`/apolice/${a.endereco}`}>Detalhes</Link>
                   </td>
                 </tr>
               ))}
@@ -135,7 +214,7 @@ export default function CarteiraDaSeguradora() {
 
       {implantacao ? (
         <div className="cartao">
-          <h2>Infraestrutura na rede</h2>
+          <h2>Infraestrutura</h2>
           <div className="tabela-rolavel">
             <table>
               <tbody>
@@ -160,22 +239,20 @@ export default function CarteiraDaSeguradora() {
                   </td>
                 </tr>
                 <tr>
-                  <th>Carteira da seguradora</th>
-                  <td>
-                    <LinkDaCadeia valor={implantacao.seguradora} tipo="address" curto={false} />
-                  </td>
+                  <th>Banco de dados</th>
+                  <td>{saude?.banco?.motor ?? "—"}</td>
                 </tr>
                 <tr>
-                  <th>Implantado em</th>
-                  <td>{new Date(implantacao.implantadoEm).toLocaleString("pt-BR")}</td>
+                  <th>Indexador</th>
+                  <td>{saude?.indexador?.ativo ? "acompanhando a cadeia" : "parado"}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <RodapeDaFronteira>
-            Estes enderecos vem de <code>contratos/implantacoes/</code>, gerado pelo script de
-            implantacao. Nenhum endereco e digitado a mao no aplicativo.
+            Enderecos lidos de <code>contratos/implantacoes/</code>, gerado pelo script de
+            implantacao.
           </RodapeDaFronteira>
         </div>
       ) : null}

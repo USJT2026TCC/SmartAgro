@@ -140,7 +140,19 @@ publica tudo o que estiver pendente, com espera que dobra a cada tentativa.
 
 Aqui também mora o RF17: quando o resultado do modelo de visão vem com confiança abaixo do
 limiar, o índice de dano **não é publicado** e o lote é sinalizado para o perito. O índice
-climático segue normalmente, porque não depende da inferência.
+climático segue normalmente, porque não depende da inferência. A exceção é a análise que o
+perito já revisou e liberou (`liberadaPeloPerito`): nela o limiar não é reaplicado, porque a
+revisão humana que ele pedia já aconteceu.
+
+### `clienteBackend.js` — a ponte com a API
+
+Cliente HTTP do backend, autenticado pela chave de serviço (`X-Chave-De-Servico`). Busca as
+apólices ativas, as leituras do talhão e a análise de visão; depois relata cada publicação (gas,
+latência, procedência) e cada falha definitiva.
+
+O relato é **melhor esforço**. Se o backend estiver fora do ar, a publicação na cadeia acontece
+do mesmo jeito e o registro local continua sendo a trilha de auditoria: um componente auxiliar
+indisponível não pode atrasar um pagamento.
 
 ---
 
@@ -154,6 +166,7 @@ node src/index.js <comando> [opções]
 | Comando | O que faz |
 |---|---|
 | `status` | Endereço, saldo, autorização no registro, fila e reputação |
+| `servico` | **Modo de produção.** A cada intervalo, busca no backend as apólices ativas e publica o período de cada uma. `--uma-vez` roda um único ciclo |
 | `ciclo --apolice 0x...` | Roda um cenário climático até acionar ou esgotar os períodos |
 | `publicar --apolice 0x...` | Consolida e publica um único período |
 | `ouvir --apolice 0x...` | Acompanha os eventos da apólice em tempo real |
@@ -168,6 +181,10 @@ Opções de `ciclo` e `publicar`:
 | `--periodo` | hoje | Dia de referência, em AAAAMMDD |
 | `--periodos` | 8 | Quantos períodos publicar no ciclo |
 | `--com-falhas` | desligado | Injeta leituras defeituosas para exercitar RF12 e RF13 |
+| `--fonte` | `simulada` | `backend` usa as leituras assinadas recebidas pela API, em vez da fonte simulada |
+
+Opções de `servico`: `--intervalo <ms>` (padrão `INTERVALO_SERVICO_MS`, 60 s), `--periodo` e
+`--uma-vez`.
 
 ### Exemplo de execução
 
@@ -218,6 +235,9 @@ Copie `oraculo/.env.example` para `oraculo/.env` e preencha. O `.env` está no `
 | `ESPERA_BASE_MS` | 2000 | Espera inicial entre tentativas; dobra a cada uma |
 | `CONFIRMACOES` | 1 | Confirmações aguardadas. Use 2 na Sepolia |
 | `TIMEOUT_MS` | 10000 | Tempo limite de cada requisição ao nó |
+| `API_URL` | — | Endereço do backend, por exemplo `http://localhost:3001/api` |
+| `CHAVE_DE_SERVICO` | — | Mesma chave configurada no backend. Sem ela e sem `API_URL`, o oráculo roda sozinho, com a fonte simulada |
+| `INTERVALO_SERVICO_MS` | 60000 | Intervalo entre ciclos do comando `servico` |
 
 Os endereços dos contratos **não** ficam no `.env`: vêm de
 `contratos/implantacoes/<rede>.json`, gerado pelo script de implantação. Copiar endereço à mão
@@ -229,16 +249,17 @@ tipo de projeto na véspera da apresentação.
 ## 5. Testes
 
 ```bash
-cd oraculo && npm test
+cd oraculo && npm run testar
 ```
 
-56 testes, nenhum deles precisa de rede.
+65 testes, nenhum deles precisa de rede.
 
 | Arquivo | Testes | O que cobre |
 |---|---:|---|
-| `consolidador.test.js` | 19 | Validação, agregação, contagem de dias secos, reputação |
+| `backend.test.js` | 9 | Cliente da API, conversão de pontos-base, relato de melhor esforço, liberação pelo perito |
+| `consolidador.test.js` | 20 | Validação, agregação, contagem de dias secos, reputação |
 | `fila.test.js` | 12 | Retomada, duplicatas, tentativas esgotadas, arquivo corrompido |
-| `fonteSimulada.test.js` | 9 | Determinismo, cenários, injeção de defeitos |
+| `fonteSimulada.test.js` | 10 | Determinismo, cenários, injeção de defeitos |
 | `registro.test.js` | 6 | Latência, serialização de BigInt, estatísticas, procedência |
 | `reputacao.test.js` | 8 | Queda e recuperação do escore, persistência |
 

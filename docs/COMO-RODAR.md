@@ -46,6 +46,13 @@ cd ../oraculo && npm install
 cd ../app && npm install
 ```
 
+```bash
+cd ../backend && npm install
+```
+
+O backend não exige instalar banco: sem `DATABASE_URL`, usa o PGlite, que é o próprio
+PostgreSQL com PostGIS rodando dentro do processo.
+
 ## 3. Rodar os testes
 
 Os testes não precisam de rede nem de configuração.
@@ -57,10 +64,21 @@ cd contratos && npx hardhat test
 Esperado: **94 passing**.
 
 ```bash
-cd oraculo && npm test
+cd oraculo && npm run testar
 ```
 
-Esperado: **56 testes, 0 falhas**.
+Esperado: **65 testes, 0 falhas**.
+
+```bash
+cd backend && npm run testar
+```
+
+Esperado: **83 testes, 0 falhas** (banco em memória, cadeia simulada). O teste de integração do
+indexador sobe um `hardhat node` próprio, na porta 8599:
+
+```bash
+cd backend && npm run testar:integracao
+```
 
 Cobertura dos contratos:
 
@@ -201,7 +219,7 @@ cd oraculo && node src/index.js estatisticas
 
 ## 5A. A demonstração completa, pelo aplicativo
 
-Este é o roteiro de cinco minutos do capítulo 1 do manual da equipe. Precisa de **três
+Este é o roteiro de cinco minutos do capítulo 1 do manual da equipe. Precisa de **quatro
 terminais** e do navegador.
 
 ### Terminal 1 — a rede local
@@ -218,7 +236,19 @@ cd contratos && npx hardhat run scripts/implantar.js --network localhost
 
 Não é preciso emitir a apólice por script: ela será contratada pelo aplicativo.
 
-### Terminal 3 — o aplicativo
+### Terminal 3 — o backend
+
+```bash
+cd backend && npm run iniciar
+```
+
+Na primeira execução, cria o banco em `backend/dados/pg/` com os usuários, talhões, produtos e
+fontes de demonstração. O indexador começa a acompanhar a fábrica implantada no passo anterior.
+
+> Se a rede local foi reiniciada, o banco guarda apólices de uma cadeia que não existe mais.
+> Apague `backend/dados/pg/` para começar do zero.
+
+### Terminal 4 — o aplicativo
 
 ```bash
 cd app && npm run dev
@@ -235,24 +265,46 @@ Abra `http://localhost:5173`. Sem MetaMask instalada, use
 2. **Simular e contratar**: escolher o talhão, o produto escalonado e conferir a tabela de
    exemplos. Enviar a proposta.
 3. **Sair e entrar como seguradora** (`seguradora` / `agrosmart`), com a carteira da conta 0.
-4. Em *Propostas*: **Emitir apólice na rede** e depois **Depositar garantia**. O endereço do
-   contrato aparece na tela.
-5. Abrir a apólice pelo link **Ver apólice** e deixar essa tela visível.
+4. Em *Propostas*: **Emitir apólice na rede** e depois **Depositar garantia**. O backend confere
+   a emissão na cadeia antes de registrá-la.
+5. Abrir a apólice pelo link **Ver apólice** e deixar essa tela visível. O cartão *Conferência
+   dos termos* deve dizer que o texto corresponde ao resumo gravado no contrato.
+
+### Terminal 2 — as estações enviam leituras
+
+```bash
+cd backend && npm run enviar-leituras -- --cenario estiagem_severa
+```
+
+Cada fonte de demonstração envia um lote assinado com a própria chave, e a API confere a
+assinatura antes de aceitar. É o papel que o simulador em Python vai assumir.
 
 ### Terminal 2 — o oráculo publica
 
-Preencha `oraculo/.env` com a chave da conta 2 e o endereço da apólice mostrado no passo 4:
+Em `oraculo/.env`, além da chave da conta 2, defina:
 
-```bash
-cd oraculo && node src/index.js ciclo --cenario estiagem_severa
+```
+API_URL=http://localhost:3001/api
+CHAVE_DE_SERVICO=desenvolvimento-apenas-nao-use-em-producao
 ```
 
-Enquanto o oráculo publica, **a linha do tempo na tela cresce sozinha**, sem recarregar: o índice
-sobe 28 → 29 → 30, e na terceira publicação aparece "Indenização transferida ao produtor — sem
-intervenção humana".
+```bash
+cd oraculo && node src/index.js servico --uma-vez
+```
 
-No modo escalonado, o pagamento é de 50% do limite. A seguradora pode então resgatar a sobra pelo
-botão que aparece na própria apólice.
+O oráculo pergunta ao backend quais apólices estão ativas, busca as leituras do talhão,
+consolida, publica e relata o resultado. Com a estiagem de 35 dias, o pagamento acontece na
+mesma transação, e **a linha do tempo na tela cresce sozinha**, sem recarregar, até
+"Indenização transferida ao produtor sem intervenção humana". O link *Avisos*, no cabeçalho, mostra as
+notificações de emissão, cobertura e pagamento.
+
+Sem `--uma-vez`, o serviço repete o ciclo a cada minuto, como rodaria em produção.
+
+Para o roteiro antigo, que mostra o índice subindo 28 → 29 → 30 um dia de cada vez, use
+`node src/index.js ciclo --cenario estiagem_severa` com `ENDERECO_APOLICE` no `.env`.
+
+No modo escalonado, o pagamento é parcial. A seguradora pode então resgatar a sobra pelo botão
+que aparece na própria apólice.
 
 ---
 

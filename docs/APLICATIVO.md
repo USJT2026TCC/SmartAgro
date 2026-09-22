@@ -7,10 +7,26 @@ Código em [`app/src/`](../app/src).
 
 ---
 
-## 1. Como o aplicativo fala com a cadeia
+## 1. Como o aplicativo fala com o backend e com a cadeia
 
-Não há back-end. O aplicativo lê e escreve **diretamente nos contratos**, por dois caminhos que
-existem de propósito separados:
+O aplicativo tem **dois interlocutores**, e a divisão entre eles segue a fronteira do projeto:
+
+| Com o backend (`src/api/cliente.js`) | Direto com a cadeia (`src/cadeia/`) |
+|---|---|
+| login, segundo fator, sessão | emitir apólice e depositar garantia (carteira da seguradora) |
+| talhões, produtos, fontes, propostas | estado da apólice, índices publicados |
+| cotação, texto dos termos | linha do tempo, reconstruída dos eventos |
+| notificações, relatórios, revisão do perito | autorizar e revogar oráculos |
+
+Tudo que move valor é assinado pela carteira no navegador; o backend nunca recebe chave nenhuma.
+E tudo que decide pagamento é lido da rede, não do banco — o backend pode estar fora do ar e a
+tela da apólice continua mostrando a verdade.
+
+O cliente HTTP guarda o token de sessão no `sessionStorage` (some ao fechar a aba) e, quando o
+servidor responde 401, avisa a aplicação para voltar ao login. Em desenvolvimento, o Vite
+repassa `/api` para `http://localhost:3001`.
+
+Na cadeia, o aplicativo fala por dois caminhos que existem de propósito separados:
 
 | Caminho | O que faz | Precisa de carteira? |
 |---|---|---|
@@ -61,14 +77,16 @@ cd contratos && npx hardhat test test/RegraDeGatilho.test.js
 
 ### Entrar — RF01, HU13
 
-Login com identificador e senha, três perfis. Mostra também, antes de o usuário entrar, se não
+Login com identificador e senha, três perfis, conferidos pelo backend (bcrypt). Se o usuário
+ativou o segundo fator, a tela pede o código do aplicativo autenticador em seguida. Os usuários
+de demonstração só aparecem na tela em modo de desenvolvimento. Mostra também, antes de o usuário entrar, se não
 houver contrato implantado na rede configurada — evita que alguém entre e encontre telas vazias
 sem entender por quê.
 
 ### Produtor · Minhas apólices — UC06
 
-Lista vinda de `apolicesDoProdutor(endereco)`, na cadeia. Exige carteira conectada porque é o
-endereço dela que identifica o produtor. Mostra também quantas propostas ainda aguardam emissão.
+Lista vinda do backend (espelho mantido pelo indexador), com as propostas ainda em andamento.
+Cada apólice leva à tela de detalhe, que lê tudo da cadeia.
 
 ### Produtor · Simular e contratar — RF06, RNF06, HU10
 
@@ -93,17 +111,18 @@ estiagem chega a 60 dias."*
 
 ### Produtor · Minha carteira — RF02, HU07
 
-Vincula a carteira ao cadastro por assinatura de mensagem. O aplicativo monta um desafio com um
-número único, a carteira assina, e a assinatura é conferida recuperando o endereço que a
-produziu. A chave privada nunca sai da carteira (RNF17).
+Vincula a carteira ao cadastro por assinatura de mensagem. O **backend** gera o desafio com um
+número único e prazo de cinco minutos, a carteira assina, e o backend confere que o endereço que
+produziu a assinatura é o mesmo que o produtor declarou (ver [DECISOES.md §2.11](DECISOES.md)). A chave privada nunca sai da carteira (RNF17).
 
 O número único impede que uma assinatura capturada de uma sessão anterior seja reapresentada
 como nova.
 
 ### Seguradora · Carteira — RF15, UC15
 
-Indicadores calculados sobre o que está na cadeia: apólices emitidas, exposição atual (soma das
-garantias retidas), indenizações pagas e taxa de acionamento. A seguradora vê exatamente o mesmo
+Indicadores do relatório do backend: apólices emitidas, exposição atual (soma das garantias
+retidas), prêmios, indenizações pagas, taxa de acionamento, e o custo em gas e a latência das
+publicações do oráculo (RF15, RNF09). Mostra também a saúde do backend e do indexador. A seguradora vê exatamente o mesmo
 que o produtor e a fiscalização veriam.
 
 ### Seguradora · Propostas — RF07, UC05
@@ -115,15 +134,18 @@ O fluxo tem duas transações, de propósito: emitir e depois depositar a garant
 uma só, mas então a fábrica precisaria custodiar valor, e o endereço pagador deixaria de ser o da
 seguradora.
 
-O endereço da apólice recém-implantada é lido do evento `ApoliceEmitida` — uma transação não
-devolve valor de retorno ao cliente.
+O fluxo completo: o backend **prepara** a proposta (texto canônico dos termos e resumo keccak),
+a carteira da seguradora assina `emitirApolice` com esses termos, e o aplicativo envia o hash
+da transação ao backend. O backend não acredita na palavra do aplicativo: busca o recibo na rede
+e confere se veio da fábrica oficial, com o mesmo resumo, o mesmo produtor e o mesmo valor.
 
 A tela também confere se a carteira conectada é mesmo a seguradora da fábrica, e explica que
 qualquer outro endereço teria a transação revertida com `NaoEhSeguradora`.
 
 ### Seguradora · Talhões e produtos — RF03, RF05, UC02, UC03
 
-Polígono em GeoJSON, **área calculada a partir dele** e não digitada: área informada à mão é área
+Polígono em GeoJSON, validado pelo PostGIS (`ST_IsValid`) e com **área calculada sobre o
+elipsoide** a partir dele, não digitada: área informada à mão é área
 que diverge do que foi delimitado, e o limite da apólice sai dessa conta. Polígono com
 autointerseção é recusado (critério de aceite 3 da HU09).
 
@@ -138,11 +160,24 @@ de **todas** as apólices da carteira.
 A lista é montada dos eventos `OraculoAutorizado` e conferida contra o estado atual do contrato:
 o evento diz quem já foi autorizado algum dia, só o estado diz quem ainda pode publicar.
 
-### Apólice · Detalhe — UC06, RF09, RF16
+### Seguradora · Fontes — RF11, RF13, RNF19
+
+Estações e sensores cadastrados, cada um com o endereço da chave que assina seus lotes e o escore
+de reputação atualizado a cada lote recebido. A seguradora pode desativar uma fonte suspeita.
+
+### Apólice · Detalhe — UC06, RF08, RF09, RF16
 
 Termos contratados, índices publicados e a **linha do tempo reconstruída dos eventos da rede** —
 não de um banco de dados. É o que permite a qualquer parte auditar a decisão de pagamento, sem
 depender da palavra da seguradora.
+
+**Conferência dos termos (RF08).** O texto dos termos vem do backend, mas o resumo não: é
+recalculado no navegador com keccak256 e comparado ao `hashTermos` gravado no contrato. Se o
+texto guardado tivesse sido alterado depois da emissão, a tela mostraria a divergência. A prova
+não depende de confiar em quem guarda o documento.
+
+Ao lado de cada índice publicado aparece a **procedência** relatada pelo oráculo: quantas fontes
+foram usadas ou descartadas, o gas e a latência.
 
 A tela escuta os eventos ao vivo. Durante a demonstração, o oráculo publica em outro terminal e a
 linha do tempo cresce sozinha, sem recarregar.
@@ -152,41 +187,38 @@ linha do tempo custou pouco e entrega a parte do RNF20 que é visível ao usuár
 
 ### Perito · Revisão técnica
 
-O perito atua por exceção. A tela reúne as publicações que trazem inferência de imagem com
-confiança abaixo do limiar. O caminho preferido é outro: o serviço de oráculo já suspende a
-publicação do índice de dano nesses casos, antes de gastar gas (RF17).
+O perito atua por exceção (RF17). Quando o módulo de visão devolve uma análise com confiança
+abaixo do limiar, o backend a retém e ela aparece aqui. O perito escreve um parecer e decide:
+**liberar** (o índice segue ao oráculo, que não reaplica o limiar) ou **rejeitar** (o índice de
+dano fica retido; o climático segue normalmente). A decisão fica gravada com autor e parecer.
+
+### Avisos — RF27
+
+Notificações geradas pelo indexador a partir dos eventos da cadeia (emissão, garantia,
+pagamento) e pelo oráculo quando uma publicação falha de vez. Cada aviso traz a transação que o
+originou. O cabeçalho mostra o número de não lidos.
+
+### Minha conta — RF01
+
+Configuração do segundo fator: o backend gera o segredo, a tela mostra o código QR, e o segundo
+fator só é ligado depois de o usuário digitar um código válido. Desligar também exige o código.
 
 ---
 
-## 4. As duas peças provisórias
+## 4. As peças provisórias, substituídas
 
-Estão marcadas na própria interface, e não só na documentação. Alguém — inclusive a banca —
-poderia concluir que já está pronto o que ainda não está.
+A primeira versão do aplicativo tinha duas peças provisórias, marcadas na própria interface:
+login com senhas em texto claro no código e cadastro guardado no `localStorage`. As duas foram
+substituídas pelo backend:
 
-### Login e senhas
+| Antes | Agora |
+|---|---|
+| senhas em `usuarios.js`, conferidas no navegador | bcrypt no servidor, sessão com expiração, segundo fator opcional |
+| talhões, produtos e propostas no `localStorage` | PostgreSQL + PostGIS, visíveis para produtor e seguradora em qualquer máquina |
+| desafio de carteira gerado no navegador | desafio gerado e consumido pelo servidor |
+| área do talhão por aproximação plana | área geodésica pelo PostGIS (7% de diferença; DECISOES §2.12) |
 
-Em `app/src/sessao/usuarios.js`, em texto claro.
-
-O RNF24 exige hash com sal (bcrypt ou Argon2). Nada disso pode ser feito de forma honesta apenas
-no navegador: qualquer verificação que rode no cliente pode ser contornada. **Um esquema de hash
-no front-end daria aparência de segurança sem nenhuma segurança, o que é pior do que a ausência
-declarada.**
-
-Isso não afeta a parte em cadeia: quem pode publicar índice e quem pode mover valor é decidido
-pelo contrato, por endereço, e não por este login.
-
-### Talhões, produtos e propostas
-
-No `localStorage`. Consequências que precisam ficar explícitas:
-
-- o dado existe apenas naquele navegador, naquela máquina;
-- produtor e seguradora em computadores diferentes não veem a mesma proposta;
-- limpar os dados do navegador apaga tudo.
-
-Para a demonstração, basta sair de um perfil e entrar no outro no mesmo navegador.
-
-O que **não** vive ali: a apólice, os índices e o pagamento. A fronteira do projeto continua
-onde deveria.
+O que continua como ferramenta de desenvolvimento é a **carteira simulada**, descrita na seção 5.
 
 ---
 
@@ -247,3 +279,8 @@ O fluxo abaixo foi executado de ponta a ponta contra um nó local, pela interfac
 
 Dois defeitos foram encontrados nesse percurso e corrigidos. Estão em
 [DECISOES.md](DECISOES.md), seções 2.8 e 2.9.
+
+Depois da integração com o backend, o percurso foi refeito (22/09/2026) com login, vínculo,
+proposta e emissão passando pela API, leituras assinadas entrando pela ingestão e o oráculo em
+modo `servico`. A tela da apólice mostrou a conferência dos termos batendo com o contrato e a
+procedência de cada índice. Detalhes em [BACKEND.md §9](BACKEND.md).

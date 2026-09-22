@@ -1,19 +1,19 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
+import { api } from "../api/cliente";
 import { useSessao } from "../sessao/SessaoContexto";
-import { PERFIS, ROTULOS_DE_PERFIL } from "../sessao/usuarios";
+import { PERFIS, ROTULOS_DE_PERFIL } from "../sessao/perfis";
 import { useCarteira } from "../cadeia/CarteiraContexto";
 import { enderecoCurto } from "../cadeia/formatos";
 
 /**
- * Barra superior: identidade, navegacao por perfil e estado da carteira.
+ * Barra superior: identidade, navegacao por perfil, notificacoes e carteira.
  *
- * A navegacao muda conforme o perfil autenticado, o que atende ao RF04 no nivel
- * da interface. O controle de verdade esta em `RotaProtegida`: esconder um link
- * nao impede ninguem de digitar o endereco.
+ * A navegacao muda conforme o perfil autenticado (RF04, na interface). O controle
+ * de verdade esta no backend: esconder um link nao impede ninguem de chamar a API.
  */
 
-/** Itens de menu por perfil. */
 const MENUS = {
   [PERFIS.PRODUTOR]: [
     { para: "/produtor", texto: "Minhas apolices", fim: true },
@@ -24,16 +24,23 @@ const MENUS = {
     { para: "/seguradora", texto: "Carteira", fim: true },
     { para: "/seguradora/propostas", texto: "Propostas" },
     { para: "/seguradora/talhoes", texto: "Talhoes e produtos" },
+    { para: "/seguradora/fontes", texto: "Fontes" },
     { para: "/seguradora/oraculos", texto: "Oraculos" },
   ],
   [PERFIS.PERITO]: [{ para: "/perito", texto: "Revisao tecnica", fim: true }],
 };
+
+/** De quanto em quanto tempo o contador de notificacoes e atualizado. */
+const INTERVALO_NOTIFICACOES_MS = 15_000;
 
 export default function Cabecalho() {
   const { usuario, sair } = useSessao();
   const { conta, redeCorreta, rede, temCarteira, conectar, conectando, trocarDeRede } =
     useCarteira();
   const navegar = useNavigate();
+  const local = useLocation();
+
+  const [naoLidas, setNaoLidas] = useState(0);
 
   const itens = MENUS[usuario?.perfil] ?? [];
 
@@ -41,8 +48,28 @@ export default function Cabecalho() {
   // em que a assinatura e simulada, sem ninguem perceber, seria pior do que nenhuma.
   const carteiraSimulada = typeof window !== "undefined" && window.ethereum?.isCarteiraSimulada;
 
-  function encerrarSessao() {
-    sair();
+  useEffect(() => {
+    if (!usuario) return undefined;
+
+    let ativo = true;
+    const atualizar = () =>
+      api("/notificacoes")
+        .then((r) => ativo && setNaoLidas(r.naoLidas))
+        .catch(() => {});
+
+    atualizar();
+    const temporizador = setInterval(atualizar, INTERVALO_NOTIFICACOES_MS);
+    window.addEventListener("agrosmart:notificacoes", atualizar);
+
+    return () => {
+      ativo = false;
+      clearInterval(temporizador);
+      window.removeEventListener("agrosmart:notificacoes", atualizar);
+    };
+  }, [usuario, local.pathname]);
+
+  async function encerrarSessao() {
+    await sair();
     navegar("/entrar", { replace: true });
   }
 
@@ -75,6 +102,11 @@ export default function Cabecalho() {
         </nav>
 
         <div className="linha-de-botoes">
+          <Link to="/notificacoes" className="notificacoes" title="Notificacoes">
+            Avisos
+            {naoLidas > 0 ? <span className="contador">{naoLidas}</span> : null}
+          </Link>
+
           {!temCarteira ? (
             <span className="silencioso">Sem carteira no navegador</span>
           ) : !conta ? (
@@ -93,9 +125,9 @@ export default function Cabecalho() {
 
           {usuario ? (
             <>
-              <span className="silencioso" title={ROTULOS_DE_PERFIL[usuario.perfil]}>
+              <Link to="/conta" className="silencioso" title={ROTULOS_DE_PERFIL[usuario.perfil]}>
                 {usuario.nome}
-              </span>
+              </Link>
               <button className="secundario pequeno" onClick={encerrarSessao}>
                 Sair
               </button>
