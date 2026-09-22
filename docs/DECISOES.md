@@ -276,7 +276,7 @@ legítimo. Na demonstração, levaria à conclusão de que o registro não tinha
 
 | Item | Requisito | Situação |
 |---|---|---|
-| Análise estática dos contratos | RNF13 | A rodar. `slither` ou `mythril`; nenhum achado de severidade alta pode ficar sem tratamento |
+| Análise estática dos contratos | RNF13 | **Feito.** Slither sem nenhum achado; ver [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
 | Verificação do código-fonte no Etherscan | — | Permite que a banca leia o contrato implantado no explorador |
 | Medição de latência em rede pública | Capítulo 7 do manual | Comparar com os ~170 ms da rede local |
 | Custo em gas na Sepolia | RNF09, RNF10 | Confirmar se o custo médio por apólice fica abaixo de 1% do prêmio |

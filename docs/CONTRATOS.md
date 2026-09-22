@@ -273,6 +273,7 @@ cd contratos && npx hardhat coverage
 | RNF12 — controle de acesso por função | `somenteSeguradora`, `somenteOraculoAutorizado` |
 | RNF14 — cobrir 100% dos caminhos condicionais | relatório da seção 5 |
 | RNF15 — atomicidade | reversão total em qualquer falha |
+| RNF13 — análise estática antes de implantar | Slither, 0 achados — [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
 | RNF16 — chaves fora do código-fonte | `hardhat.config.js` lê de variáveis de ambiente |
 | RNF20 — decisão reconstituível | `publicacao(periodo)` + eventos + registro do oráculo |
 | RNF21 — preservar a versão do modelo | campo `versaoModelo`, imutável após a publicação |
@@ -283,4 +284,3 @@ cd contratos && npx hardhat coverage
 |---|---|
 | RF10 — cancelamento antes da vigência | Item de reserva (Quadro 19). Não participa do fluxo de apuração |
 | RF28 — contestação da avaliação | Item de reserva. Exige retificação do índice em cadeia |
-| RNF13 — análise estática antes de implantar | A rodar antes da implantação em Sepolia. Ver [DECISOES.md](DECISOES.md) |

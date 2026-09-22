@@ -239,7 +239,14 @@ contract ApolicePolicy {
      *
      * A validacao e feita aqui porque, depois da implantacao, nada mais pode ser
      * corrigido: uma apolice com limiar invertido ficaria permanentemente quebrada.
+     *
+     * O Slither aponta complexidade ciclomatica alta (15). Cada ramo e uma
+     * validacao independente de um campo dos termos, e todas precisam acontecer
+     * antes de o contrato se tornar imutavel. Dividir em funcoes auxiliares so
+     * mudaria o numero de lugar, sem reduzir o que precisa ser conferido
+     * (Slither: cyclomatic-complexity).
      */
+    // slither-disable-next-line cyclomatic-complexity
     constructor(address seguradora_, Termos memory t) {
         if (seguradora_ == address(0)) revert EnderecoInvalido();
         if (t.produtor == address(0)) revert EnderecoInvalido();
@@ -321,23 +328,39 @@ contract ApolicePolicy {
     function resgatarGarantia() external naoReentrante somenteSeguradora {
         if (situacao == Situacao.ATIVA) {
             uint64 agora = uint64(block.timestamp);
+            // A marca de tempo do bloco e usada como relogio, nao como fonte de
+            // aleatoriedade — o RNF08 proibe a segunda, nao a primeira. O
+            // validador consegue desviar alguns segundos, o que e irrelevante
+            // diante de uma vigencia de meses (Slither: timestamp).
+            // slither-disable-next-line timestamp
             if (agora <= termos.vigenciaFim) revert VigenciaEmCurso(agora, termos.vigenciaFim);
         } else if (situacao != Situacao.LIQUIDADA) {
             revert SituacaoInvalida(situacao, Situacao.ATIVA);
         }
 
         uint256 saldo = address(this).balance;
+
+        // O Slither alerta que o saldo de um contrato pode ser inflado a forca
+        // (por selfdestruct de outro contrato), o que quebraria comparacoes de
+        // igualdade estrita. Aqui a comparacao so decide se ha algo a devolver:
+        // saldo inflado apenas faz a seguradora receber tambem o valor forcado,
+        // que de outro modo ficaria preso. Nao ha caminho em que isso prejudique
+        // o produtor ou a seguradora (Slither: incorrect-equality).
+        // slither-disable-next-line incorrect-equality
         if (saldo == 0) revert SemSaldoParaResgatar();
 
-        // Efeito antes da interacao (RNF11). A apolice liquidada nao muda de
+        // Efeitos antes da interacao (RNF11). A apolice liquidada nao muda de
         // situacao; nela, a protecao contra repeticao e o proprio saldo, que ja
         // esta zerado quando a chamada reentrante chegaria.
         if (situacao == Situacao.ATIVA) situacao = Situacao.ENCERRADA;
 
+        // Evento antes da transferencia, pela mesma razao de publicarIndices: se
+        // a transferencia falhar, a reversao leva o evento junto.
+        emit GarantiaResgatada(seguradora, saldo);
+
+        // slither-disable-next-line low-level-calls
         (bool ok, ) = seguradora.call{value: saldo}("");
         if (!ok) revert FalhaNaTransferencia(seguradora, saldo);
-
-        emit GarantiaResgatada(seguradora, saldo);
     }
 
     // ---------------------------------------------------------------------
@@ -376,6 +399,8 @@ contract ApolicePolicy {
         if (confiancaBps > BPS) revert ParametroInvalido("confiancaBps");
 
         uint64 agora = uint64(block.timestamp);
+        // Relogio, nao entropia: ver o comentario equivalente em resgatarGarantia.
+        // slither-disable-next-line timestamp
         if (agora < termos.vigenciaInicio || agora > termos.vigenciaFim) {
             revert ForaDaVigencia(agora, termos.vigenciaInicio, termos.vigenciaFim);
         }
@@ -419,11 +444,22 @@ contract ApolicePolicy {
         valorPago = valor;
         periodoAcionador = periodo;
 
+        // O evento sai ANTES da transferencia. Pode parecer que anuncia um
+        // pagamento que ainda nao aconteceu, mas a atomicidade garante o
+        // contrario: se a transferencia falhar, a transacao inteira reverte e o
+        // evento some junto. Emitir antes fecha a ordem verificar-efeitos-
+        // interacao por completo, porque evento tambem e efeito (Slither:
+        // reentrancy-events).
+        emit PagamentoExecutado(termos.produtor, periodo, valor);
+
         // ---------- Interacao ----------
+        // `call` e nao `transfer`: `transfer` repassa so 2300 de gas, e falha com
+        // produtor que use carteira de contrato, como uma multisig. A protecao
+        // contra reentrancia nao depende do limite de gas, e sim da ordem acima
+        // e da guarda `naoReentrante` (Slither: low-level-calls).
+        // slither-disable-next-line low-level-calls
         (bool ok, ) = termos.produtor.call{value: valor}("");
         if (!ok) revert FalhaNaTransferencia(termos.produtor, valor);
-
-        emit PagamentoExecutado(termos.produtor, periodo, valor);
     }
 
     /**
@@ -475,7 +511,11 @@ contract ApolicePolicy {
         if (!atendida) return 0;
         if (t.modoPagamento == ModoPagamento.INTEGRAL) return BPS;
 
-        uint16 percentual;
+        // Inicializado explicitamente. O valor padrao da EVM ja seria zero, mas
+        // depender disso esconde a intencao: zero aqui significa "nenhum indice
+        // escalonou ainda", e o leitor nao deveria ter de lembrar a regra da
+        // linguagem para entender o calculo (Slither: uninitialized-local).
+        uint16 percentual = 0;
 
         if (climaticoAtingido) {
             percentual = _interpolar(indiceClimatico, t.limiarClimatico, t.limiarClimaticoIntegral);

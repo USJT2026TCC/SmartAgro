@@ -92,6 +92,7 @@ acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), s
 | [docs/ORACULO.md](docs/ORACULO.md) | Referência do serviço de oráculo, módulo por módulo |
 | [docs/APLICATIVO.md](docs/APLICATIVO.md) | Referência do aplicativo, tela por tela |
 | [docs/COMO-RODAR.md](docs/COMO-RODAR.md) | Passo a passo, da instalação à demonstração na Sepolia |
+| [docs/ANALISE-ESTATICA.md](docs/ANALISE-ESTATICA.md) | Triagem do Slither, achado por achado (RNF13) |
 | [docs/DECISOES.md](docs/DECISOES.md) | Decisões de projeto, alternativas descartadas e defeitos encontrados |
 | `docs/AgroSmart_Documentacao_Software.docx` | Documentação acadêmica: requisitos, UML, planejamento |
 | `docs/AgroSmart_Manual_da_Equipe.docx` | Manual interno da equipe |

@@ -11,7 +11,8 @@
     "no": "hardhat node",
     "implantar:local": "hardhat run scripts/implantar.js --network localhost",
     "implantar:sepolia": "hardhat run scripts/implantar.js --network sepolia",
-    "demo:estiagem": "hardhat run scripts/demo-estiagem.js --network localhost"
+    "demo:estiagem": "hardhat run scripts/demo-estiagem.js --network localhost",
+    "analisar": "slither ."
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
