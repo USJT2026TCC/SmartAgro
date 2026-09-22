@@ -199,6 +199,7 @@ describe("imagens e visao", () => {
       assert.equal(r.body.visao.versaoModelo, "visao-agrosmart-v1.0.0");
       assert.match(r.body.visao.hashEvidencias, /^0x[0-9a-f]{64}$/);
       assert.match(r.body.visao.hashVersaoModelo, /^0x[0-9a-f]{64}$/);
+      assert.equal(r.body.visao.liberadaPeloPerito, true);
     });
 
     test("uma analise nao recebe dois pareceres", async () => {

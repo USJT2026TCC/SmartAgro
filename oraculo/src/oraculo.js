@@ -8,6 +8,7 @@ const { RegistroReputacao } = require("./reputacao");
 const { FilaDePublicacoes, ESTADOS } = require("./fila");
 const { RegistroDePublicacoes } = require("./registro");
 const { Publicador, paraBytes32 } = require("./publicador");
+const { ClienteBackend } = require("./clienteBackend");
 
 /**
  * Servico de oraculo do AgroSmart.
@@ -21,8 +22,12 @@ const { Publicador, paraBytes32 } = require("./publicador");
  * o custo e a latencia vao para o registro de auditoria (RF22).
  */
 class ServicoOraculo {
-  constructor({ publicador, fila, registro, reputacao, opcoes = {} }) {
+  constructor({ publicador, fila, registro, reputacao, backend = null, opcoes = {} }) {
     this.publicador = publicador;
+
+    // Opcional: sem backend, o servico funciona sozinho, com a fonte simulada,
+    // como antes. Com backend, relata cada publicacao e cada falha definitiva.
+    this.backend = backend;
     this.fila = fila;
     this.registro = registro;
     this.reputacao = reputacao;
@@ -63,6 +68,15 @@ class ServicoOraculo {
       }),
       registro: new RegistroDePublicacoes(path.join(dirDados, "publicacoes.jsonl")),
       reputacao: new RegistroReputacao({ arquivo: path.join(dirDados, "reputacao.json") }),
+      backend:
+        opcoes.backend ??
+        (config.apiUrl && config.chaveDeServico
+          ? new ClienteBackend({
+              url: config.apiUrl,
+              chave: config.chaveDeServico,
+              timeoutMs: config.timeoutMs,
+            })
+          : null),
       opcoes,
     });
   }
@@ -100,7 +114,7 @@ class ServicoOraculo {
     if (visao) {
       const confianca = visao.confianca ?? 0;
 
-      if (confianca < this.limiarConfiancaModelo) {
+      if (confianca < this.limiarConfiancaModelo && !visao.liberadaPeloPerito) {
         // RF17: abaixo do limiar de confianca o resultado do modelo vai para o
         // perito e nao entra na publicacao. O indice climatico segue normalmente,
         // porque nao depende da inferencia.
@@ -182,11 +196,58 @@ class ServicoOraculo {
         tentativas: entrada.tentativas,
       });
 
+      await this.relatar("relatarPublicacao", {
+        apolice: entrada.apolice,
+        periodo: entrada.periodo,
+        txHash: recibo.txHash,
+        indiceClimatico: entrada.payload.indiceClimatico,
+        indiceDanoBps: entrada.payload.indiceDanoBps,
+        confiancaBps: entrada.payload.confiancaBps,
+        gasUsado: recibo.gasUsado,
+        gasEstimado: recibo.gasEstimado,
+        custoWei: recibo.custoWei,
+        bloco: recibo.bloco,
+        enviadoEm: recibo.enviadoEm,
+        confirmadoEm: recibo.confirmadoEm,
+        acionouPagamento: recibo.acionouPagamento,
+        procedencia: entrada.payload.procedencia,
+        oraculo: recibo.oraculo,
+      });
+
       return { sucesso: true, recibo, linha };
     } catch (erro) {
       this.fila.marcarErro(entrada, erro);
 
+      // So a falha definitiva vira notificacao. Uma tentativa que ainda vai ser
+      // repetida nao e noticia; a quinta seguida, e.
+      if (entrada.estado === ESTADOS.FALHA) {
+        await this.relatar("relatarFalha", {
+          apolice: entrada.apolice,
+          periodo: entrada.periodo,
+          motivo: erro?.shortMessage || erro?.message || String(erro),
+          tentativas: entrada.tentativas,
+        });
+      }
+
       return { sucesso: false, erro };
+    }
+  }
+
+  /**
+   * Relata ao backend, quando houver um.
+   *
+   * Uma falha aqui NAO desfaz a publicacao: o indice ja esta na cadeia, e a cadeia
+   * e a fonte da verdade — o indexador do backend vai encontrar o evento de
+   * qualquer forma. O que se perderia seriam os metadados que so o oraculo tem
+   * (gas estimado, latencia, procedencia), e eles continuam no registro local.
+   */
+  async relatar(metodo, dados) {
+    if (!this.backend) return;
+
+    try {
+      await this.backend[metodo](dados);
+    } catch (erro) {
+      console.warn(`[oraculo] nao foi possivel relatar ao backend (${metodo}): ${erro.message}`);
     }
   }
 

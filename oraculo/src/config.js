@@ -56,6 +56,17 @@ const config = {
    * tarde, que e o comportamento exigido pelo RNF22.
    */
   timeoutMs: Number(process.env.TIMEOUT_MS || 10000),
+
+  /**
+   * API do backend. Com as duas variaveis definidas, o oraculo busca as leituras
+   * no backend (`--fonte backend`) e relata cada publicacao. Sem elas, funciona
+   * sozinho, com a fonte simulada.
+   */
+  apiUrl: process.env.API_URL || "",
+  chaveDeServico: process.env.CHAVE_DE_SERVICO || "",
+
+  /** Intervalo entre ciclos do modo servico, em milissegundos. */
+  intervaloDoServicoMs: Number(process.env.INTERVALO_SERVICO_MS || 60000),
 };
 
 /**

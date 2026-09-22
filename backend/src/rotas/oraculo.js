@@ -123,6 +123,7 @@ export function rotasDoOraculo() {
 
     const { rows } = await banco.query(
       `SELECT an.indice_dano_bps, an.confianca_bps, an.versao_modelo, an.hash_versao_modelo,
+              an.decisao_do_perito,
               lt.hash_evidencias, lt.id AS lote_id, an.criada_em
          FROM analises_de_imagem an
          JOIN lotes_de_imagens lt ON lt.id = an.lote_id
@@ -147,6 +148,9 @@ export function rotasDoOraculo() {
             versaoModelo: a.versao_modelo,
             hashVersaoModelo: a.hash_versao_modelo,
             hashEvidencias: a.hash_evidencias,
+            // Verdadeiro quando a analise tinha confianca baixa e o perito a
+            // liberou. O oraculo nao reaplica o limiar nesse caso.
+            liberadaPeloPerito: a.decisao_do_perito === "liberada",
             analisadoEm: a.criada_em,
           }
         : null,
