@@ -1,0 +1,36 @@
+{
+  "name": "agrosmart-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API do AgroSmart: autenticacao, cadastro georreferenciado, ingestao assinada de leituras, indexacao dos eventos da cadeia e integracao com o oraculo.",
+  "main": "src/index.js",
+  "scripts": {
+    "iniciar": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "testar": "node --import ./test/preparar.js --test --test-concurrency=1 \"test/*.test.js\"",
+    "migrar": "node src/banco/migrar.js",
+    "formatar": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"integracao/**/*.js\" \"scripts/**/*.js\"",
+    "testar:integracao": "node --test --test-concurrency=1 \"integracao/*.test.js\"",
+    "enviar-leituras": "node scripts/enviar-leituras.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-postgis": "^0.2.8",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.2",
+    "ethers": "^6.17.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "multer": "^2.4.0",
+    "otplib": "^13.5.0",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.8",
+    "supertest": "^7.2.2"
+  }
+}

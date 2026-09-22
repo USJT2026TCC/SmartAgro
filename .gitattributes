@@ -1,0 +1,9 @@
+# Quebras de linha normalizadas para LF no repositorio, qualquer que seja o
+# sistema de quem commita. Sem isso, cada integrante no Windows produz diffs
+# com a linha inteira alterada so por causa do CRLF.
+* text=auto eol=lf
+
+*.docx binary
+*.png binary
+*.jpg binary
+*.jpeg binary

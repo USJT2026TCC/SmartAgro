@@ -41,3 +41,6 @@ app/dist/
 # Nao e versionado porque carrega enderecos da maquina de quem implantou; o
 # script roda automaticamente antes de `npm run dev` e `npm run build`.
 app/src/cadeia/implantacoes.json
+
+# Estado local do backend: banco embutido e imagens enviadas
+backend/dados/
