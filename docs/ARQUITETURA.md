@@ -176,12 +176,12 @@ condicionais exigida pelo RNF14.
 
 | Peça | Sprint | Nota |
 |---|---|---|
-| Modelo de visão computacional | 3 | O backend já recebe o resultado em `POST /visao/resultados` |
+| Modelo de visão treinado | 3 | O módulo existe e roda; falta treinar a rede, o que exige GPU (Colab ou Kaggle) |
 | Implantação em Sepolia | 4 | Exige endpoint RPC e ETH de teste; ver COMO-RODAR §7 |
 
-Ingestão e banco (PostgreSQL + PostGIS), o aplicativo React e o simulador de estações já estão
-implementados. O simulador envia a série real de uma estação do INMET, assinada — ver
+Ingestão e banco (PostgreSQL + PostGIS), o aplicativo React, o simulador de estações e o módulo
+de visão já estão implementados. O simulador envia a série real de uma estação do INMET, assinada — ver
 [SIMULADOR.md](SIMULADOR.md) e [DADOS.md](DADOS.md).
 
 A interface com essas peças já está definida. O simulador precisa seguir o contrato de ingestão
-de [BACKEND.md §5](BACKEND.md), e o módulo de visão o de [BACKEND.md §6](BACKEND.md).
+de [BACKEND.md §5](BACKEND.md); o módulo de visão está documentado em [VISAO.md](VISAO.md).

@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { Router } from "express";
@@ -267,6 +267,67 @@ export function rotasDeImagens() {
   );
 
   // ---------------------------------------------------- modulo de visao
+
+  /**
+   * Lotes fechados que ainda nao foram analisados (RF16).
+   *
+   * E por aqui que o modulo de visao descobre o que tem para fazer. So lote
+   * FECHADO aparece: enquanto o produtor ainda pode enviar imagem, o resumo das
+   * evidencias mudaria, e uma analise sobre um lote aberto seria analise de um
+   * conjunto que nao existe mais.
+   */
+  r.get("/visao/pendentes", exigirServico, async (req, res) => {
+    const { banco } = req.app.locals;
+
+    const { rows } = await banco.query(
+      `SELECT lt.id, lt.hash_evidencias, lt.fechado_em, t.identificador AS talhao, t.cultura,
+              (SELECT json_agg(json_build_object(
+                        'id', i.id, 'sha256', i.sha256, 'tipo', i.tipo, 'bytes', i.bytes,
+                        'capturadaEm', i.capturada_em,
+                        'lon', ST_X(i.local), 'lat', ST_Y(i.local))
+                      ORDER BY i.capturada_em)
+                 FROM imagens i WHERE i.lote_id = lt.id) AS imagens
+         FROM lotes_de_imagens lt
+         JOIN talhoes t ON t.id = lt.talhao_id
+        WHERE lt.fechado_em IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM analises_de_imagem an WHERE an.lote_id = lt.id)
+        ORDER BY lt.fechado_em
+        LIMIT 50`,
+    );
+
+    res.json({ lotes: rows });
+  });
+
+  /**
+   * Arquivo de uma imagem, para o modulo de visao baixar e analisar.
+   *
+   * O arquivo e servido pelo caminho gravado no banco, e o resumo conferido
+   * antes de entregar: se o byte no disco nao produz mais o sha256 registrado,
+   * a evidencia foi corrompida ou trocada, e analisar isso seria pior do que
+   * falhar. O hash do lote ja foi para a cadeia.
+   */
+  r.get("/visao/imagens/:id/arquivo", exigirServico, async (req, res) => {
+    const { banco } = req.app.locals;
+    const id = uuid(req.params.id, "id");
+
+    const { rows } = await banco.query("SELECT sha256, caminho, tipo FROM imagens WHERE id = $1", [
+      id,
+    ]);
+
+    if (rows.length === 0) throw naoEncontrado("Imagem nao encontrada.");
+
+    const imagem = rows[0];
+
+    if (!existsSync(imagem.caminho)) throw naoEncontrado("Arquivo da imagem indisponivel.");
+
+    const conteudo = readFileSync(imagem.caminho);
+
+    if (sha256Hex(conteudo) !== imagem.sha256) {
+      throw conflito("O arquivo em disco nao corresponde ao resumo registrado da evidencia.");
+    }
+
+    res.type(imagem.tipo).send(conteudo);
+  });
 
   /**
    * Resultado do modulo de visao (RF15, RF16, RF17). Autenticado por chave de

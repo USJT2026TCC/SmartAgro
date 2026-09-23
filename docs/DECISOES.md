@@ -124,6 +124,38 @@ experimentais do capítulo 7 do manual — não teria o que medir.
 
 ---
 
+### 1.11 O denominador do índice de dano é a lavoura, não a foto
+
+O percentual de dano é calculado sobre a área de **lavoura**, descontando o solo exposto:
+
+```
+dano = área de lavoura em estresse / área de lavoura
+```
+
+A alternativa — dividir pela área total da imagem — parece mais simples e é errada de dois
+jeitos ao mesmo tempo. Uma foto com muito carreador diluiria o dano e faria a seguradora pagar
+menos do que deve; e uma lavoura recém-plantada, quase toda solo à vista, poderia acusar dano
+sem ter planta nenhuma prejudicada.
+
+Pelo mesmo motivo, estresse leve entra com peso 0,5 e severo com peso 1,0. Somar os dois trataria
+folha murcha que se recupera na próxima chuva como perda total. O peso é escolha **atuarial**, da
+seguradora, e fica configurável e registrado junto do resultado — não é constante escondida no
+código.
+
+### 1.12 O estimador clássico tem confiança abaixo do limiar, de propósito
+
+Enquanto não há modelo treinado, o módulo de visão usa uma heurística de cor. A confiança dela é
+fixa em 45%, abaixo do limiar de 70% — então **toda** análise que ela produz vai para o perito, e
+nenhuma aciona pagamento sozinha.
+
+Não é cautela genérica: a heurística não distingue milho seco de milho maduro, nem palha seca de
+solo. A alternativa seria deixá-la assinar índices que movem dinheiro, que é exatamente o que
+este trabalho argumenta que não se deve fazer com um número que ninguém conferiu.
+
+Quando o modelo treinado entrar, ele reporta a própria confiança — média da probabilidade da
+classe escolhida, só nos pixels de lavoura — e o limiar volta a ter o significado que deveria ter.
+
+
 ## 2. Defeitos encontrados durante a implementação
 
 Todos foram corrigidos. Ficam registrados porque são o tipo de coisa que volta a acontecer.
@@ -368,6 +400,24 @@ comando imprime qual período deve ser passado ao oráculo.
 **Por que importa:** a regra que protege contra sensor quebrado — não presumir dia seco sem dado
 — também vale para o dia que ainda está acontecendo. O defeito estava no simulador, e não na
 regra.
+
+### 2.18 Pesos do modelo que só carregavam de dentro do script de treino
+
+**Sintoma:** o treino terminava, salvava `unet.pt`, e a inferência falhava com
+`AttributeError: Can't get attribute 'UNet' on <module 'visao.__main__'>`.
+
+**Causa:** `torch.save(modelo)` grava uma referência ao módulo onde a classe foi definida. Como
+a `UNet` morava em `treino/treinar.py`, os pesos só carregavam de dentro daquele script — ou
+seja, em lugar nenhum que importasse.
+
+**Correção:** a arquitetura foi para `visao/rede.py`, um caminho de importação estável, e o que
+se salva passou a ser o `state_dict` — só os números —, lido com `weights_only=True`.
+
+**Por que importa, além de fazer funcionar:** arquivo de pesos passa a ser **dado, e não
+código**. Carregar um modelo serializado como objeto executa o que estiver dentro dele; com
+`state_dict`, os números só podem ser usados com a arquitetura que já está no repositório, sob
+revisão. O arquivo também passou a carregar a versão e a lista de classes, e pesos treinados com
+outra lista são recusados — caso contrário o índice de dano sairia trocado, plausível e errado.
 
 ---
 

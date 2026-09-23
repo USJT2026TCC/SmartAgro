@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { writeFileSync } from "node:fs";
 import { after, before, describe, test } from "node:test";
 
 import { resumirEvidencias } from "../src/rotas/imagens.js";
+import { sha256Hex } from "../src/seguranca/cripto.js";
 import { com, entrar, idDoTalhao, montar } from "./ajuda.js";
 
 /**
@@ -115,6 +117,60 @@ describe("imagens e visao", () => {
       .post(`/api/lotes/${await abrirLote()}/fechar`)
       .set(com(produtor));
     assert.equal(r.status, 400);
+  });
+
+  describe("o modulo de visao busca o que analisar", () => {
+    test("so lote fechado e sem analise aparece como pendente", async () => {
+      const aberto = await abrirLote();
+      await enviarImagem(aberto);
+
+      const fechado = await abrirLote();
+      await enviarImagem(fechado);
+      await ctx.api().post(`/api/lotes/${fechado}/fechar`).set(com(produtor));
+
+      const r = await ctx.api().get("/api/visao/pendentes").set(CHAVE);
+
+      assert.equal(r.status, 200);
+
+      const ids = r.body.lotes.map((l) => l.id);
+      assert.ok(ids.includes(fechado), "o lote fechado precisa aparecer");
+      assert.ok(!ids.includes(aberto), "lote ainda aberto nao pode ser analisado");
+
+      const pendente = r.body.lotes.find((l) => l.id === fechado);
+      assert.equal(pendente.talhao, "talhao-01");
+      assert.equal(pendente.imagens.length, 1);
+      assert.match(pendente.hash_evidencias, /^0x[0-9a-f]{64}$/);
+    });
+
+    test("o arquivo da imagem e servido para a chave de servico, e so para ela", async () => {
+      const lote = await abrirLote();
+      const envio = await enviarImagem(lote);
+      await ctx.api().post(`/api/lotes/${lote}/fechar`).set(com(produtor));
+
+      const imagemId = envio.body.imagem.id;
+
+      assert.equal((await ctx.api().get(`/api/visao/imagens/${imagemId}/arquivo`)).status, 401);
+
+      const r = await ctx.api().get(`/api/visao/imagens/${imagemId}/arquivo`).set(CHAVE);
+
+      assert.equal(r.status, 200);
+      assert.equal(sha256Hex(r.body), envio.body.imagem.sha256);
+    });
+
+    test("arquivo adulterado em disco nao e entregue como evidencia", async () => {
+      const lote = await abrirLote();
+      const envio = await enviarImagem(lote);
+      await ctx.api().post(`/api/lotes/${lote}/fechar`).set(com(produtor));
+
+      const { rows } = await ctx.banco.query("SELECT caminho FROM imagens WHERE id = $1", [
+        envio.body.imagem.id,
+      ]);
+      writeFileSync(rows[0].caminho, png(0.123456));
+
+      const r = await ctx.api().get(`/api/visao/imagens/${envio.body.imagem.id}/arquivo`).set(CHAVE);
+
+      assert.equal(r.status, 409, JSON.stringify(r.body));
+    });
   });
 
   describe("baixa confianca vai para o perito (RF17)", () => {

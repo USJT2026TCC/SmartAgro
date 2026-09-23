@@ -147,6 +147,8 @@ Todas sob `/api`. Formato de erro único: `{ "erro": { "codigo", "mensagem" } }`
 | `POST /leituras` | fonte (assinatura) | ingestão de lote assinado |
 | `GET /leituras` | seguradora, perito | consulta por talhão |
 | `POST /talhoes/:id/lotes` · `POST /lotes/:id/imagens` · `POST /lotes/:id/fechar` | produtor, seguradora | upload de imagens; confere formato real do arquivo e se a coordenada cai **dentro** do talhão (`ST_Contains`); fechar calcula o resumo das evidências |
+| `GET /visao/pendentes` | serviço de visão | lotes fechados ainda sem análise, com as imagens |
+| `GET /visao/imagens/:id/arquivo` | serviço de visão | o arquivo, conferido contra o sha256 registrado antes de ser entregue |
 | `POST /visao/resultados` | serviço de visão | índice de dano e confiança; abaixo de 70% vai para o perito |
 | `GET /perito/analises` · `POST /perito/analises/:id/parecer` | perito | libera ou rejeita, com parecer obrigatório |
 
@@ -231,7 +233,15 @@ POST /api/visao/resultados      X-Chave-De-Servico: ...
 ```
 
 `indiceDano` e `confianca` vão de 0 a 1 e são guardados em pontos-base, a mesma unidade do
-contrato. Confiança abaixo de `LIMIAR_CONFIANCA_BPS` (padrão 7000) retém a análise para o
+contrato. Como o percentual é calculado a partir da classificação dos pixels está em
+[VISAO.md §2](VISAO.md).
+
+O serviço descobre o que analisar em `GET /visao/pendentes` e baixa cada arquivo em
+`GET /visao/imagens/:id/arquivo`. O backend confere o resumo do arquivo em disco antes de
+entregá-lo: se os bytes não produzem mais o sha256 registrado, a evidência foi corrompida ou
+trocada, e analisar isso seria pior do que falhar — o hash do lote já foi para a cadeia.
+
+Uma implementação completa está em [`visao/`](../visao). Confiança abaixo de `LIMIAR_CONFIANCA_BPS` (padrão 7000) retém a análise para o
 perito. Liberada, ela segue ao oráculo com `liberadaPeloPerito: true`, e o oráculo não reaplica
 o limiar, porque a revisão humana que ele pedia já aconteceu.
 
@@ -271,7 +281,7 @@ Comando: `node src/index.js servico` em `oraculo/`, com `API_URL` e `CHAVE_DE_SE
 ## 9. Testes
 
 ```
-npm run testar              84 testes · banco em memória, cadeia simulada
+npm run testar              87 testes · banco em memória, cadeia simulada
 npm run testar:integracao    4 testes · indexador contra um hardhat node real
 ```
 

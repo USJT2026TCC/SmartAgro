@@ -81,7 +81,7 @@ leitura implausível (RF13).
 
 ## 2. Imagens para o módulo de visão
 
-O módulo de visão ainda não existe (Sprint 3). O backend já recebe o resultado dele, no formato
+O módulo de visão está em [`visao/`](../visao), e o backend recebe o resultado dele no formato
 de [BACKEND.md §6](BACKEND.md). Abaixo, as bases públicas avaliadas, com licença e citação.
 
 ### 2.1 Recomendada — milho com estresse hídrico, por drone
@@ -138,8 +138,40 @@ base de apoio, não como base principal.
 
 ### Decisão
 
-Começar pela 2.1 (CC BY 4.0, classes de estresse hídrico, tamanho tratável) e usar a 2.2 se for
-preciso mais volume, depois de conferida a licença no bucket.
+Adotada a **2.1** (CC BY 4.0, classes de estresse hídrico, tamanho tratável). A base está em uso
+em [`visao/`](../visao): `treino/preparar_dados.py` a extrai e divide, e
+`treino/avaliar_baseline.py` usa as máscaras de referência para medir o erro do estimador.
+
+O que veio no subconjunto: 1.000 recortes de 224×224, metade de estresse hídrico e metade de
+ferrugem, cada um com RGB (`.jpg`), cinco bandas multiespectrais (`.npy`) e máscara de
+referência (`.png`).
+
+**As classes da base não estão na mesma ordem das nossas**, e a tradução é feita uma vez só, em
+`preparar_dados.py`:
+
+| Código na base | 0 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|
+| Base | fundo/solo | estresse leve | estresse severo | saudável | ferrugem |
+| AgroSmart | solo | saudável | estresse leve | estresse severo | outro dano |
+
+Confundir as duas ordens produziria um índice de dano trocado — e ninguém notaria, porque
+continuaria sendo um número plausível entre 0 e 1.
+
+A 2.2 (Agriculture-Vision) fica como reserva, se for preciso mais volume, depois de conferida a
+licença no bucket.
+
+### 2.4 Satélite — Sentinel-2 e TerraMind
+
+Avaliado a pedido da equipe. **[TerraMind](https://ibm.github.io/terramind/)** (IBM + ESA
+Φ-lab, ICCV 2025, licença Apache 2.0) é um modelo fundacional multimodal pré-treinado no corpus
+TerraMesh — 9 milhões de amostras, 500 bilhões de tokens — sobre Sentinel-1, Sentinel-2, DEM e
+NDVI, na escala de **10 metros por pixel**.
+
+Não substitui o modelo de drone, porque foi treinado em outra escala; mas cobre o talhão inteiro
+a cada 5 dias, de graça, sem ninguém ir a campo. A análise completa está em
+[VISAO.md §4](VISAO.md).
+
+Os dados do Sentinel-2 são gratuitos e abertos (Copernicus, União Europeia).
 
 ---
 

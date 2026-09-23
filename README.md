@@ -32,7 +32,7 @@ que a condição de pagamento é uma função computável sobre grandezas medida
 | [`app/`](app) | **Pronto** | Aplicativo do produtor, painel da seguradora e revisão do perito, em React, integrados ao backend e aos contratos |
 | [`backend/`](backend) | **Pronto** | API, PostgreSQL + PostGIS, ingestão assinada, indexador de eventos e notificações, com 87 testes |
 | [`simulador/`](simulador) | **Pronto** | Estações em Python + MQTT, enviando a série histórica real do INMET, assinada, com 19 testes |
-| `visao/` | A fazer | Modelo de visão computacional e API de inferência (HU11) |
+| [`visao/`](visao) | **Parcial** | Índice de dano por imagem, integrado ao backend, com 37 testes. O modelo treinado depende de GPU; o estimador clássico roda hoje, com confiança abaixo do limiar de proposito |
 
 O simulador envia dados **reais**: a série horária da estação automática A770 do INMET, em São
 Simão/SP, que registra uma estiagem de 39 dias em julho e agosto de 2024. A fonte simulada
@@ -96,6 +96,7 @@ acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), s
 | [docs/APLICATIVO.md](docs/APLICATIVO.md) | Referência do aplicativo, tela por tela |
 | [docs/BACKEND.md](docs/BACKEND.md) | API, banco, segurança, contrato de ingestão e indexador |
 | [docs/SIMULADOR.md](docs/SIMULADOR.md) | Estações em Python, MQTT e o que o simulador faz com os dados |
+| [docs/VISAO.md](docs/VISAO.md) | Como o percentual de dano é calculado, os estimadores e a avaliação do TerraMind |
 | [docs/DADOS.md](docs/DADOS.md) | De onde vem cada dado, sob que licença e como citar |
 | [docs/COMO-RODAR.md](docs/COMO-RODAR.md) | Passo a passo, da instalação à demonstração na Sepolia |
 | [docs/ANALISE-ESTATICA.md](docs/ANALISE-ESTATICA.md) | Triagem do Slither, achado por achado (RNF13) |
@@ -108,8 +109,9 @@ acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), s
 ```
 contratos   94 testes · 100% de statements, branches, funções e linhas
 oraculo     67 testes
-backend     84 testes + 4 de integração com um nó real
+backend     87 testes + 4 de integração com um nó real
 simulador   19 testes
+visao       37 testes
 ```
 
 Nenhum deles depende de rede externa para rodar. Sete dos testes de contrato comparam, caso a
