@@ -1,0 +1,430 @@
+{
+  "versao": "visao-unet-1.0.0",
+  "recortes_de_treino": 738,
+  "recortes_de_validacao": 262,
+  "aumento_de_dados": true,
+  "dispositivo": "cuda",
+  "melhor_erro_do_indice": 0.074,
+  "epocas": [
+    {
+      "iou_por_classe": {
+        "solo": 0.4679,
+        "saudavel": 0.0099,
+        "estresse_leve": 0.0,
+        "estresse_severo": 0.0042,
+        "outro_dano": 0.1687
+      },
+      "iou_media": 0.1301,
+      "erro_medio_do_indice": 0.1419,
+      "epoca": 1,
+      "perda": 0.9756,
+      "segundos": 19.0
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.457,
+        "saudavel": 0.1198,
+        "estresse_leve": 0.0123,
+        "estresse_severo": 0.1636,
+        "outro_dano": 0.19
+      },
+      "iou_media": 0.1885,
+      "erro_medio_do_indice": 0.0849,
+      "epoca": 2,
+      "perda": 0.5896,
+      "segundos": 16.3
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4177,
+        "saudavel": 0.0763,
+        "estresse_leve": 0.0092,
+        "estresse_severo": 0.1734,
+        "outro_dano": 0.2796
+      },
+      "iou_media": 0.1912,
+      "erro_medio_do_indice": 0.4254,
+      "epoca": 3,
+      "perda": 0.504,
+      "segundos": 16.4
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.3865,
+        "saudavel": 0.0822,
+        "estresse_leve": 0.1023,
+        "estresse_severo": 0.2434,
+        "outro_dano": 0.1767
+      },
+      "iou_media": 0.1982,
+      "erro_medio_do_indice": 0.1488,
+      "epoca": 4,
+      "perda": 0.4682,
+      "segundos": 16.7
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.3836,
+        "saudavel": 0.096,
+        "estresse_leve": 0.0688,
+        "estresse_severo": 0.2319,
+        "outro_dano": 0.2206
+      },
+      "iou_media": 0.2002,
+      "erro_medio_do_indice": 0.2239,
+      "epoca": 5,
+      "perda": 0.4439,
+      "segundos": 17.5
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.3714,
+        "saudavel": 0.1049,
+        "estresse_leve": 0.1115,
+        "estresse_severo": 0.258,
+        "outro_dano": 0.1749
+      },
+      "iou_media": 0.2041,
+      "erro_medio_do_indice": 0.1341,
+      "epoca": 6,
+      "perda": 0.4335,
+      "segundos": 16.9
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.3872,
+        "saudavel": 0.2401,
+        "estresse_leve": 0.0843,
+        "estresse_severo": 0.2762,
+        "outro_dano": 0.2208
+      },
+      "iou_media": 0.2417,
+      "erro_medio_do_indice": 0.1324,
+      "epoca": 7,
+      "perda": 0.4243,
+      "segundos": 17.4
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.3351,
+        "saudavel": 0.1192,
+        "estresse_leve": 0.1203,
+        "estresse_severo": 0.2542,
+        "outro_dano": 0.1614
+      },
+      "iou_media": 0.1981,
+      "erro_medio_do_indice": 0.1052,
+      "epoca": 8,
+      "perda": 0.4527,
+      "segundos": 17.3
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.5191,
+        "saudavel": 0.3714,
+        "estresse_leve": 0.1253,
+        "estresse_severo": 0.2535,
+        "outro_dano": 0.2602
+      },
+      "iou_media": 0.3059,
+      "erro_medio_do_indice": 0.1903,
+      "epoca": 9,
+      "perda": 0.3783,
+      "segundos": 17.5
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.5031,
+        "saudavel": 0.432,
+        "estresse_leve": 0.1396,
+        "estresse_severo": 0.2729,
+        "outro_dano": 0.2722
+      },
+      "iou_media": 0.3239,
+      "erro_medio_do_indice": 0.1197,
+      "epoca": 10,
+      "perda": 0.371,
+      "segundos": 18.1
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.2847,
+        "saudavel": 0.3403,
+        "estresse_leve": 0.0839,
+        "estresse_severo": 0.2533,
+        "outro_dano": 0.2332
+      },
+      "iou_media": 0.239,
+      "erro_medio_do_indice": 0.141,
+      "epoca": 11,
+      "perda": 0.3996,
+      "segundos": 18.2
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4522,
+        "saudavel": 0.2773,
+        "estresse_leve": 0.1342,
+        "estresse_severo": 0.2713,
+        "outro_dano": 0.2104
+      },
+      "iou_media": 0.2691,
+      "erro_medio_do_indice": 0.1011,
+      "epoca": 12,
+      "perda": 0.3964,
+      "segundos": 18.8
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4707,
+        "saudavel": 0.2445,
+        "estresse_leve": 0.1396,
+        "estresse_severo": 0.2829,
+        "outro_dano": 0.2157
+      },
+      "iou_media": 0.2707,
+      "erro_medio_do_indice": 0.1316,
+      "epoca": 13,
+      "perda": 0.3745,
+      "segundos": 18.1
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4205,
+        "saudavel": 0.1822,
+        "estresse_leve": 0.1266,
+        "estresse_severo": 0.2599,
+        "outro_dano": 0.1784
+      },
+      "iou_media": 0.2335,
+      "erro_medio_do_indice": 0.0939,
+      "epoca": 14,
+      "perda": 0.3646,
+      "segundos": 18.2
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4254,
+        "saudavel": 0.1816,
+        "estresse_leve": 0.1383,
+        "estresse_severo": 0.2667,
+        "outro_dano": 0.1846
+      },
+      "iou_media": 0.2393,
+      "erro_medio_do_indice": 0.1034,
+      "epoca": 15,
+      "perda": 0.3463,
+      "segundos": 18.1
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4934,
+        "saudavel": 0.304,
+        "estresse_leve": 0.1416,
+        "estresse_severo": 0.2875,
+        "outro_dano": 0.2353
+      },
+      "iou_media": 0.2924,
+      "erro_medio_do_indice": 0.1263,
+      "epoca": 16,
+      "perda": 0.406,
+      "segundos": 18.2
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4607,
+        "saudavel": 0.3464,
+        "estresse_leve": 0.1262,
+        "estresse_severo": 0.2565,
+        "outro_dano": 0.2302
+      },
+      "iou_media": 0.284,
+      "erro_medio_do_indice": 0.0986,
+      "epoca": 17,
+      "perda": 0.3691,
+      "segundos": 18.3
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4438,
+        "saudavel": 0.2612,
+        "estresse_leve": 0.1402,
+        "estresse_severo": 0.2598,
+        "outro_dano": 0.1918
+      },
+      "iou_media": 0.2594,
+      "erro_medio_do_indice": 0.0836,
+      "epoca": 18,
+      "perda": 0.3579,
+      "segundos": 18.1
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4965,
+        "saudavel": 0.2516,
+        "estresse_leve": 0.15,
+        "estresse_severo": 0.2736,
+        "outro_dano": 0.1959
+      },
+      "iou_media": 0.2735,
+      "erro_medio_do_indice": 0.074,
+      "epoca": 19,
+      "perda": 0.3706,
+      "segundos": 18.4
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4774,
+        "saudavel": 0.1755,
+        "estresse_leve": 0.1335,
+        "estresse_severo": 0.2613,
+        "outro_dano": 0.1839
+      },
+      "iou_media": 0.2463,
+      "erro_medio_do_indice": 0.091,
+      "epoca": 20,
+      "perda": 0.3472,
+      "segundos": 17.9
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4323,
+        "saudavel": 0.2976,
+        "estresse_leve": 0.1371,
+        "estresse_severo": 0.2447,
+        "outro_dano": 0.1908
+      },
+      "iou_media": 0.2605,
+      "erro_medio_do_indice": 0.0922,
+      "epoca": 21,
+      "perda": 0.3424,
+      "segundos": 18.4
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4855,
+        "saudavel": 0.5106,
+        "estresse_leve": 0.1418,
+        "estresse_severo": 0.2674,
+        "outro_dano": 0.3067
+      },
+      "iou_media": 0.3424,
+      "erro_medio_do_indice": 0.1401,
+      "epoca": 22,
+      "perda": 0.3407,
+      "segundos": 18.2
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.483,
+        "saudavel": 0.3325,
+        "estresse_leve": 0.1368,
+        "estresse_severo": 0.2121,
+        "outro_dano": 0.1905
+      },
+      "iou_media": 0.271,
+      "erro_medio_do_indice": 0.0786,
+      "epoca": 23,
+      "perda": 0.3098,
+      "segundos": 18.2
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.5314,
+        "saudavel": 0.5763,
+        "estresse_leve": 0.1575,
+        "estresse_severo": 0.2661,
+        "outro_dano": 0.3301
+      },
+      "iou_media": 0.3723,
+      "erro_medio_do_indice": 0.1166,
+      "epoca": 24,
+      "perda": 0.3538,
+      "segundos": 18.1
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.5035,
+        "saudavel": 0.282,
+        "estresse_leve": 0.1523,
+        "estresse_severo": 0.2666,
+        "outro_dano": 0.2108
+      },
+      "iou_media": 0.283,
+      "erro_medio_do_indice": 0.0879,
+      "epoca": 25,
+      "perda": 0.3202,
+      "segundos": 17.8
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.5141,
+        "saudavel": 0.5503,
+        "estresse_leve": 0.1546,
+        "estresse_severo": 0.2756,
+        "outro_dano": 0.3121
+      },
+      "iou_media": 0.3614,
+      "erro_medio_do_indice": 0.0985,
+      "epoca": 26,
+      "perda": 0.2992,
+      "segundos": 18.3
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.5222,
+        "saudavel": 0.348,
+        "estresse_leve": 0.1545,
+        "estresse_severo": 0.2836,
+        "outro_dano": 0.2399
+      },
+      "iou_media": 0.3096,
+      "erro_medio_do_indice": 0.0944,
+      "epoca": 27,
+      "perda": 0.3084,
+      "segundos": 18.0
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4333,
+        "saudavel": 0.1278,
+        "estresse_leve": 0.1317,
+        "estresse_severo": 0.2088,
+        "outro_dano": 0.1516
+      },
+      "iou_media": 0.2106,
+      "erro_medio_do_indice": 0.0914,
+      "epoca": 28,
+      "perda": 0.2901,
+      "segundos": 18.5
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.4887,
+        "saudavel": 0.2856,
+        "estresse_leve": 0.1472,
+        "estresse_severo": 0.2669,
+        "outro_dano": 0.2159
+      },
+      "iou_media": 0.2809,
+      "erro_medio_do_indice": 0.1039,
+      "epoca": 29,
+      "perda": 0.364,
+      "segundos": 18.0
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.5306,
+        "saudavel": 0.5136,
+        "estresse_leve": 0.1607,
+        "estresse_severo": 0.2853,
+        "outro_dano": 0.3296
+      },
+      "iou_media": 0.364,
+      "erro_medio_do_indice": 0.1385,
+      "epoca": 30,
+      "perda": 0.3497,
+      "segundos": 18.4
+    }
+  ]
+}

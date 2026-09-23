@@ -437,6 +437,55 @@ código**. Carregar um modelo serializado como objeto executa o que estiver dent
 revisão. O arquivo também passou a carregar a versão e a lista de classes, e pesos treinados com
 outra lista são recusados — caso contrário o índice de dano sairia trocado, plausível e errado.
 
+### 2.19 Produção e treino com tamanhos de imagem diferentes
+
+**Sintoma:** nenhum. Esse é o problema.
+
+**Causa:** o serviço de visão redimensionava cada imagem para 512×512 antes de classificar. O
+modelo foi treinado em recortes de 224×224. Uma rede convolucional aceita qualquer tamanho sem
+reclamar, então tudo rodava — mas as plantas chegavam 2,3 vezes maiores do que o modelo tinha
+aprendido a ver.
+
+**Medido com os pesos da primeira rodada no Colab**, nos 132 recortes de estresse hídrico:
+
+| Caminho | Erro absoluto médio | Viés |
+|---|---:|---:|
+| Avaliação do treino (224) | 14,7 pontos | +3,3 |
+| Serviço em produção (512) | **25,4 pontos** | **−25,4** |
+| Heurística de cor, para comparar | 18,4 pontos | −16,3 |
+
+Em produção, o modelo treinado era **pior que a heurística que ele veio substituir**, e o viés de
+−25,4 pontos quer dizer que ele reportava dano perto de zero quase sempre.
+
+**Correção:** o tamanho de entrada passou a viajar no arquivo de pesos, e a inferência lê dele,
+nunca de uma constante. Um teste compara, pixel a pixel, a máscara do caminho de produção com a da
+avaliação do treino para a mesma imagem. Forçando o tamanho errado de volta, o teste falha.
+
+**Por que importa:** é o mesmo tipo de defeito da padronização (decisão 1.13) — treino e uso
+divergindo sem erro nenhum aparecer —, e aconteceu mesmo depois de a decisão estar escrita. A
+lição é que regra escrita não basta: o acordo entre treino e produção precisa de um teste que
+falhe quando ele for quebrado.
+
+### 2.20 A métrica do treino media a prova errada
+
+**Sintoma:** o treino reportou erro de **7,4 pontos** no índice de dano, contra 18,4 da
+heurística — uma melhora aparente de 60%.
+
+**Causa:** o 7,4 era calculado sobre a validação inteira: 132 recortes de estresse hídrico e 130
+de ferrugem. Nos de ferrugem, o dano por seca verdadeiro é zero, e acertar zero é fácil — o erro
+ali foi 0,0. A heurística, por outro lado, tinha sido medida só nos de estresse hídrico. Eram duas
+provas diferentes.
+
+**Na mesma prova:** 14,7 pontos contra 18,4. Melhora de 20% no erro médio, e o viés cai de −16,3
+para +3,3.
+
+**Correção:** `treino/avaliar_modelo.py` mede o modelo exatamente como
+`avaliar_baseline.py` mede a heurística; o treino passou a escolher a melhor época pelo erro nos
+recortes de estresse hídrico; e o notebook mostra as duas medições lado a lado.
+
+**Por que importa:** o número errado era o que entraria no TCC, e era o mais bonito. Ninguém teria
+questionado — a curva descia, o valor era plausível.
+
 ---
 
 ## 3. O que falta antes da implantação em Sepolia

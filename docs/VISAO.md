@@ -145,6 +145,33 @@ dado, e não código: carregar um modelo serializado como objeto executaria o qu
 dele. A versão reportada com cada análise vem **do arquivo**, e não de uma variável de ambiente,
 para que fique registrado o modelo que de fato rodou (ver [DECISOES.md §2.18](DECISOES.md)).
 
+### 3.3 Resultado da primeira rodada (visao-unet-1.0.0)
+
+Treinada no Colab, 30 épocas em GPU. Medida nos **132 recortes de estresse hídrico** da
+validação, a mesma prova da heurística:
+
+| | Heurística de cor | U-Net 1.0.0 |
+|---|---:|---:|
+| Erro absoluto médio | 18,4 pontos | **14,7 pontos** |
+| Erro mediano | — | 12,6 pontos |
+| Viés | −16,3 (subestima) | **+3,3** |
+| Lavoura lida como doença | — | 13,0% |
+
+**O ganho maior é no viés.** A heurística subestimava sempre; o modelo erra para os dois lados.
+Para um seguro, erro sistemático para baixo é pagar menos do que a apólice promete em toda
+apólice; erro sem viés se compensa ao longo da carteira.
+
+**O erro por foto ainda é grande** — mediana de 12,6 pontos. Foto isolada não sustenta pagamento
+automático, e é por isso que a confiança cai com lotes pequenos (§2.4).
+
+**O modelo aprendeu um atalho.** Nos recortes de ferrugem, classificou como doença 88% da lavoura
+**saudável**: parece reconhecer o voo — luz, época, talhão — em vez da lesão. Nos de estresse
+hídrico, 13% da lavoura virou doença, e como doença tem peso zero no índice de seca, esse dano some
+da conta. As duas bases vêm de voos diferentes, e o modelo usou isso.
+
+Os detalhes, as figuras e o histórico estão em
+[resultados/visao-unet-1.0.0](resultados/visao-unet-1.0.0/README.md).
+
 ## 4. TerraMind (IBM + ESA): serve, mas para outra coisa
 
 [TerraMind](https://ibm.github.io/terramind/) é um modelo fundacional multimodal de observação
@@ -222,11 +249,11 @@ Para analisar arquivos locais, sem backend:
 cd visao && .venv/Scripts/python -m pytest
 ```
 
-40 testes, sem rede e sem GPU (os 7 de `test_rede.py` são pulados onde o PyTorch não está instalado).
+43 testes, sem rede e sem GPU (os 10 de `test_rede.py` são pulados onde o PyTorch não está instalado).
 
 | Arquivo | Testes | O que cobre |
 |---|---:|---|
 | `test_indice.py` | 15 | Denominador, ponderação, doença fora da conta, confiança por amostragem |
 | `test_baseline.py` | 9 | Cores conhecidas, invariância a sombra, e a limitação da palha seca |
 | `test_servico.py` | 9 | Evidência adulterada, arquivo ilegível, lote vazio, falha de rede |
-| `test_rede.py` | 7 | Pesos que carregam fora do treino, classes incompatíveis recusadas, padronização igual à do treino |
+| `test_rede.py` | 10 | Pesos que carregam fora do treino, classes incompatíveis recusadas, padronização e tamanho de entrada iguais aos do treino |
