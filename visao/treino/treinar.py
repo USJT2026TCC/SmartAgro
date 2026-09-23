@@ -73,6 +73,12 @@ class BaseDeRecortes(Dataset):
         self.raiz = raiz
         self.aumentar = aumentar
 
+        if not (raiz / "indice.csv").exists():
+            raise SystemExit(
+                f"Nao ha {raiz / 'indice.csv'}: a preparacao dos dados nao rodou, ou falhou.\n"
+                "Rode treino/preparar_dados.py e confira a mensagem que ele imprime."
+            )
+
         with (raiz / "indice.csv").open(encoding="utf-8") as arquivo:
             self.linhas = [l for l in csv.DictReader(arquivo) if l["divisao"] == divisao]
 

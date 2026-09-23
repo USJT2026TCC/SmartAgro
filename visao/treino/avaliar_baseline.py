@@ -59,6 +59,12 @@ def main() -> None:
     parser.add_argument("--grupo", choices=("water", "rust", "todos"), default="todos")
     opcoes = parser.parse_args()
 
+    if not (opcoes.dados / "indice.csv").exists():
+        raise SystemExit(
+            f"Nao ha {opcoes.dados / 'indice.csv'}: a preparacao dos dados nao rodou, ou falhou.\n"
+            "Rode treino/preparar_dados.py e confira a mensagem que ele imprime."
+        )
+
     with (opcoes.dados / "indice.csv").open(encoding="utf-8") as arquivo:
         linhas = [l for l in csv.DictReader(arquivo) if l["divisao"] == opcoes.divisao]
 
