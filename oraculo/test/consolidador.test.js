@@ -121,6 +121,42 @@ test("agruparPorDia tira a media entre as fontes do mesmo dia", () => {
   assert.deepEqual(porDia.get(20261015).fontes, ["estacao-A", "estacao-B"]);
 });
 
+test("agruparPorDia soma as leituras horarias da mesma fonte antes da media", () => {
+  // Uma estacao automatica reporta de hora em hora. Vinte e quatro leituras de
+  // 0,5 mm sao 12 mm de chuva no dia, e nao 0,5 mm: se a media fosse tirada
+  // entre leituras, um dia chuvoso seria contado como seco.
+  const horarias = Array.from({ length: 24 }, (_, hora) => ({
+    fonte: "estacao-A",
+    timestamp: `2026-10-15T${String(hora).padStart(2, "0")}:00:00.000Z`,
+    chuvaMm: 0.5,
+    temperaturaC: 27.5,
+    umidadePct: 55,
+  }));
+
+  assert.equal(agruparPorDia(horarias).get(20261015).chuvaMm, 12);
+});
+
+test("agruparPorDia combina fontes com granularidades diferentes", () => {
+  // Estacao horaria com 4 mm no dia e sensor que reporta o total diario de 2 mm:
+  // o dia fica com 3 mm, a media entre as duas fontes, e nao com a media das
+  // cinco leituras.
+  const leituras = [
+    ...Array.from({ length: 4 }, (_, hora) => ({
+      fonte: "estacao-A",
+      timestamp: `2026-10-15T0${hora}:00:00.000Z`,
+      chuvaMm: 1,
+      temperaturaC: 27.5,
+      umidadePct: 55,
+    })),
+    leitura("sensor-B", 20261015, 2),
+  ];
+
+  const dia = agruparPorDia(leituras).get(20261015);
+
+  assert.equal(dia.chuvaMm, 3);
+  assert.deepEqual(dia.fontes, ["estacao-A", "sensor-B"]);
+});
+
 test("contarDiasSecosConsecutivos para no primeiro dia com chuva", () => {
   const porDia = agruparPorDia(serie(["estacao-A"], 20261015, [12, 0, 0, 0]));
   const resultado = contarDiasSecosConsecutivos(porDia, 20261015, 1);
@@ -147,7 +183,7 @@ test("chuva abaixo do limiar ainda conta como dia seco", () => {
 // ---------------------------------------------------------------- RF19
 
 test("consolidarIndiceClimatico conta a estiagem e lista as fontes usadas", () => {
-  const leituras = serie(["estacao-inmet-A652", "sensor-solo-talhao-01"], 20261015, [
+  const leituras = serie(["estacao-inmet-A770", "sensor-solo-talhao-01"], 20261015, [
     8,
     ...Array(31).fill(0),
   ]);
@@ -156,7 +192,7 @@ test("consolidarIndiceClimatico conta a estiagem e lista as fontes usadas", () =
 
   assert.equal(resultado.indiceClimatico, 31);
   assert.equal(resultado.interrompidoPor, "chuva");
-  assert.deepEqual(resultado.fontesUsadas, ["estacao-inmet-A652", "sensor-solo-talhao-01"]);
+  assert.deepEqual(resultado.fontesUsadas, ["estacao-inmet-A770", "sensor-solo-talhao-01"]);
   assert.equal(resultado.leiturasDescartadas, 0);
   assert.deepEqual(resultado.alertas, []);
 });

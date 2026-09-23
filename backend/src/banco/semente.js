@@ -27,9 +27,27 @@ export function carteiraDeFonteDeDemonstracao(indice) {
   return ethers.HDNodeWallet.fromPhrase(FRASE_DE_TESTE, undefined, `m/44'/60'/0'/0/${indice}`);
 }
 
+/**
+ * Fontes do talhao-01.
+ *
+ * As duas primeiras sao estacoes REAIS do INMET, nas coordenadas publicadas
+ * pelo proprio instituto: A770, em Sao Simao/SP, ao lado do talhao, e A747, em
+ * Pradopolis/SP, a 57 km. O simulador (`simulador/`) envia a serie historica
+ * delas — inclusive as horas em que o pluviometro nao mediu nada.
+ *
+ * Fonte: INMET — https://portal.inmet.gov.br/dadoshistoricos
+ *
+ * Sao duas, e nao uma, porque o consolidador exige no minimo duas fontes para
+ * publicar um indice: uma estacao sozinha decidindo um pagamento e exatamente o
+ * ponto unico de confianca que o projeto tenta evitar.
+ *
+ * A terceira e um sensor de solo no talhao, que ainda nao tem equivalente real
+ * e por isso fica sem serie ate o hardware existir.
+ */
 export const FONTES_DE_DEMONSTRACAO = [
-  { id: "estacao-inmet-a652", tipo: "estacao", indice: 10, lon: -47.8, lat: -21.175 },
-  { id: "sensor-solo-talhao-01", tipo: "sensor_solo", indice: 11, lon: -47.805, lat: -21.18 },
+  { id: "estacao-inmet-a770", tipo: "estacao", indice: 10, lon: -47.57944444, lat: -21.46111111 },
+  { id: "estacao-inmet-a747", tipo: "estacao", indice: 11, lon: -48.11388888, lat: -21.33833333 },
+  { id: "sensor-solo-talhao-01", tipo: "sensor_solo", indice: 12, lon: -47.585, lat: -21.455 },
 ];
 
 /** Carteira do produtor de demonstracao: conta 1 do `hardhat node`. */
@@ -75,30 +93,34 @@ export async function semear(banco) {
 
     const { rows: prop } = await tx.query(
       "INSERT INTO propriedades (produtor_id, nome, municipio) VALUES ($1, $2, $3) RETURNING id",
-      [produtor, "Fazenda Santa Clara", "Ribeirao Preto/SP"],
+      [produtor, "Fazenda Santa Clara", "Sao Simao/SP"],
     );
 
+    // Os talhoes ficam a poucos quilometros da estacao A770, em area de cana e
+    // graos de Sao Simao. A distancia importa: leitura de chuva vale para a
+    // vizinhanca da estacao, e uma apolice indexada por estacao distante mede
+    // outra lavoura que nao a segurada.
     const talhoes = [
       {
         identificador: "talhao-01",
         cultura: "soja",
         anel: [
-          [-47.81, -21.17],
-          [-47.79, -21.17],
-          [-47.79, -21.19],
-          [-47.81, -21.19],
-          [-47.81, -21.17],
+          [-47.59, -21.45],
+          [-47.57, -21.45],
+          [-47.57, -21.47],
+          [-47.59, -21.47],
+          [-47.59, -21.45],
         ],
       },
       {
         identificador: "talhao-02",
         cultura: "milho",
         anel: [
-          [-47.78, -21.16],
-          [-47.76, -21.16],
-          [-47.76, -21.18],
-          [-47.78, -21.18],
-          [-47.78, -21.16],
+          [-47.56, -21.44],
+          [-47.54, -21.44],
+          [-47.54, -21.46],
+          [-47.56, -21.46],
+          [-47.56, -21.44],
         ],
       },
     ];

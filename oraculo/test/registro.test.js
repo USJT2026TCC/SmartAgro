@@ -102,7 +102,7 @@ test("a procedencia do indice fica gravada junto com a transacao (RNF20)", () =>
   registro.registrar(
     publicacao({
       procedencia: {
-        fontesUsadas: ["estacao-inmet-A652", "sensor-solo-talhao-01"],
+        fontesUsadas: ["estacao-inmet-A770", "sensor-solo-talhao-01"],
         fontesDescartadas: ["sensor-quebrado"],
         limiarChuvaMm: 1,
       },
@@ -111,6 +111,6 @@ test("a procedencia do indice fica gravada junto com a transacao (RNF20)", () =>
 
   const [linha] = registro.listar();
 
-  assert.deepEqual(linha.procedencia.fontesUsadas, ["estacao-inmet-A652", "sensor-solo-talhao-01"]);
+  assert.deepEqual(linha.procedencia.fontesUsadas, ["estacao-inmet-A770", "sensor-solo-talhao-01"]);
   assert.deepEqual(linha.procedencia.fontesDescartadas, ["sensor-quebrado"]);
 });

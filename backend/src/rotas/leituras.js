@@ -93,9 +93,14 @@ export function rotasDeLeituras() {
       let maisRecente = null;
 
       for (const bruta of corpo.leituras) {
+        // A marca de tempo chega como `instante` ou como `timestamp`. Os dois
+        // nomes existem no projeto — `instante` na API e no banco, `timestamp`
+        // no consolidador do oraculo — e o simulador foi escrito contra o
+        // segundo. Recusar um lote inteiro por causa do nome do campo seria
+        // perder leitura de campo por detalhe de vocabulario.
         const leitura = {
           fonte: fonteId,
-          timestamp: bruta?.instante,
+          timestamp: bruta?.instante ?? bruta?.timestamp,
           chuvaMm: bruta?.chuvaMm,
           temperaturaC: bruta?.temperaturaC,
           umidadePct: bruta?.umidadePct,
@@ -110,7 +115,7 @@ export function rotasDeLeituras() {
           recusadas += 1;
           resultadosDeValidade.push(false);
           descartes.push({
-            instante: bruta?.instante ?? null,
+            instante: leitura.timestamp ?? null,
             motivo: veredito.motivo,
             campo: veredito.campo,
           });
@@ -151,7 +156,7 @@ export function rotasDeLeituras() {
         } else {
           recusadas += 1;
           descartes.push({
-            instante: bruta.instante,
+            instante: leitura.timestamp,
             motivo: veredito.motivo,
             campo: veredito.campo,
           });

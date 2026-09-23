@@ -343,11 +343,9 @@ export function rotasDeImagens() {
       detalhes: { indiceDanoBps, confiancaBps, versaoModelo, encaminhada },
     });
 
-    res
-      .status(201)
-      .json({
-        analise: { id: rows[0].id, indiceDanoBps, confiancaBps, encaminhadaAoPerito: encaminhada },
-      });
+    res.status(201).json({
+      analise: { id: rows[0].id, indiceDanoBps, confiancaBps, encaminhadaAoPerito: encaminhada },
+    });
   });
 
   // -------------------------------------------------------------- perito

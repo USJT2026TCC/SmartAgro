@@ -40,7 +40,7 @@ describe("imagens e visao", () => {
 
   function enviarImagem(
     loteId,
-    { conteudo = png(Math.random()), lon = -47.8, lat = -21.18, tipo = "image/png" } = {},
+    { conteudo = png(Math.random()), lon = -47.58, lat = -21.46, tipo = "image/png" } = {},
   ) {
     return ctx
       .api()
@@ -60,7 +60,7 @@ describe("imagens e visao", () => {
   });
 
   test("imagem fora do poligono e recusada pelo PostGIS (RF14, HU11 criterio 1)", async () => {
-    const r = await enviarImagem(await abrirLote(), { lon: -47.7, lat: -21.18 });
+    const r = await enviarImagem(await abrirLote(), { lon: -47.7, lat: -21.46 });
 
     assert.equal(r.status, 400);
     assert.match(r.body.erro.mensagem, /fora do poligono/);
@@ -128,16 +128,12 @@ describe("imagens e visao", () => {
     });
 
     test("resultado com confianca abaixo do limiar e encaminhado e o perito e notificado", async () => {
-      const r = await ctx
-        .api()
-        .post("/api/visao/resultados")
-        .set(CHAVE)
-        .send({
-          loteId: lote,
-          indiceDano: 0.42,
-          confianca: 0.55,
-          versaoModelo: "visao-agrosmart-v1.0.0",
-        });
+      const r = await ctx.api().post("/api/visao/resultados").set(CHAVE).send({
+        loteId: lote,
+        indiceDano: 0.42,
+        confianca: 0.55,
+        versaoModelo: "visao-agrosmart-v1.0.0",
+      });
 
       assert.equal(r.status, 201);
       assert.equal(r.body.analise.indiceDanoBps, 4200);
@@ -161,16 +157,12 @@ describe("imagens e visao", () => {
       await ctx.api().post(`/api/lotes/${outro}/fechar`).set(com(produtor));
 
       const analise = (
-        await ctx
-          .api()
-          .post("/api/visao/resultados")
-          .set(CHAVE)
-          .send({
-            loteId: outro,
-            indiceDano: 0.9,
-            confianca: 0.3,
-            versaoModelo: "visao-agrosmart-v1.0.0",
-          })
+        await ctx.api().post("/api/visao/resultados").set(CHAVE).send({
+          loteId: outro,
+          indiceDano: 0.9,
+          confianca: 0.3,
+          versaoModelo: "visao-agrosmart-v1.0.0",
+        })
       ).body.analise;
 
       const parecer = await ctx
@@ -218,16 +210,12 @@ describe("imagens e visao", () => {
     await enviarImagem(lote);
     await ctx.api().post(`/api/lotes/${lote}/fechar`).set(com(produtor));
 
-    const r = await ctx
-      .api()
-      .post("/api/visao/resultados")
-      .set(CHAVE)
-      .send({
-        loteId: lote,
-        indiceDano: 0.6,
-        confianca: 0.93,
-        versaoModelo: "visao-agrosmart-v1.1.0",
-      });
+    const r = await ctx.api().post("/api/visao/resultados").set(CHAVE).send({
+      loteId: lote,
+      indiceDano: 0.6,
+      confianca: 0.93,
+      versaoModelo: "visao-agrosmart-v1.1.0",
+    });
 
     assert.equal(r.body.analise.encaminhadaAoPerito, false);
 

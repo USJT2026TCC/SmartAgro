@@ -114,7 +114,17 @@ function diaAnterior(periodo) {
 }
 
 /**
- * Agrega as leituras validas por dia, tirando a media da chuva entre as fontes.
+ * Agrega as leituras validas por dia.
+ *
+ * A agregacao tem DOIS passos, e a ordem entre eles nao e indiferente:
+ *
+ *  1. dentro de cada fonte, a chuva do dia e a SOMA das leituras daquele dia;
+ *  2. entre fontes, o dia recebe a MEDIA dos totais de cada fonte.
+ *
+ * Somar na primeira etapa e o unico jeito de aceitar estacao que reporta de
+ * hora em hora, como uma estacao automatica real faz: 24 leituras de 0,5 mm
+ * sao 12 mm de chuva no dia, nao 0,5 mm. Tirar a media na segunda e o que
+ * impede uma fonte isolada de decidir o dia sozinha.
  *
  * @returns {Map<number, {chuvaMm: number, fontes: string[]}>}
  */
@@ -124,21 +134,19 @@ function agruparPorDia(leiturasValidas) {
   for (const leitura of leiturasValidas) {
     const dia = diaDe(leitura.timestamp);
 
-    if (!porDia.has(dia)) {
-      porDia.set(dia, { soma: 0, quantidade: 0, fontes: new Set() });
-    }
+    if (!porDia.has(dia)) porDia.set(dia, new Map());
 
-    const acumulado = porDia.get(dia);
-    acumulado.soma += leitura.chuvaMm;
-    acumulado.quantidade += 1;
-    acumulado.fontes.add(leitura.fonte);
+    const porFonte = porDia.get(dia);
+    porFonte.set(leitura.fonte, (porFonte.get(leitura.fonte) ?? 0) + leitura.chuvaMm);
   }
 
   const resultado = new Map();
-  for (const [dia, acumulado] of porDia) {
+  for (const [dia, porFonte] of porDia) {
+    const totais = [...porFonte.values()];
+
     resultado.set(dia, {
-      chuvaMm: acumulado.soma / acumulado.quantidade,
-      fontes: [...acumulado.fontes].sort(),
+      chuvaMm: totais.reduce((soma, total) => soma + total, 0) / totais.length,
+      fontes: [...porFonte.keys()].sort(),
     });
   }
 

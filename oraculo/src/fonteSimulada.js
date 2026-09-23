@@ -70,7 +70,7 @@ const CENARIOS = {
 };
 
 /** Estacoes padrao do talhao. Duas fontes independentes, conforme o RNF18. */
-const FONTES_PADRAO = ["estacao-inmet-A652", "sensor-solo-talhao-01"];
+const FONTES_PADRAO = ["estacao-inmet-A770", "sensor-solo-talhao-01"];
 
 /**
  * Gera a serie de leituras de um cenario.

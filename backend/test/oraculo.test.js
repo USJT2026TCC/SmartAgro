@@ -65,7 +65,7 @@ describe("API do oraculo", () => {
     assert.equal(r.status, 200);
     assert.equal(r.body.apolices.length, 1);
     assert.equal(r.body.apolices[0].talhao, "talhao-01");
-    assert.equal(r.body.apolices[0].fontes.length, 2);
+    assert.equal(r.body.apolices[0].fontes.length, 3);
   });
 
   test("de ponta a ponta: leituras assinadas viram indice no consolidador do oraculo", async () => {
@@ -79,8 +79,8 @@ describe("API do oraculo", () => {
     }));
 
     for (const [fonte, indice] of [
-      ["estacao-inmet-a652", 10],
-      ["sensor-solo-talhao-01", 11],
+      ["estacao-inmet-a770", 10],
+      ["sensor-solo-talhao-01", 12],
     ]) {
       const corpo = JSON.stringify({
         lote: randomUUID(),
@@ -114,7 +114,7 @@ describe("API do oraculo", () => {
 
     assert.equal(resultado.indiceClimatico, 35);
     assert.equal(resultado.interrompidoPor, "chuva");
-    assert.deepEqual(resultado.fontesUsadas, ["estacao-inmet-a652", "sensor-solo-talhao-01"]);
+    assert.deepEqual(resultado.fontesUsadas, ["estacao-inmet-a770", "sensor-solo-talhao-01"]);
     assert.deepEqual(resultado.alertas, []);
   });
 
@@ -122,7 +122,7 @@ describe("API do oraculo", () => {
     await ctx.banco.query("UPDATE fontes SET ativa = false WHERE id = 'sensor-solo-talhao-01'");
 
     const r = await ctx.api().get("/api/oraculo/leituras?talhao=talhao-01&ate=20261006").set(CHAVE);
-    assert.ok(r.body.leituras.every((l) => l.fonte === "estacao-inmet-a652"));
+    assert.ok(r.body.leituras.every((l) => l.fonte === "estacao-inmet-a770"));
 
     await ctx.banco.query("UPDATE fontes SET ativa = true WHERE id = 'sensor-solo-talhao-01'");
   });
@@ -144,7 +144,7 @@ describe("API do oraculo", () => {
         enviadoEm: "2026-10-06T12:00:00.000Z",
         confirmadoEm: "2026-10-06T12:00:00.180Z",
         acionouPagamento: true,
-        procedencia: { fontesUsadas: ["estacao-inmet-a652"] },
+        procedencia: { fontesUsadas: ["estacao-inmet-a770"] },
       });
 
     assert.equal(r.status, 201);

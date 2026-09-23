@@ -11,7 +11,7 @@ import { carteiraAleatoria, montar } from "./ajuda.js";
  */
 describe("ingestao de leituras", () => {
   let ctx;
-  const FONTE = "estacao-inmet-a652";
+  const FONTE = "estacao-inmet-a770";
   const chaveDaFonte = carteiraDeFonteDeDemonstracao(10);
 
   before(async () => {
@@ -54,6 +54,18 @@ describe("ingestao de leituras", () => {
     assert.equal(r.status, 201, JSON.stringify(r.body));
     assert.equal(r.body.aceitas, 2);
     assert.equal(r.body.recusadas, 0);
+  });
+
+  test("leitura com a marca de tempo em 'timestamp' tambem e aceita", async () => {
+    // O simulador em Python e o consolidador do oraculo chamam o campo de
+    // `timestamp`; a API e o banco, de `instante`. Perder um lote de leituras de
+    // campo por causa do nome do campo seria caro e evitavel.
+    const r = await enviar([
+      { timestamp: "2026-09-28T12:00:00.000Z", chuvaMm: 0, temperaturaC: 27, umidadePct: 55 },
+    ]);
+
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    assert.equal(r.body.aceitas, 1);
   });
 
   test("lote assinado por outra chave e recusado (RNF19)", async () => {
