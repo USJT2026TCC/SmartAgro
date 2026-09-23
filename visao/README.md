@@ -54,15 +54,14 @@ A base não vem no repositório (328 MB, CC BY 4.0). Baixe de
 .venv/Scripts/python treino/avaliar_baseline.py --divisao validacao
 ```
 
-O treino precisa de GPU. **Esta máquina não tem** — use Google Colab ou Kaggle:
+O treino precisa de GPU. **Esta máquina não tem.** Use o notebook pronto para o Google Colab,
+[`treino/AgroSmart_visao_colab.ipynb`](treino/AgroSmart_visao_colab.ipynb). Ele baixa o código e
+a base, confere a integridade do download, treina e devolve os pesos e as figuras do TCC.
 
-```python
-!pip install torch torchvision
-!git clone https://github.com/USJT2026TCC/SmartAgro.git && cd SmartAgro/visao
-# envie dados/milho-estresse-hidrico.zip para o ambiente, depois:
-!python treino/preparar_dados.py
-!python treino/treinar.py --epocas 20 --lote 16
-```
+> No Colab, a importação do pacote nas células **não** pode depender só de `pip install -e`.
+> O kernel só enxerga uma instalação editável depois de reiniciar, e até lá a pasta `visao/` do
+> repositório é importada no lugar do pacote, dando `No module named 'visao.indice'`. A primeira
+> célula do notebook já trata disso.
 
 Baixe `pesos/unet.pt` ao final e aponte `VISAO_PESOS` para ele no `.env`.
 
