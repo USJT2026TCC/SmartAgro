@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: agrosmart-simulador
+Version: 0.1.0
+Summary: Simulador de estacoes meteorologicas do AgroSmart, com dados reais do INMET
+Requires-Python: >=3.10
+Requires-Dist: requests>=2.32
+Requires-Dist: eth-account>=0.13
+Requires-Dist: paho-mqtt>=2.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.4; extra == "dev"

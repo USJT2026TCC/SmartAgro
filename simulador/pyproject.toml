@@ -1,0 +1,19 @@
+[project]
+name = "agrosmart-simulador"
+version = "0.1.0"
+description = "Simulador de estacoes meteorologicas do AgroSmart, com dados reais do INMET"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.32", "eth-account>=0.13", "paho-mqtt>=2.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.4"]
+
+[project.scripts]
+simulador = "simulador.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -31,11 +31,14 @@ que a condição de pagamento é uma função computável sobre grandezas medida
 | [`oraculo/`](oraculo) | **Pronto** | Consolidação dos índices, assinatura, publicação, fila de retomada e registro de custos, com 65 testes |
 | [`app/`](app) | **Pronto** | Aplicativo do produtor, painel da seguradora e revisão do perito, em React, integrados ao backend e aos contratos |
 | [`backend/`](backend) | **Pronto** | API, PostgreSQL + PostGIS, ingestão assinada, indexador de eventos e notificações, com 87 testes |
-| `simulador/` | A fazer | Simulador de sensores em Python + MQTT (HU04) |
+| [`simulador/`](simulador) | **Pronto** | Estações em Python + MQTT, enviando a série histórica real do INMET, assinada, com 19 testes |
 | `visao/` | A fazer | Modelo de visão computacional e API de inferência (HU11) |
 
-Enquanto o simulador oficial não existe, o oráculo usa uma fonte simulada própria
-(`oraculo/src/fonteSimulada.js`), determinística, com os três cenários previstos na HU04.
+O simulador envia dados **reais**: a série horária da estação automática A770 do INMET, em São
+Simão/SP, que registra uma estiagem de 39 dias em julho e agosto de 2024. A fonte simulada
+determinística (`oraculo/src/fonteSimulada.js`) continua no projeto para os testes rodarem sem
+depender de arquivo externo. As fontes de dados e suas licenças estão em
+[docs/DADOS.md](docs/DADOS.md).
 
 O backend já define o formato que o simulador e o módulo de visão precisam seguir — ver
 [docs/BACKEND.md](docs/BACKEND.md), seções 5 e 6. Apólice, índices e pagamento continuam vivendo
@@ -67,7 +70,7 @@ da versão do modelo e da possibilidade de reexecutar a análise depois.
 
 ## Começando
 
-Pré-requisitos: Git, Node.js 20 ou superior.
+Pré-requisitos: Git, Node.js 20 ou superior (e Python 3.10+ para o simulador de estações).
 
 ```bash
 git clone https://github.com/USJT2026TCC/SmartAgro.git
@@ -92,6 +95,8 @@ acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), s
 | [docs/ORACULO.md](docs/ORACULO.md) | Referência do serviço de oráculo, módulo por módulo |
 | [docs/APLICATIVO.md](docs/APLICATIVO.md) | Referência do aplicativo, tela por tela |
 | [docs/BACKEND.md](docs/BACKEND.md) | API, banco, segurança, contrato de ingestão e indexador |
+| [docs/SIMULADOR.md](docs/SIMULADOR.md) | Estações em Python, MQTT e o que o simulador faz com os dados |
+| [docs/DADOS.md](docs/DADOS.md) | De onde vem cada dado, sob que licença e como citar |
 | [docs/COMO-RODAR.md](docs/COMO-RODAR.md) | Passo a passo, da instalação à demonstração na Sepolia |
 | [docs/ANALISE-ESTATICA.md](docs/ANALISE-ESTATICA.md) | Triagem do Slither, achado por achado (RNF13) |
 | [docs/DECISOES.md](docs/DECISOES.md) | Decisões de projeto, alternativas descartadas e defeitos encontrados |
@@ -102,8 +107,9 @@ acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), s
 
 ```
 contratos   94 testes · 100% de statements, branches, funções e linhas
-oraculo     65 testes
-backend     83 testes + 4 de integração com um nó real
+oraculo     67 testes
+backend     84 testes + 4 de integração com um nó real
+simulador   19 testes
 ```
 
 Nenhum deles depende de rede externa para rodar. Sete dos testes de contrato comparam, caso a

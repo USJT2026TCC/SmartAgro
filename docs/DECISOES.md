@@ -320,6 +320,55 @@ revisada. O humano decidia, e a máquina desfazia a decisão.
 Uma análise **rejeitada**, ao contrário, nunca chega ao oráculo — por isso a decisão do perito é
 uma coluna própria, e não apenas "revisada sim ou não".
 
+### 2.15 Chuva do dia dividida pelo número de leituras
+
+**Sintoma:** encontrado ao ligar o simulador com dados reais, antes de chegar a produzir número
+errado na cadeia.
+
+**Causa:** o consolidador tirava a média da chuva entre **todas** as leituras do dia. Com uma
+leitura diária por estação, que era o formato do script de demonstração, isso dá a média entre
+as estações e está certo. Com uma estação automática real, que reporta de hora em hora, 24
+leituras de 0,5 mm viravam 0,5 mm de chuva no dia em vez de 12 mm — e um dia chuvoso seria
+contado como seco.
+
+**Correção:** a agregação passou a ter dois passos: soma dentro de cada fonte, média entre
+fontes. Dois testes fixam o comportamento, um deles com fontes de granularidades diferentes.
+
+**Por que importa:** dia seco é o que aciona o pagamento. O erro empurrava o índice para cima,
+ou seja, para pagar indenização que a chuva registrada não justificava.
+
+### 2.16 O mesmo campo com dois nomes na fronteira
+
+**Sintoma:** os primeiros 1.104 lotes enviados pelo simulador foram recusados, todos, com o
+motivo "campo ausente".
+
+**Causa:** a marca de tempo da leitura se chama `instante` na API e no banco, e `timestamp` no
+consolidador do oráculo. O simulador foi escrito contra o segundo nome — e a especificação de
+ingestão em BACKEND.md, escrita antes do simulador, também usava `timestamp`.
+
+**Correção:** a API passou a aceitar os dois nomes, com `instante` como canônico, e há teste
+para o sinônimo. A especificação foi corrigida.
+
+**Por que importa:** o simulador é escrito por outra pessoa da equipe, em outra linguagem. Se um
+detalhe de vocabulário derruba um lote inteiro de leituras de campo, o problema não é de quem
+escreveu o cliente — é da fronteira, que precisa ser tolerante na entrada.
+
+### 2.17 Série terminando em um dia que ainda não acabou
+
+**Sintoma:** com os dados reais carregados e 39 dias de estiagem na série, o índice publicado
+dava zero.
+
+**Causa:** o simulador deslocava a série para terminar **na hora atual**. O último dia ficava com
+poucas horas medidas, e dia incompleto interrompe a contagem de dias secos (decisão 1.8) em vez
+de contar como seco. A contagem morria no primeiro dia.
+
+**Correção:** o deslocamento passou a terminar às 23 h de ontem, o último dia completo, e o
+comando imprime qual período deve ser passado ao oráculo.
+
+**Por que importa:** a regra que protege contra sensor quebrado — não presumir dia seco sem dado
+— também vale para o dia que ainda está acontecendo. O defeito estava no simulador, e não na
+regra.
+
 ---
 
 ## 3. O que falta antes da implantação em Sepolia

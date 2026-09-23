@@ -6,7 +6,8 @@ Passo a passo, da instalação à demonstração. Testado em Windows 11 com Node
 
 ## 1. Ferramentas
 
-Você precisa de **Git** e **Node.js 20 ou superior**.
+Você precisa de **Git** e **Node.js 20 ou superior**. Para o simulador de estações, também
+**Python 3.10 ou superior**.
 
 Conferir o que já está instalado:
 
@@ -24,6 +25,10 @@ winget install --id Git.Git -e --source winget
 
 ```bash
 winget install --id OpenJS.NodeJS.LTS -e --source winget
+```
+
+```bash
+winget install --id Python.Python.3.12 -e --source winget
 ```
 
 Depois de instalar, **feche e abra o terminal** — o `PATH` só é atualizado em sessões novas.
@@ -49,6 +54,12 @@ cd ../app && npm install
 ```bash
 cd ../backend && npm install
 ```
+
+```bash
+cd ../simulador && python -m venv .venv && .venv/Scripts/python -m pip install -e ".[dev]"
+```
+
+O simulador precisa de Python 3.10 ou superior. No Linux ou macOS, `.venv/bin/python`.
 
 O backend não exige instalar banco: sem `DATABASE_URL`, usa o PGlite, que é o próprio
 PostgreSQL com PostGIS rodando dentro do processo.
@@ -79,6 +90,12 @@ indexador sobe um `hardhat node` próprio, na porta 8599:
 ```bash
 cd backend && npm run testar:integracao
 ```
+
+```bash
+cd simulador && .venv/Scripts/python -m pytest
+```
+
+Esperado: **19 testes, 0 falhas**.
 
 Cobertura dos contratos:
 
@@ -270,14 +287,30 @@ Abra `http://localhost:5173`. Sem MetaMask instalada, use
 5. Abrir a apólice pelo link **Ver apólice** e deixar essa tela visível. O cartão *Conferência
    dos termos* deve dizer que o texto corresponde ao resumo gravado no contrato.
 
-### Terminal 2 — as estações enviam leituras
+### Terminal 2 — as estações enviam leituras reais
+
+Na primeira vez, baixe o ano de 2024 do INMET (~100 MB):
 
 ```bash
-cd backend && npm run enviar-leituras -- --cenario estiagem_severa
+cd simulador && .venv/Scripts/python -m simulador baixar --ano 2024
 ```
 
-Cada fonte de demonstração envia um lote assinado com a própria chave, e a API confere a
-assinatura antes de aceitar. É o papel que o simulador em Python vai assumir.
+Depois, as duas estações enviam a estiagem real de São Simão:
+
+```bash
+cd simulador && .venv/Scripts/python -m simulador enviar --estacao A770 --ano 2024 --de 2024-06-25 --ate 2024-08-09 --fonte estacao-inmet-a770 --ate-hoje
+```
+
+```bash
+cd simulador && .venv/Scripts/python -m simulador enviar --estacao A747 --ano 2024 --de 2024-06-25 --ate 2024-08-09 --fonte estacao-inmet-a747 --ate-hoje
+```
+
+As chaves das estações de demonstração vêm do `.env` do simulador. Cada lote é assinado pela
+chave da estação, e a API confere a assinatura antes de aceitar. O comando imprime o período que
+deve ser passado ao oráculo — anote.
+
+> Para uma demonstração sem baixar dado nenhum, o caminho antigo continua valendo:
+> `cd backend && npm run enviar-leituras -- --cenario estiagem_severa` usa a série sintética.
 
 ### Terminal 2 — o oráculo publica
 
@@ -289,11 +322,11 @@ CHAVE_DE_SERVICO=desenvolvimento-apenas-nao-use-em-producao
 ```
 
 ```bash
-cd oraculo && node src/index.js servico --uma-vez
+cd oraculo && node src/index.js servico --uma-vez --periodo <o periodo impresso acima>
 ```
 
 O oráculo pergunta ao backend quais apólices estão ativas, busca as leituras do talhão,
-consolida, publica e relata o resultado. Com a estiagem de 35 dias, o pagamento acontece na
+consolida, publica e relata o resultado. Com a estiagem real de 39 dias, o pagamento acontece na
 mesma transação, e **a linha do tempo na tela cresce sozinha**, sem recarregar, até
 "Indenização transferida ao produtor sem intervenção humana". O link *Avisos*, no cabeçalho, mostra as
 notificações de emissão, cobertura e pagamento.

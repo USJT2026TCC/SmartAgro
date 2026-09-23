@@ -170,19 +170,20 @@ Todas sob `/api`. Formato de erro único: `{ "erro": { "codigo", "mensagem" } }`
 
 ## 5. Contrato de ingestão — para o simulador (HU04)
 
-Esta seção é a **especificação que o simulador em Python precisa seguir**. O script
-[`backend/scripts/enviar-leituras.js`](../backend/scripts/enviar-leituras.js) é uma
-implementação de referência que já funciona.
+Esta seção é a **especificação que o simulador em Python precisa seguir**. Já existem duas implementações: o simulador em Python ([`simulador/`](../simulador), que envia
+dados reais do INMET) e o script
+[`backend/scripts/enviar-leituras.js`](../backend/scripts/enviar-leituras.js), que envia a série
+sintética.
 
 Corpo (`POST /api/leituras`, `Content-Type: application/json`):
 
 ```json
 {
   "lote": "uuid v4 novo a cada envio",
-  "fonte": "estacao-inmet-a652",
+  "fonte": "estacao-inmet-a770",
   "enviadoEm": "2026-09-22T12:00:00Z",
   "leituras": [
-    { "timestamp": "2026-09-21T00:00:00Z", "chuvaMm": 0, "temperaturaC": 31.2, "umidadePct": 38 }
+    { "instante": "2026-09-21T00:00:00Z", "chuvaMm": 0, "temperaturaC": 31.2, "umidadePct": 38 }
   ]
 }
 ```
@@ -206,6 +207,12 @@ requests.post(url, data=corpo, headers={"Content-Type": "application/json", "X-A
 **Por que assinar os bytes, e não o JSON:** Python e JavaScript serializam números de forma
 diferente (`0.0` contra `0`). Assinando os bytes que de fato trafegaram, cada lado só precisa
 calcular SHA-256 sobre o mesmo corpo.
+
+A marca de tempo pode vir como `instante` (canônico) ou como `timestamp`, o nome usado pelo
+consolidador do oráculo. Os dois são aceitos — ver [DECISOES.md §2.16](DECISOES.md).
+
+A estação pode reportar de hora em hora, como uma estação automática real faz: o oráculo soma a
+chuva das horas dentro de cada fonte antes de tirar a média entre fontes.
 
 A API confere, nesta ordem: forma do corpo → fonte ativa → assinatura da chave registrada →
 `enviadoEm` dentro de uma janela de 10 minutos → lote ainda não recebido → plausibilidade de
@@ -264,7 +271,7 @@ Comando: `node src/index.js servico` em `oraculo/`, com `API_URL` e `CHAVE_DE_SE
 ## 9. Testes
 
 ```
-npm run testar              83 testes · banco em memória, cadeia simulada
+npm run testar              84 testes · banco em memória, cadeia simulada
 npm run testar:integracao    4 testes · indexador contra um hardhat node real
 ```
 
@@ -274,7 +281,7 @@ produto fora dos limites do contrato; emissão com recibo de outra fábrica, res
 produtor diferente ou valor diferente; lote com assinatura errada, repetido ou fora da janela;
 imagem com extensão falsa ou fora do talhão; análise rejeitada que não pode chegar ao oráculo.
 
-### Verificação ponta a ponta (22/09/2026)
+### Verificação ponta a ponta com dados reais (22/09/2026)
 
 Com `hardhat node`, implantação, backend, aplicativo e oráculo rodando juntos:
 
@@ -283,9 +290,12 @@ Com `hardhat node`, implantação, backend, aplicativo e oráculo rodando juntos
 3. cotação, proposta, preparação dos termos;
 4. emissão assinada pela carteira da seguradora e **conferida pelo backend na cadeia**;
 5. depósito da garantia;
-6. 180 leituras de estiagem assinadas por duas fontes, todas aceitas;
-7. `oraculo servico --uma-vez`: índice de 35 dias secos publicado, 248.949 de gas, 77 ms;
-8. pagamento escalonado de 58,33% (0,42 ETH) transferido na mesma transação;
+6. **2.208 leituras horárias reais** do INMET, das estações A770 (São Simão/SP) e A747
+   (Pradópolis/SP), na janela da estiagem de julho e agosto de 2024, enviadas pelo simulador em
+   Python em 6 lotes assinados — todas aceitas, reputação 1,00;
+7. `oraculo servico --uma-vez`: índice de **39 dias secos** publicado, 248.949 de gas, 31 ms,
+   com procedência registrando as duas fontes e as 2.208 leituras válidas;
+8. pagamento escalonado transferido na mesma transação, sem intervenção humana;
 9. o indexador gerou as três notificações (emissão, cobertura ativa, indenização paga);
 10. na tela da apólice, o resumo recalculado no navegador bateu com o gravado no contrato, e a
     procedência (2 fontes, gas, latência) apareceu ao lado do índice.

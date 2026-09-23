@@ -131,7 +131,8 @@ recalcula o resumo no navegador, sem confiar no backend. Detalhes em [APLICATIVO
 Correspondente ao diagrama de sequência da documentação de software (Figura 8, UC07 a UC13):
 
 ```
- 1. sensores          →  lote de leituras assinado pela chave da fonte
+ 1. estações (INMET)  →  lote de leituras assinado pela chave da fonte,
+                         por HTTP ou por MQTT com ponte
     backend           →  confere a assinatura e a plausibilidade; grava
  2. consolidador      →  descarta implausíveis, atualiza reputação,
                          conta dias consecutivos sem chuva
@@ -175,11 +176,12 @@ condicionais exigida pelo RNF14.
 
 | Peça | Sprint | Nota |
 |---|---|---|
-| Simulador em Python + MQTT | 1 | O oráculo já roda com uma fonte simulada própria |
 | Modelo de visão computacional | 3 | O backend já recebe o resultado em `POST /visao/resultados` |
 | Implantação em Sepolia | 4 | Exige endpoint RPC e ETH de teste; ver COMO-RODAR §7 |
 
-Ingestão e banco (PostgreSQL + PostGIS) e o aplicativo React já estão implementados.
+Ingestão e banco (PostgreSQL + PostGIS), o aplicativo React e o simulador de estações já estão
+implementados. O simulador envia a série real de uma estação do INMET, assinada — ver
+[SIMULADOR.md](SIMULADOR.md) e [DADOS.md](DADOS.md).
 
 A interface com essas peças já está definida. O simulador precisa seguir o contrato de ingestão
 de [BACKEND.md §5](BACKEND.md), e o módulo de visão o de [BACKEND.md §6](BACKEND.md).

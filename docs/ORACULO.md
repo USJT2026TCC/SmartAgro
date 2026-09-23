@@ -252,12 +252,12 @@ tipo de projeto na véspera da apresentação.
 cd oraculo && npm run testar
 ```
 
-65 testes, nenhum deles precisa de rede.
+67 testes, nenhum deles precisa de rede.
 
 | Arquivo | Testes | O que cobre |
 |---|---:|---|
 | `backend.test.js` | 9 | Cliente da API, conversão de pontos-base, relato de melhor esforço, liberação pelo perito |
-| `consolidador.test.js` | 20 | Validação, agregação, contagem de dias secos, reputação |
+| `consolidador.test.js` | 22 | Validação, agregação, contagem de dias secos, reputação |
 | `fila.test.js` | 12 | Retomada, duplicatas, tentativas esgotadas, arquivo corrompido |
 | `fonteSimulada.test.js` | 10 | Determinismo, cenários, injeção de defeitos |
 | `registro.test.js` | 6 | Latência, serialização de BigInt, estatísticas, procedência |
