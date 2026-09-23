@@ -32,9 +32,6 @@ from .indice import CLASSES
 CAMINHO_DOS_PESOS = os.environ.get("VISAO_PESOS", "")
 VERSAO = os.environ.get("VISAO_VERSAO", "visao-unet-1.0.0")
 
-# Tamanho de entrada da rede. O recorte e feito redimensionando a imagem inteira:
-# a proporcao entre as classes e o que interessa, e nao o detalhe de cada folha.
-ENTRADA = 512
 
 
 class ModeloIndisponivel(RuntimeError):
@@ -90,7 +87,11 @@ def classificar_com(modelo, conteudo: bytes) -> tuple[dict[str, int], float]:
 
     from .rede import padronizar
 
-    imagem = Image.open(BytesIO(conteudo)).convert("RGB").resize((ENTRADA, ENTRADA))
+    # O tamanho vem do ARQUIVO DE PESOS, gravado no treino. Uma constante aqui
+    # ja divergiu do treino uma vez, e o modelo passou a errar mais que a
+    # heuristica de cor sem que nada acusasse (DECISOES.md 2.19).
+    lado = getattr(modelo, "entrada", 224)
+    imagem = Image.open(BytesIO(conteudo)).convert("RGB").resize((lado, lado))
     entrada = torch.from_numpy(np.asarray(imagem, dtype=np.float32) / 255.0)
     # A MESMA padronizacao do treino. Ver o cabecalho de rede.padronizar.
     entrada = padronizar(entrada.permute(2, 0, 1)).unsqueeze(0)

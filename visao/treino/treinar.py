@@ -211,18 +211,36 @@ def main() -> None:
     treino = BaseDeRecortes(opcoes.dados, "treino", aumentar=not opcoes.sem_aumento)
     validacao = BaseDeRecortes(opcoes.dados, "validacao")
 
+    # A prova que decide a melhor epoca: so os recortes de ESTRESSE HIDRICO, os
+    # mesmos em que a linha de base foi medida. Nos de ferrugem o dano por seca
+    # verdadeiro e zero, e acertar zero e facil; mistura-los faria o erro parecer
+    # metade do que e. A primeira rodada no Colab reportou 7,4 pontos na
+    # validacao inteira — nos de estresse hidrico, eram 14,7.
+    validacao_hidrica = BaseDeRecortes(opcoes.dados, "validacao")
+    validacao_hidrica.linhas = [l for l in validacao_hidrica.linhas if l["grupo"] == "water"]
+
     if opcoes.limite:
         treino.linhas = treino.linhas[: opcoes.limite]
         validacao.linhas = validacao.linhas[: max(1, opcoes.limite // 4)]
+        validacao_hidrica.linhas = validacao_hidrica.linhas[: max(1, opcoes.limite // 4)]
 
-    print(f"treino {len(treino)} recortes · validacao {len(validacao)} · dispositivo {dispositivo}")
+    print(
+        f"treino {len(treino)} recortes · validacao {len(validacao)} "
+        f"({len(validacao_hidrica)} de estresse hidrico) · dispositivo {dispositivo}"
+    )
 
     carregador_treino = DataLoader(treino, batch_size=opcoes.lote, shuffle=True)
     carregador_validacao = DataLoader(validacao, batch_size=opcoes.lote)
+    carregador_hidrico = DataLoader(validacao_hidrica, batch_size=opcoes.lote)
 
     modelo = UNet().to(dispositivo)
     otimizador = torch.optim.AdamW(modelo.parameters(), lr=opcoes.taxa)
     perda = nn.CrossEntropyLoss(weight=pesos_das_classes(treino).to(dispositivo))
+
+    # Taxa de aprendizado que decresce ao longo do treino. Na primeira rodada, com
+    # taxa fixa, o erro do indice oscilava entre 7 e 14 pontos de uma epoca para a
+    # outra: escolher a "melhor" entre 30 valores tao ruidosos premia a sorte.
+    agenda = torch.optim.lr_scheduler.CosineAnnealingLR(otimizador, T_max=opcoes.epocas)
 
     opcoes.saida.parent.mkdir(parents=True, exist_ok=True)
 
@@ -232,7 +250,11 @@ def main() -> None:
     for epoca in range(1, opcoes.epocas + 1):
         comeco = time.time()
         erro = uma_epoca(modelo, carregador_treino, otimizador, perda, dispositivo)
+        agenda.step()
         metricas = avaliar(modelo, carregador_validacao, dispositivo)
+        metricas["erro_do_indice_hidrico"] = avaliar(modelo, carregador_hidrico, dispositivo)[
+            "erro_medio_do_indice"
+        ]
         metricas["epoca"] = epoca
         metricas["perda"] = round(erro, 4)
         metricas["segundos"] = round(time.time() - comeco, 1)
@@ -249,7 +271,7 @@ def main() -> None:
         # Seria uma apolice que nunca paga, com boa metrica. Por isso so
         # qualifica a epoca em que as duas classes de estresse foram de fato
         # previstas em algum lugar.
-        atual = metricas["erro_medio_do_indice"]
+        atual = metricas["erro_do_indice_hidrico"]
         preve_estresse = (
             metricas["iou_por_classe"]["estresse_leve"] > 0
             and metricas["iou_por_classe"]["estresse_severo"] > 0
@@ -263,7 +285,7 @@ def main() -> None:
 
         print(
             f"epoca {epoca:3d}  perda {erro:.4f}  IoU media {metricas['iou_media']:.3f}  "
-            f"erro do indice {atual:.3f}  ({metricas['segundos']:.0f}s){estrela}"
+            f"erro do indice (estresse hidrico) {atual:.3f}  ({metricas['segundos']:.0f}s){estrela}"
         )
 
     caminho_do_historico = opcoes.saida.with_suffix(".historico.json")
@@ -275,6 +297,8 @@ def main() -> None:
                 "recortes_de_validacao": len(validacao),
                 "aumento_de_dados": not opcoes.sem_aumento,
                 "dispositivo": dispositivo,
+                "recortes_de_validacao_hidrica": len(validacao_hidrica),
+                "criterio_da_melhor_epoca": "erro do indice nos recortes de estresse hidrico",
                 "melhor_erro_do_indice": melhor,
                 "epocas": historico,
             },
@@ -294,7 +318,7 @@ def main() -> None:
     print(f"\nPesos da melhor epoca em {opcoes.saida}")
     print(f"Historico em {caminho_do_historico}")
     print("Para usar: VISAO_PESOS=<caminho> no .env do modulo de visao.")
-    print(f"Melhor erro do indice de dano: {melhor:.1%}")
+    print(f"Melhor erro do indice de dano, nos recortes de estresse hidrico: {melhor:.1%}")
 
 
 if __name__ == "__main__":

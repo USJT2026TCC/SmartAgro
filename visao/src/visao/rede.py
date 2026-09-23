@@ -104,13 +104,28 @@ class UNet(nn.Module):
         return self.saida(s1)
 
 
-def salvar(modelo: UNet, caminho, versao: str) -> None:
-    """Grava os pesos com o minimo necessario para reconstruir a rede."""
+# Lado, em pixels, dos recortes da base de treino. Os pesos anteriores a este
+# campo foram todos treinados nesse tamanho.
+ENTRADA_DO_TREINO = 224
+
+
+def salvar(modelo: UNet, caminho, versao: str, entrada: int = ENTRADA_DO_TREINO) -> None:
+    """
+    Grava os pesos com o minimo necessario para reconstruir e USAR a rede.
+
+    O tamanho de entrada vai junto porque a inferencia precisa repeti-lo. Uma
+    rede convolucional aceita qualquer tamanho sem reclamar, e e esse o perigo:
+    a primeira versao do servico redimensionava para 512 um modelo treinado em
+    224, as plantas apareciam 2,3 vezes maiores do que no treino, e o erro do
+    indice subia de 14,7 para 25,4 pontos — pior que a heuristica de cor —, sem
+    erro nenhum na tela (ver DECISOES.md 2.19).
+    """
     torch.save(
         {
             "arquitetura": "unet",
             "base": modelo.base,
             "classes": list(CLASSES),
+            "entrada": entrada,
             "versao": versao,
             "estado": modelo.state_dict(),
         },
@@ -119,7 +134,12 @@ def salvar(modelo: UNet, caminho, versao: str) -> None:
 
 
 def carregar(caminho) -> tuple[UNet, str]:
-    """Reconstroi a rede e devolve tambem a versao gravada junto dos pesos."""
+    """
+    Reconstroi a rede e devolve tambem a versao gravada junto dos pesos.
+
+    O tamanho de entrada do treino fica em `modelo.entrada`, e e dele que a
+    inferencia le — nunca de uma constante no codigo de inferencia.
+    """
     pacote = torch.load(caminho, map_location="cpu", weights_only=True)
 
     if list(pacote.get("classes", CLASSES)) != list(CLASSES):
@@ -130,6 +150,7 @@ def carregar(caminho) -> tuple[UNet, str]:
 
     modelo = UNet(classes=len(pacote.get("classes", CLASSES)), base=pacote.get("base", 32))
     modelo.load_state_dict(pacote["estado"])
+    modelo.entrada = int(pacote.get("entrada", ENTRADA_DO_TREINO))
     modelo.eval()
 
     return modelo, pacote.get("versao", "desconhecida")
