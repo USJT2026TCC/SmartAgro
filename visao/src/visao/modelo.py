@@ -88,9 +88,12 @@ def classificar_com(modelo, conteudo: bytes) -> tuple[dict[str, int], float]:
     import torch
     from PIL import Image
 
+    from .rede import padronizar
+
     imagem = Image.open(BytesIO(conteudo)).convert("RGB").resize((ENTRADA, ENTRADA))
     entrada = torch.from_numpy(np.asarray(imagem, dtype=np.float32) / 255.0)
-    entrada = entrada.permute(2, 0, 1).unsqueeze(0)
+    # A MESMA padronizacao do treino. Ver o cabecalho de rede.padronizar.
+    entrada = padronizar(entrada.permute(2, 0, 1)).unsqueeze(0)
 
     with torch.no_grad():
         probabilidades = torch.softmax(modelo(entrada), dim=1)[0]

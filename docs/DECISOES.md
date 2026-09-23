@@ -156,6 +156,24 @@ Quando o modelo treinado entrar, ele reporta a própria confiança — média da
 classe escolhida, só nos pixels de lavoura — e o limiar volta a ter o significado que deveria ter.
 
 
+### 1.13 Cada imagem é padronizada antes de entrar no modelo
+
+A rede não recebe os valores de cor como vieram: cada imagem tem a própria média subtraída e é
+dividida pelo próprio desvio, canal a canal.
+
+O motivo é a diferença entre o equipamento do treino e o do uso. As imagens da base vêm de
+câmera de drone, com normalização própria — são mais escuras e menos saturadas que uma foto de
+celular da mesma lavoura. Sem padronizar, o modelo aprenderia também o brilho típico daquela
+câmera, e no celular veria outra lavoura.
+
+A padronização **não** resolve a diferença entre os equipamentos; só um conjunto de fotos reais
+da lavoura resolveria. Ela tira a parte mais grosseira, que é o nível de exposição.
+
+Treino e inferência usam a mesma função, em `visao/rede.py`, e há teste fixando isso. Padronizar
+de um lado e não do outro produziria um modelo com validação boa e desempenho ruim em produção —
+e sem nenhum erro aparecer, porque o número continuaria plausível.
+
+
 ## 2. Defeitos encontrados durante a implementação
 
 Todos foram corrigidos. Ficam registrados porque são o tipo de coisa que volta a acontecer.

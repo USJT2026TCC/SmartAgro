@@ -157,6 +157,29 @@ referência (`.png`).
 Confundir as duas ordens produziria um índice de dano trocado — e ninguém notaria, porque
 continuaria sendo um número plausível entre 0 e 1.
 
+### O que encontramos ao abrir a base
+
+Três coisas que não estão escritas no README dela e que mudam como ela deve ser usada:
+
+**1. O `.jpg` é cor natural, e não falsa-cor.** À primeira vista as imagens parecem falsa-cor: a
+vegetação sai arroxeada e a cena, escura. Mas o `.jpg` é exatamente a composição das bandas 0, 1
+e 2 do `.npy` (correlação de 0,97 a 0,99, médias idênticas), e a assinatura espectral da
+ferrugem — lesão alaranjada, com banda 0 acima da banda 2 — confirma que **a banda 0 é o
+vermelho**. É RGB de verdade; o que estranha é a exposição.
+
+**2. A exposição não é a de uma foto de celular.** As imagens vêm de câmera de drone, com
+normalização própria: mais escuras e menos saturadas. Um modelo treinado nos valores crus
+aprenderia também o brilho daquela câmera. É a razão de o módulo padronizar cada imagem antes de
+classificar (ver [VISAO.md §3.2](VISAO.md)).
+
+**3. A identificação das bandas 4 e 5 não é confiável nesta versão.** Calculando NDVI com a
+banda 4 como infravermelho, a ordem sai **invertida**: lavoura saudável com índice menor que
+lavoura em estresse, o que é fisicamente impossível. Os próprios autores publicaram depois uma
+correção — *"corrects the spectral identification of Bands 4 and 5"* —, o que explica o
+resultado. **Consequência prática:** o caminho multiespectral, se for seguido, precisa da versão
+completa e corrigida (DOI 10.5281/zenodo.22062459), e não deste subconjunto. O caminho RGB, que
+é o que usamos, não depende dessas bandas.
+
 A 2.2 (Agriculture-Vision) fica como reserva, se for preciso mais volume, depois de conferida a
 licença no bucket.
 

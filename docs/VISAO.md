@@ -121,6 +121,17 @@ celular, e celular só tem RGB. Um modelo que exige câmera multiespectral seria
 e inútil na lavoura. A base fica disponível para a versão multiespectral quando houver drone com
 essa câmera.
 
+**Cada imagem é padronizada antes de entrar na rede** — subtrai-se a média e divide-se pelo
+desvio, canal a canal. As imagens de treino vêm de câmera de drone, mais escuras e menos
+saturadas que uma foto de celular da mesma lavoura; sem padronizar, o modelo aprenderia também o
+brilho típico daquela câmera e, no celular, veria outra lavoura. A padronização não elimina a
+diferença entre os equipamentos — só um conjunto de fotos reais da lavoura resolveria isso —,
+mas tira a parte mais grosseira dela.
+
+Treino e inferência usam **a mesma função**, e há teste fixando isso: padronizar de um lado e
+não do outro produziria um modelo que parece bom na validação e erra em produção, sem nenhum
+erro aparecer.
+
 A confiança aqui **vem do modelo**: média da probabilidade da classe escolhida, considerando
 apenas os pixels de lavoura. A certeza do modelo sobre o céu e sobre o carreador não diz nada
 sobre a lavoura estar em estresse, e incluí-la inflaria a confiança justamente nas fotos com
@@ -211,11 +222,11 @@ Para analisar arquivos locais, sem backend:
 cd visao && .venv/Scripts/python -m pytest
 ```
 
-37 testes, sem rede e sem GPU (os 4 de `test_rede.py` são pulados onde o PyTorch não está instalado).
+40 testes, sem rede e sem GPU (os 7 de `test_rede.py` são pulados onde o PyTorch não está instalado).
 
 | Arquivo | Testes | O que cobre |
 |---|---:|---|
 | `test_indice.py` | 15 | Denominador, ponderação, doença fora da conta, confiança por amostragem |
 | `test_baseline.py` | 9 | Cores conhecidas, invariância a sombra, e a limitação da palha seca |
 | `test_servico.py` | 9 | Evidência adulterada, arquivo ilegível, lote vazio, falha de rede |
-| `test_rede.py` | 4 | Pesos que carregam fora do treino, classes incompatíveis recusadas |
+| `test_rede.py` | 7 | Pesos que carregam fora do treino, classes incompatíveis recusadas, padronização igual à do treino |

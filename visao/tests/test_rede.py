@@ -63,3 +63,35 @@ def test_o_arquivo_de_pesos_e_dado_e_nao_codigo(tmp_path):
 
     assert set(pacote) == {"arquitetura", "base", "classes", "versao", "estado"}
     assert all(isinstance(v, torch.Tensor) for v in pacote["estado"].values())
+
+
+def test_padronizacao_deixa_media_zero_e_desvio_um_por_canal():
+    from visao.rede import padronizar
+
+    x = torch.rand(3, 32, 32) * 0.4 + 0.3
+    p = padronizar(x)
+
+    assert torch.allclose(p.mean(dim=(-2, -1)), torch.zeros(3), atol=1e-5)
+    assert torch.allclose(p.std(dim=(-2, -1)), torch.ones(3), atol=1e-3)
+
+
+def test_padronizacao_ignora_brilho_e_contraste_da_camera():
+    # A mesma cena, uma foto mais escura e menos contrastada que a outra —
+    # a diferenca entre a camera do drone e a do celular. Depois de padronizar,
+    # as duas precisam chegar iguais ao modelo.
+    from visao.rede import padronizar
+
+    cena = torch.rand(3, 32, 32)
+    escura = cena * 0.4 + 0.05
+
+    assert torch.allclose(padronizar(cena), padronizar(escura), atol=1e-4)
+
+
+def test_imagem_de_cor_uniforme_nao_explode():
+    # Foto do ceu, ou lente tampada: desvio zero. Sem a protecao, viraria
+    # divisao por zero e NaN percorrendo a rede inteira.
+    from visao.rede import padronizar
+
+    p = padronizar(torch.full((3, 16, 16), 0.5))
+
+    assert torch.isfinite(p).all()

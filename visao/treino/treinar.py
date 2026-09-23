@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import time
 from pathlib import Path
 
@@ -40,7 +41,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
 from visao.indice import CLASSES as NOMES_DAS_CLASSES
-from visao.rede import UNet, salvar
+from visao.rede import UNet, padronizar, salvar
 
 RAIZ = Path(__file__).resolve().parents[1]
 PREPARADO = RAIZ / "dados" / "preparado"
@@ -50,10 +51,28 @@ CLASSES = len(NOMES_DAS_CLASSES)
 
 
 class BaseDeRecortes(Dataset):
-    """Le os pares imagem/mascara listados no indice.csv."""
+    """
+    Le os pares imagem/mascara listados no indice.csv.
 
-    def __init__(self, raiz: Path, divisao: str):
+    AUMENTO DE DADOS, so no treino
+
+    Sao 738 recortes de treino, poucos para uma rede de segmentacao. Espelhar e
+    girar em multiplos de 90 graus multiplica isso por oito, e e um aumento
+    legitimo aqui: lavoura vista de cima nao tem lado certo — o drone sobrevoa
+    em qualquer direcao, e o talhao continua o mesmo.
+
+    O que NAO se mexe e a cor. Alterar brilho ou matiz ensinaria o modelo que
+    planta amarelada pode ser verde, que e exatamente a distincao que ele
+    precisa aprender.
+
+    O aumento nunca vale na validacao: a metrica tem que descrever a imagem
+    como ela chegou.
+    """
+
+    def __init__(self, raiz: Path, divisao: str, aumentar: bool = False):
         self.raiz = raiz
+        self.aumentar = aumentar
+
         with (raiz / "indice.csv").open(encoding="utf-8") as arquivo:
             self.linhas = [l for l in csv.DictReader(arquivo) if l["divisao"] == divisao]
 
@@ -69,7 +88,7 @@ class BaseDeRecortes(Dataset):
         imagem = Image.open(self.raiz / "images" / linha["imagem"]).convert("RGB")
         mascara = Image.open(self.raiz / "masks" / linha["mascara"])
 
-        x = torch.from_numpy(np.asarray(imagem, dtype=np.float32) / 255.0).permute(2, 0, 1)
+        x = padronizar(torch.from_numpy(np.asarray(imagem, dtype=np.float32) / 255.0).permute(2, 0, 1))
         bruto = np.asarray(mascara, dtype=np.int64)
 
         # base -> AgroSmart, o mesmo mapa de preparar_dados.py
@@ -77,7 +96,21 @@ class BaseDeRecortes(Dataset):
         for origem, destino in {0: 0, 1: 2, 2: 3, 3: 1, 4: 4}.items():
             traduzido[bruto == origem] = destino
 
-        return x, torch.from_numpy(traduzido)
+        y = torch.from_numpy(traduzido)
+
+        if self.aumentar:
+            # A MESMA transformacao na imagem e na mascara. Girar so uma das
+            # duas ensinaria o modelo a associar cada pixel ao rotulo errado.
+            if torch.rand(1).item() < 0.5:
+                x, y = torch.flip(x, [2]), torch.flip(y, [1])
+            if torch.rand(1).item() < 0.5:
+                x, y = torch.flip(x, [1]), torch.flip(y, [0])
+
+            giros = int(torch.randint(0, 4, (1,)).item())
+            if giros:
+                x, y = torch.rot90(x, giros, [1, 2]), torch.rot90(y, giros, [0, 1])
+
+        return x, y.contiguous()
 
 
 def pesos_das_classes(base: BaseDeRecortes, amostras: int = 100) -> torch.Tensor:
@@ -162,13 +195,14 @@ def main() -> None:
     parser.add_argument("--saida", type=Path, default=PESOS / "unet.pt")
     parser.add_argument("--limite", type=int, default=0, help="usa so N recortes (teste rapido)")
     parser.add_argument("--versao", default="visao-unet-1.0.0", help="gravada junto dos pesos")
+    parser.add_argument("--sem-aumento", action="store_true", help="desliga espelhamento e giros")
     opcoes = parser.parse_args()
 
     dispositivo = "cuda" if torch.cuda.is_available() else "cpu"
     if dispositivo == "cpu":
         print("AVISO: sem GPU. O treino funciona, mas leva horas. Prefira Colab ou Kaggle.")
 
-    treino = BaseDeRecortes(opcoes.dados, "treino")
+    treino = BaseDeRecortes(opcoes.dados, "treino", aumentar=not opcoes.sem_aumento)
     validacao = BaseDeRecortes(opcoes.dados, "validacao")
 
     if opcoes.limite:
@@ -184,22 +218,77 @@ def main() -> None:
     otimizador = torch.optim.AdamW(modelo.parameters(), lr=opcoes.taxa)
     perda = nn.CrossEntropyLoss(weight=pesos_das_classes(treino).to(dispositivo))
 
+    opcoes.saida.parent.mkdir(parents=True, exist_ok=True)
+
+    historico = []
+    melhor = None
+
     for epoca in range(1, opcoes.epocas + 1):
         comeco = time.time()
         erro = uma_epoca(modelo, carregador_treino, otimizador, perda, dispositivo)
         metricas = avaliar(modelo, carregador_validacao, dispositivo)
+        metricas["epoca"] = epoca
+        metricas["perda"] = round(erro, 4)
+        metricas["segundos"] = round(time.time() - comeco, 1)
+        historico.append(metricas)
+
+        # O criterio de "melhor" e o ERRO DO INDICE, e nao a IoU media. IoU mede
+        # o acerto pixel a pixel; o indice e o numero que paga. Um modelo pode
+        # errar a borda de cada mancha e ainda acertar a PROPORCAO de lavoura
+        # afetada — e e a proporcao que vira dinheiro.
+        #
+        # Com uma ressalva, que vale pesos gravados: um modelo que NUNCA marca
+        # estresse reporta dano zero em tudo, e num conjunto onde a maioria dos
+        # recortes tem pouco dano isso rende um erro medio baixo por acidente.
+        # Seria uma apolice que nunca paga, com boa metrica. Por isso so
+        # qualifica a epoca em que as duas classes de estresse foram de fato
+        # previstas em algum lugar.
+        atual = metricas["erro_medio_do_indice"]
+        preve_estresse = (
+            metricas["iou_por_classe"]["estresse_leve"] > 0
+            and metricas["iou_por_classe"]["estresse_severo"] > 0
+        )
+        estrela = "" if preve_estresse else "  (nao previu estresse; nao qualifica)"
+
+        if preve_estresse and (melhor is None or atual < melhor):
+            melhor = atual
+            salvar(modelo, opcoes.saida, opcoes.versao)
+            estrela = "  <- melhor ate agora, pesos gravados"
 
         print(
             f"epoca {epoca:3d}  perda {erro:.4f}  IoU media {metricas['iou_media']:.3f}  "
-            f"erro do indice {metricas['erro_medio_do_indice']:.3f}  ({time.time() - comeco:.0f}s)"
+            f"erro do indice {atual:.3f}  ({metricas['segundos']:.0f}s){estrela}"
         )
 
-    opcoes.saida.parent.mkdir(parents=True, exist_ok=True)
-    salvar(modelo, opcoes.saida, opcoes.versao)
+    caminho_do_historico = opcoes.saida.with_suffix(".historico.json")
+    caminho_do_historico.write_text(
+        json.dumps(
+            {
+                "versao": opcoes.versao,
+                "recortes_de_treino": len(treino),
+                "recortes_de_validacao": len(validacao),
+                "aumento_de_dados": not opcoes.sem_aumento,
+                "dispositivo": dispositivo,
+                "melhor_erro_do_indice": melhor,
+                "epocas": historico,
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
 
-    print(f"\nPesos em {opcoes.saida}")
+    if melhor is None:
+        raise SystemExit(
+            "\nNenhuma epoca previu as duas classes de estresse: nao ha pesos para gravar.\n"
+            "Um modelo que nunca marca estresse reporta dano zero sempre — uma apolice que\n"
+            "nunca paga. Treine por mais epocas, ou reveja os pesos das classes."
+        )
+
+    print(f"\nPesos da melhor epoca em {opcoes.saida}")
+    print(f"Historico em {caminho_do_historico}")
     print("Para usar: VISAO_PESOS=<caminho> no .env do modulo de visao.")
-    print(f"Metricas finais: {avaliar(modelo, carregador_validacao, dispositivo)}")
+    print(f"Melhor erro do indice de dano: {melhor:.1%}")
 
 
 if __name__ == "__main__":

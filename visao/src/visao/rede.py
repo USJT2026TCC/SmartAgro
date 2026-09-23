@@ -34,6 +34,32 @@ from .indice import CLASSES
 NUMERO_DE_CLASSES = len(CLASSES)
 
 
+def padronizar(x: torch.Tensor) -> torch.Tensor:
+    """
+    Padroniza cada imagem pela propria media e desvio, canal a canal.
+
+    POR QUE ISTO EXISTE
+
+    As imagens de treino vem de camera de drone, com exposicao e normalizacao
+    proprias: sao mais escuras e menos saturadas que uma foto de celular da
+    mesma lavoura. Um modelo treinado nos valores crus aprenderia tambem o
+    brilho tipico daquela camera, e no celular veria "outra lavoura".
+
+    Padronizar remove o nivel e a escala de cada imagem, e deixa o que importa:
+    a relacao entre os canais e o contraste dentro da cena. Nao elimina a
+    diferenca entre os equipamentos — so um conjunto de fotos reais da lavoura
+    resolveria isso —, mas tira a parte mais grosseira dela.
+
+    O treino e a inferencia precisam usar EXATAMENTE esta funcao. Padronizar de
+    um lado e nao do outro produz um modelo que parece bom na validacao e erra
+    em producao, sem nenhum erro aparecer.
+    """
+    media = x.mean(dim=(-2, -1), keepdim=True)
+    desvio = x.std(dim=(-2, -1), keepdim=True).clamp(min=1e-5)
+
+    return (x - media) / desvio
+
+
 def bloco(entrada: int, saida: int) -> nn.Sequential:
     return nn.Sequential(
         nn.Conv2d(entrada, saida, 3, padding=1),
