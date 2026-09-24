@@ -486,6 +486,63 @@ recortes de estresse hídrico; e o notebook mostra as duas medições lado a lad
 **Por que importa:** o número errado era o que entraria no TCC, e era o mais bonito. Ninguém teria
 questionado — a curva descia, o valor era plausível.
 
+### 2.21 O modelo aprendeu a reconhecer o voo, e não a doença
+
+**Sintoma:** nos recortes de ferrugem, o modelo classificou como doença 88% da lavoura
+**saudável**. Nos de estresse hídrico, 13% da lavoura virou doença.
+
+**Causa:** a base tem dois voos, um sobre uma lavoura com estresse hídrico e outro sobre outra
+lavoura, com ferrugem. Luz, data, talhão e câmera diferem entre os dois, e o modelo usou essa
+diferença: aprendeu "parece o voo da ferrugem, então é ferrugem". Como doença tinha peso zero no
+índice de seca, cada pixel de estresse chamado de doença sumia da conta.
+
+**Correção:** doença saiu do modelo. O trabalho trata de dano por estiagem e não fala em doença, e o
+voo da ferrugem não entra mais no treino. O modelo tem quatro classes: solo, saudável, estresse
+leve e estresse severo.
+
+**Por que importa:** quando cada classe vem de uma única fonte, o modelo pode aprender a fonte em
+vez da classe — e a métrica fica boa mesmo assim, porque a validação tem o mesmo atalho. Só apareceu
+porque a figura de comparação mostrava lavoura inteira pintada de doença.
+
+### 2.22 O gabarito do primeiro treino estava calculado com as bandas trocadas
+
+**Sintoma:** nenhum, no nosso código. Apareceu lendo a documentação da versão completa da base,
+publicada depois do subconjunto que usamos.
+
+**Causa:** as máscaras da base não são anotação de agrônomo, são **pseudo-rótulos** gerados por
+índices de vegetação (NDVI, NDRE, SAVI, GCI), que usam as bandas de red-edge e infravermelho. No
+subconjunto v1.0, os autores calcularam esses índices com as duas bandas trocadas, e corrigiram na
+v2.1:
+
+| Máscaras | Lavoura rotulada como estresse |
+|---|---:|
+| v1.0 (bandas trocadas), usada no primeiro treino | 56,2% |
+| v2.1 (corrigida) | 5,8% |
+
+O primeiro modelo aprendeu a reproduzir o rótulo errado, e foi medido contra o mesmo rótulo errado.
+Os números da primeira rodada — 14,7 pontos contra 18,4 da heurística — **não valem**.
+
+Duas conclusões nossas também estavam erradas e foram corrigidas em DADOS.md: que "a banda 0 é o
+vermelho" (é o azul) e que "o caminho RGB não depende das bandas 4 e 5" (depende, pelo gabarito).
+
+**Correção:**
+
+- a base passou para a v2.1, só o voo do estresse hídrico, com o RGB montado pelas bandas nomeadas;
+- o preparo **confere** a ordem de classes declarada pela base e para se ela mudar;
+- a avaliação ganhou a **referência trivial** — o erro de responder sempre 0% —, porque com dano
+  médio de 5% um erro de 5 pontos não quer dizer nada sozinho;
+- heurística e modelo passaram a ser medidos pelo mesmo código (`treino/avaliacao.py`).
+
+**Na base corrigida, a heurística de cor erra 13,9 pontos, e responder sempre 0% erraria 4,9.** A
+heurística é pior que a resposta trivial.
+
+**Por que importa:** o erro não estava em nenhuma linha de código nossa, e nenhum teste o pegaria.
+Estava no dado de terceiro. O que o encontrou foi desconfiar de um resultado fisicamente impossível
+— o NDVI invertido, encontrado ao abrir a base — e voltar à fonte, que já tinha publicado
+uma versão corrigida. Para o TCC,
+o ponto é que rótulo automático herda os erros do processo que o gerou, e que a documentação da
+base precisa ser lida por inteiro, inclusive nas versões posteriores.
+
 ---
 
 ## 3. O que falta antes da implantação em Sepolia

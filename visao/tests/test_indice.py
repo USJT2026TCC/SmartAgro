@@ -15,13 +15,12 @@ from visao.indice import (
 )
 
 
-def contagem(solo=0, saudavel=0, leve=0, severo=0, outro=0):
+def contagem(solo=0, saudavel=0, leve=0, severo=0):
     return {
         "solo": solo,
         "saudavel": saudavel,
         "estresse_leve": leve,
         "estresse_severo": severo,
-        "outro_dano": outro,
     }
 
 
@@ -53,15 +52,25 @@ def test_estresse_leve_pesa_metade_do_severo():
 def test_peso_da_gravidade_e_configuravel():
     # A ponderacao e escolha atuarial, nao tecnica. A seguradora pode decidir
     # que estresse leve nao entra no indice.
-    pesos = {"solo": 0, "saudavel": 0, "estresse_leve": 0.0, "estresse_severo": 1.0, "outro_dano": 0}
+    pesos = {"solo": 0, "saudavel": 0, "estresse_leve": 0.0, "estresse_severo": 1.0}
 
     assert indice_de_dano(contagem(leve=1000), pesos) == 0.0
 
 
-def test_doenca_nao_vira_dano_por_seca():
-    # Ferrugem nao e estiagem. A apolice contratada cobre seca; pagar por
-    # doenca seria pagar por risco que nao foi precificado.
-    assert indice_de_dano(contagem(saudavel=500, outro=500)) == 0.0
+def test_doenca_esta_fora_do_escopo_e_nao_e_uma_classe():
+    # O trabalho trata de dano por estiagem. Uma classe de doenca treinada com
+    # a base de referencia aprendeu a reconhecer o voo em vez da lesao, e o dano
+    # de estresse chamado de doenca sumia da conta (DECISOES.md 2.21).
+    from visao.indice import CLASSES
+
+    assert CLASSES == ("solo", "saudavel", "estresse_leve", "estresse_severo")
+
+
+def test_classe_desconhecida_na_contagem_e_ignorada():
+    # Um estimador antigo que ainda devolva "outro_dano" nao pode mudar o indice.
+    com_extra = {**contagem(saudavel=500, severo=500), "outro_dano": 10_000}
+
+    assert indice_de_dano(com_extra) == indice_de_dano(contagem(saudavel=500, severo=500))
 
 
 def test_foto_so_de_solo_nao_gera_dano():

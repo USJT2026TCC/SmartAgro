@@ -138,47 +138,88 @@ base de apoio, não como base principal.
 
 ### Decisão
 
-Adotada a **2.1** (CC BY 4.0, classes de estresse hídrico, tamanho tratável). A base está em uso
-em [`visao/`](../visao): `treino/preparar_dados.py` a extrai e divide, e
-`treino/avaliar_baseline.py` usa as máscaras de referência para medir o erro do estimador.
+Adotada a **2.1**, na versão completa e corrigida (v2.1, DOI 10.5281/zenodo.22062459), usando só
+o voo do estresse hídrico: 344 recortes de 224×224, cada um com as cinco bandas multiespectrais e a
+máscara regerada pelos autores. O preparo está em
+[`visao/treino/preparar_dados.py`](../visao/treino/preparar_dados.py).
 
-O que veio no subconjunto: 1.000 recortes de 224×224, metade de estresse hídrico e metade de
-ferrugem, cada um com RGB (`.jpg`), cinco bandas multiespectrais (`.npy`) e máscara de
-referência (`.png`).
+A primeira rodada de treino usou o subconjunto v1.0 (DOI 10.5281/zenodo.19385720), cujas máscaras
+foram calculadas com bandas trocadas. Os resultados dela estão invalidados — ver a seção abaixo e
+DECISOES.md 2.22.
 
-**As classes da base não estão na mesma ordem das nossas**, e a tradução é feita uma vez só, em
-`preparar_dados.py`:
+**As classes da base não estão na mesma ordem das nossas**, e a tradução é feita uma vez só, no
+preparo, que também **confere** a ordem declarada pela base e para se ela mudar:
 
-| Código na base | 0 | 1 | 2 | 3 | 4 |
-|---|---|---|---|---|---|
-| Base | fundo/solo | estresse leve | estresse severo | saudável | ferrugem |
-| AgroSmart | solo | saudável | estresse leve | estresse severo | outro dano |
+| Código na base (`water_2025`) | 0 | 1 | 2 | 3 |
+|---|---|---|---|---|
+| Base | solo | estresse leve | estresse severo | saudável |
+| AgroSmart | solo | saudável | estresse leve | estresse severo |
 
 Confundir as duas ordens produziria um índice de dano trocado — e ninguém notaria, porque
 continuaria sendo um número plausível entre 0 e 1.
 
-### O que encontramos ao abrir a base
+### O que a base realmente é — e duas conclusões minhas que estavam erradas
 
-Três coisas que não estão escritas no README dela e que mudam como ela deve ser usada:
+A versão completa da base (v2.1, DOI 10.5281/zenodo.22062459, publicada em agosto de 2026) traz
+documentação que o subconjunto v1.0 não trazia. Ela mudou o que sabíamos sobre os dados:
 
-**1. O `.jpg` é cor natural, e não falsa-cor.** À primeira vista as imagens parecem falsa-cor: a
-vegetação sai arroxeada e a cena, escura. Mas o `.jpg` é exatamente a composição das bandas 0, 1
-e 2 do `.npy` (correlação de 0,97 a 0,99, médias idênticas), e a assinatura espectral da
-ferrugem — lesão alaranjada, com banda 0 acima da banda 2 — confirma que **a banda 0 é o
-vermelho**. É RGB de verdade; o que estranha é a exposição.
+**1. As máscaras não foram desenhadas por agrônomos.** São *pseudo-rótulos*: geradas
+automaticamente a partir de índices de vegetação (NDVI, NDRE, SAVI e GCI), que usam as bandas de
+infravermelho próximo e red-edge. O modelo RGB aprende, portanto, a **prever pelo visível um
+mapa de estresse definido pelo infravermelho** — uma proposta legítima, mas que precisa ser dita
+assim no TCC.
 
-**2. A exposição não é a de uma foto de celular.** As imagens vêm de câmera de drone, com
-normalização própria: mais escuras e menos saturadas. Um modelo treinado nos valores crus
-aprenderia também o brilho daquela câmera. É a razão de o módulo padronizar cada imagem antes de
-classificar (ver [VISAO.md §3.2](VISAO.md)).
+**2. No subconjunto v1.0, que usamos no primeiro treino, esses índices foram calculados com as
+bandas 4 e 5 trocadas.** Os autores corrigiram e regeraram todas as máscaras na v2.1. O
+"gabarito" do primeiro treino estava, portanto, calculado errado. Isso explica o NDVI invertido
+que encontramos: lavoura rotulada como saudável com índice menor que a rotulada como estressada.
 
-**3. A identificação das bandas 4 e 5 não é confiável nesta versão.** Calculando NDVI com a
-banda 4 como infravermelho, a ordem sai **invertida**: lavoura saudável com índice menor que
-lavoura em estresse, o que é fisicamente impossível. Os próprios autores publicaram depois uma
-correção — *"corrects the spectral identification of Bands 4 and 5"* —, o que explica o
-resultado. **Consequência prática:** o caminho multiespectral, se for seguido, precisa da versão
-completa e corrigida (DOI 10.5281/zenodo.22062459), e não deste subconjunto. O caminho RGB, que
-é o que usamos, não depende dessas bandas.
+> **Correção de uma conclusão nossa.** Escrevemos antes que "o caminho RGB não depende dessas
+> bandas". Depende — pelo gabarito. O modelo não vê o infravermelho, mas aprendeu a imitar
+> rótulos calculados com ele.
+
+**3. O `.jpg` tem vermelho e azul trocados.** A ordem verificada das bandas é azul, verde,
+vermelho, red-edge, infravermelho e alfa (índices 0 a 5). O `.jpg` é a composição das bandas 0, 1
+e 2 **nessa ordem**, gravada como se fosse vermelho, verde e azul.
+
+> O tom arroxeado das imagens **não** vem dessa troca: vem da normalização por canal (item 4),
+> que deixa o solo claro no vermelho e no azul ao mesmo tempo. Magenta é igual com vermelho e
+> azul trocados, e por isso a cor não serve para descobrir a ordem das bandas.
+
+> **Correção de uma conclusão nossa.** Escrevemos antes que "a banda 0 é o vermelho", com base
+> na assinatura da ferrugem. O argumento não valia: cada canal é normalizado separadamente pelo
+> intervalo entre os percentis 2 e 98 de cada recorte, e essa normalização apaga a proporção entre
+> as bandas. Comparar a banda 0 com a banda 2 de um mesmo recorte não diz qual é qual.
+
+Medido com os pesos do primeiro treino, o efeito da troca foi pequeno — o erro do índice passa de
+14,7 para 15,2 pontos quando a imagem chega com as cores certas, como chegaria do celular. O
+modelo depende pouco da diferença entre vermelho e azul, o que é coerente com o item 1. Mesmo
+assim, o preparo passou a montar o RGB **pelas bandas nomeadas do `.npy`**, e não pelo `.jpg`.
+
+**4. Os valores não são refletância.** Cada canal de cada recorte é esticado independentemente
+para [0, 1]. É mais um motivo para o módulo padronizar cada imagem antes de classificar
+(DECISOES.md 1.13): a padronização por canal torna o modelo indiferente a esse esticamento.
+
+**5. A base inteira são dois voos.** Um sobre uma lavoura de milho com estresse hídrico e outro
+sobre outra lavoura, com ferrugem. O voo do estresse hídrico cobre **7.373 × 4.140 pixels a
+0,96 cm por pixel — cerca de 70 × 40 metros, uns 0,3 hectare**, em uma única data. Na v2.1, ele
+rende 344 recortes de 224 × 224.
+
+Isso responde à pergunta de sempre, "não seria melhor treinar com mais imagens?": **desta base,
+não há mais imagens a tirar que tragam informação nova.** Recortar mais pedaços do mesmo 0,3
+hectare, ou recortes sobrepostos, é fotografar a mesma sala de mais ângulos. O que limita o modelo
+não é a quantidade, é a **diversidade** — uma lavoura, uma cultura, uma data, uma câmera — e a
+**natureza dos rótulos**, que são automáticos.
+
+### Decisão tomada a partir daqui
+
+- **Usar a v2.1**, com as máscaras regeradas, em vez do subconjunto v1.0.
+- **Só o voo do estresse hídrico.** A ferrugem está fora do escopo do trabalho e, por vir de outro
+  voo, ensinou o modelo a reconhecer o voo em vez da lesão (DECISOES.md 2.21).
+- **RGB montado pelas bandas nomeadas** (vermelho = 2, verde = 1, azul = 0).
+- **Declarar no TCC** que o modelo foi treinado em 0,3 hectare de milho, com rótulos automáticos
+  derivados de infravermelho, e que a validação em soja, com fotos da lavoura real, é trabalho
+  futuro.
 
 A 2.2 (Agriculture-Vision) fica como reserva, se for preciso mais volume, depois de conferida a
 licença no bucket.

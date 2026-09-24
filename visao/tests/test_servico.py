@@ -53,7 +53,7 @@ def lote(identificador, imagens):
 ESTIMADOR = Estimador(
     versao="teste-1.0.0",
     classificar=lambda conteudo: ({"solo": 0, "saudavel": 50, "estresse_leve": 0,
-                                   "estresse_severo": 50, "outro_dano": 0}, 0.9),
+                                   "estresse_severo": 50}, 0.9),
 )
 
 
@@ -106,7 +106,7 @@ def test_arquivo_ilegivel_nao_derruba_o_servico():
     quebra = Estimador(
         versao="teste-1.0.0",
         classificar=lambda conteudo: (
-            ({"solo": 0, "saudavel": 100, "estresse_leve": 0, "estresse_severo": 0, "outro_dano": 0}, 0.9)
+            ({"solo": 0, "saudavel": 100, "estresse_leve": 0, "estresse_severo": 0}, 0.9)
             if conteudo.startswith(b"\x89PNG")
             else (_ for _ in ()).throw(ValueError("formato desconhecido"))
         ),
@@ -124,7 +124,7 @@ def test_confianca_baixa_vai_para_o_perito():
     baixa = Estimador(
         versao="baseline",
         classificar=lambda _: (
-            {"solo": 0, "saudavel": 50, "estresse_leve": 0, "estresse_severo": 50, "outro_dano": 0},
+            {"solo": 0, "saudavel": 50, "estresse_leve": 0, "estresse_severo": 50},
             0.45,
         ),
     )

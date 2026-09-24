@@ -51,13 +51,20 @@ def _estimador(registrar=print) -> Estimador:
     que se esta rodando o modelo treinado seria o pior dos dois mundos.
     """
     if modelo.disponivel():
-        carregado, versao = modelo.carregar()
-        registrar(f"Modelo.....: {versao} ({modelo.CAMINHO_DOS_PESOS})")
+        try:
+            carregado, versao = modelo.carregar()
+        except modelo.ModeloIndisponivel as erro:
+            # Pesos presentes mas incompativeis — por exemplo, treinados com a
+            # classe de doenca, que saiu do escopo. Cair para a heuristica e
+            # AVISAR e melhor que classificar com uma rede que conta outra coisa.
+            registrar(f"AVISO......: pesos em {modelo.CAMINHO_DOS_PESOS} recusados: {erro}")
+        else:
+            registrar(f"Modelo.....: {versao} ({modelo.CAMINHO_DOS_PESOS})")
 
-        return Estimador(
-            versao=versao,
-            classificar=lambda conteudo: modelo.classificar_com(carregado, conteudo),
-        )
+            return Estimador(
+                versao=versao,
+                classificar=lambda conteudo: modelo.classificar_com(carregado, conteudo),
+            )
 
     registrar(f"Modelo.....: {baseline.VERSAO} (heuristica de cor, sem treino)")
     registrar(

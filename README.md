@@ -32,7 +32,7 @@ que a condição de pagamento é uma função computável sobre grandezas medida
 | [`app/`](app) | **Pronto** | Aplicativo do produtor, painel da seguradora e revisão do perito, em React, integrados ao backend e aos contratos |
 | [`backend/`](backend) | **Pronto** | API, PostgreSQL + PostGIS, ingestão assinada, indexador de eventos e notificações, com 87 testes |
 | [`simulador/`](simulador) | **Pronto** | Estações em Python + MQTT, enviando a série histórica real do INMET, assinada, com 19 testes |
-| [`visao/`](visao) | **Pronto, com ressalvas** | Índice de dano por imagem, integrado ao backend, com 43 testes. U-Net treinada no Colab: erro de 14,7 pontos contra 18,4 da heurística, e sem o viés de subestimar. Ver [docs/resultados](docs/resultados/visao-unet-1.0.0/README.md) |
+| [`visao/`](visao) | **Em validação** | Índice de dano por imagem, integrado ao backend, com 49 testes. Base corrigida (v2.1), só estresse hídrico; a heurística de cor erra mais que responder sempre 0%, e o modelo treinado está em nova rodada. Ver [docs/VISAO.md](docs/VISAO.md) |
 
 O simulador envia dados **reais**: a série horária da estação automática A770 do INMET, em São
 Simão/SP, que registra uma estiagem de 39 dias em julho e agosto de 2024. A fonte simulada
@@ -111,7 +111,7 @@ contratos   94 testes · 100% de statements, branches, funções e linhas
 oraculo     67 testes
 backend     87 testes + 4 de integração com um nó real
 simulador   19 testes
-visao       43 testes
+visao       49 testes
 ```
 
 Nenhum deles depende de rede externa para rodar. Sete dos testes de contrato comparam, caso a

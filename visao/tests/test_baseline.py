@@ -112,5 +112,5 @@ def test_a_confianca_fica_abaixo_do_limiar_do_perito():
 def test_todas_as_classes_aparecem_na_contagem():
     contagem = classificar(imagem([VERDE_SADIO]))
 
-    assert set(contagem) == {"solo", "saudavel", "estresse_leve", "estresse_severo", "outro_dano"}
+    assert set(contagem) == {"solo", "saudavel", "estresse_leve", "estresse_severo"}
     assert all(isinstance(v, int) for v in contagem.values())

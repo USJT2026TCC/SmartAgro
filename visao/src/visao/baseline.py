@@ -105,7 +105,6 @@ def classificar(conteudo: bytes) -> dict[str, int]:
         "saudavel": int(saudavel.sum()),
         "estresse_leve": int(leve.sum()),
         "estresse_severo": int(severo.sum()),
-        "outro_dano": 0,
     }
 
     assert set(contagem) == set(CLASSES)

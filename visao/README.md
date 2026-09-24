@@ -13,9 +13,12 @@ src/visao/
 └── cli.py             linha de comando
 
 treino/
-├── preparar_dados.py     extrai a base do Zenodo e divide treino/validacao no espaco
-├── treinar.py            U-Net de 5 classes (RODE EM GPU)
-└── avaliar_baseline.py   mede o estimador classico contra as mascaras de referencia
+├── preparar_dados.py     base v2.1, so estresse hidrico, RGB pelas bandas nomeadas
+├── treinar.py            U-Net de 4 classes (RODE EM GPU)
+├── avaliacao.py          a prova comum: mesmos recortes, mesmas metricas, referencia trivial
+├── avaliar_baseline.py   mede a heuristica de cor
+├── avaliar_modelo.py     mede o modelo treinado, pelo caminho de producao
+└── AgroSmart_visao_colab.ipynb   o treino no Google Colab, de ponta a ponta
 ```
 
 ## Instalar
@@ -43,15 +46,16 @@ treinados, usa a heurística de cor — e avisa na tela.
 
 ## Treinar
 
-A base não vem no repositório (328 MB, CC BY 4.0). Baixe de
-<https://doi.org/10.5281/zenodo.19385720> para `dados/milho-estresse-hidrico.zip`.
+A base não vem no repositório (545 MB, CC BY 4.0). Baixe `02_processed_patches.zip` da **v2.1**,
+<https://doi.org/10.5281/zenodo.22062459>, para `dados/v2.1/`. Use a v2.1: no subconjunto v1.0,
+as máscaras foram calculadas com bandas trocadas (docs/DECISOES.md 2.22).
 
 ```bash
 .venv/Scripts/python treino/preparar_dados.py
 ```
 
 ```bash
-.venv/Scripts/python treino/avaliar_baseline.py --divisao validacao
+.venv/Scripts/python treino/avaliar_baseline.py
 ```
 
 O treino precisa de GPU. **Esta máquina não tem.** Use o notebook pronto para o Google Colab,

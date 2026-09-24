@@ -27,8 +27,8 @@ decide levá-lo à cadeia. Um componente a menos com poder de mover valor.
 
 ## 2. Como o percentual é calculado
 
-O modelo classifica cada pixel em cinco classes — solo, lavoura saudável, estresse leve,
-estresse severo e outro dano (doença). O índice sai daí, e **três decisões nessa conta mudam
+O modelo classifica cada pixel em quatro classes — solo, lavoura saudável, estresse leve e
+estresse severo. O índice sai daí, e **três decisões nessa conta mudam
 quanto a apólice paga**:
 
 ### 2.1 O denominador é a lavoura, não a foto
@@ -48,11 +48,16 @@ que se recupera com a próxima chuva como perda total. A ponderação é uma esc
 seguradora, e não uma escolha técnica — por isso é configurável e vai registrada junto do
 resultado.
 
-### 2.3 Doença não é dano por seca
+### 2.3 Doença está fora do escopo
 
-Ferrugem entra com peso zero. A apólice contratada cobre estiagem; pagar por doença seria pagar
-por um risco que não foi precificado no prêmio. Se um dia virar cobertura própria, ganha índice
-próprio.
+O trabalho trata de dano por estiagem, e o modelo não tem classe de doença. A primeira versão
+tinha: a base traz a ferrugem de um voo separado, sobre outra lavoura, e o modelo aprendeu a
+reconhecer o **voo** em vez da lesão — chamou de doença 13% da lavoura em estresse hídrico, e como
+doença tinha peso zero, esse dano sumia da conta (DECISOES.md 2.21).
+
+Consequência a declarar: numa lavoura com doença, o modelo vai classificar as lesões como estresse
+ou como lavoura sadia. O gatilho principal da apólice é o índice climático, e análises de baixa
+confiança vão ao perito.
 
 ### 2.4 Foto é amostra; ortomosaico é censo
 
@@ -96,20 +101,28 @@ contra as máscaras de referência:
 python treino/avaliar_baseline.py --divisao validacao
 ```
 
-**Medido na base de validação** (132 recortes de estresse hídrico, divisão espacial):
+**Medido na validação da base v2.1** (79 recortes com pelo menos 10% de lavoura, rótulos
+corrigidos), com `python treino/avaliar_baseline.py`:
 
 | | |
 |---|---:|
-| Dano médio real (máscaras de referência) | 29,5% |
-| Dano médio estimado pela heurística | 13,2% |
-| Erro absoluto médio | **18,4 pontos percentuais** |
-| Erro máximo | 50,4 pontos |
-| Viés | **−16,3 pontos (subestima)** |
+| Dano médio real | 4,9% |
+| Dano médio estimado pela heurística | 18,0% |
+| Erro absoluto médio | **13,9 pontos** |
+| Viés | **+13,1 (superestima)** |
+| Responder sempre 0% erraria | **4,9 pontos** |
 
-O viés é o número que importa: a heurística subestima o dano de forma sistemática, e um seguro
-que subestima dano paga menos do que prometeu. Nenhum ajuste de limiar resolve — em RGB, palha
-seca e terra são a mesma cor. Resolver exige infravermelho próximo ou um modelo que use textura
-e contexto, que é o próximo item.
+**A heurística erra mais do que responder sempre zero.** Com os rótulos corrigidos, o estresse é
+raro — uns 6% da lavoura —, e a heurística, que classifica por cor, marca como estressada muita
+lavoura que não está. Um estimador que não vence a resposta trivial não está enxergando o
+estresse. É o argumento, agora com número, para o modelo treinado.
+
+> Uma medição anterior, contra as máscaras do subconjunto v1.0, dava 18,4 pontos e viés de −16,3.
+> Aquelas máscaras foram calculadas com bandas trocadas (DECISOES.md 2.22) e aquela medição não
+> vale.
+
+A limitação da palha seca, fixada em teste, continua valendo: em RGB, palha seca e terra têm a
+mesma cor.
 
 ### 3.2 U-Net treinada (`modelo.py` + `treino/`) — o destino
 
@@ -145,32 +158,20 @@ dado, e não código: carregar um modelo serializado como objeto executaria o qu
 dele. A versão reportada com cada análise vem **do arquivo**, e não de uma variável de ambiente,
 para que fique registrado o modelo que de fato rodou (ver [DECISOES.md §2.18](DECISOES.md)).
 
-### 3.3 Resultado da primeira rodada (visao-unet-1.0.0)
+### 3.3 Primeira rodada (visao-unet-1.0.0) — invalidada
 
-Treinada no Colab, 30 épocas em GPU. Medida nos **132 recortes de estresse hídrico** da
-validação, a mesma prova da heurística:
+Treinada no Colab com o subconjunto v1.0 da base, cujas máscaras foram calculadas com as bandas de
+infravermelho e red-edge trocadas: 56% da lavoura rotulada como estresse, contra 5,8% com os
+rótulos corrigidos. O modelo aprendeu o rótulo errado, e as medições dela — 14,7 pontos contra
+18,4 da heurística — foram feitas contra o mesmo rótulo errado. **Não devem ser citadas.**
 
-| | Heurística de cor | U-Net 1.0.0 |
-|---|---:|---:|
-| Erro absoluto médio | 18,4 pontos | **14,7 pontos** |
-| Erro mediano | — | 12,6 pontos |
-| Viés | −16,3 (subestima) | **+3,3** |
-| Lavoura lida como doença | — | 13,0% |
+A rodada ainda serviu: revelou os defeitos 2.19, 2.20 e 2.21 de DECISOES.md, e o histórico fica em
+[resultados/visao-unet-1.0.0](resultados/visao-unet-1.0.0/README.md) como registro.
 
-**O ganho maior é no viés.** A heurística subestimava sempre; o modelo erra para os dois lados.
-Para um seguro, erro sistemático para baixo é pagar menos do que a apólice promete em toda
-apólice; erro sem viés se compensa ao longo da carteira.
+### 3.4 Segunda rodada — base v2.1, só estresse hídrico
 
-**O erro por foto ainda é grande** — mediana de 12,6 pontos. Foto isolada não sustenta pagamento
-automático, e é por isso que a confiança cai com lotes pequenos (§2.4).
-
-**O modelo aprendeu um atalho.** Nos recortes de ferrugem, classificou como doença 88% da lavoura
-**saudável**: parece reconhecer o voo — luz, época, talhão — em vez da lesão. Nos de estresse
-hídrico, 13% da lavoura virou doença, e como doença tem peso zero no índice de seca, esse dano some
-da conta. As duas bases vêm de voos diferentes, e o modelo usou isso.
-
-Os detalhes, as figuras e o histórico estão em
-[resultados/visao-unet-1.0.0](resultados/visao-unet-1.0.0/README.md).
+Pendente: rodar o notebook do Colab com a base corrigida. A tabela do TCC sai da seção 7 do
+notebook, que mede heurística e modelo pelo mesmo código e mostra a referência trivial ao lado.
 
 ## 4. TerraMind (IBM + ESA): serve, mas para outra coisa
 
@@ -249,7 +250,7 @@ Para analisar arquivos locais, sem backend:
 cd visao && .venv/Scripts/python -m pytest
 ```
 
-43 testes, sem rede e sem GPU (os 10 de `test_rede.py` são pulados onde o PyTorch não está instalado).
+49 testes, sem rede e sem GPU (os 10 de `test_rede.py` são pulados onde o PyTorch não está instalado).
 
 | Arquivo | Testes | O que cobre |
 |---|---:|---|
@@ -257,3 +258,4 @@ cd visao && .venv/Scripts/python -m pytest
 | `test_baseline.py` | 9 | Cores conhecidas, invariância a sombra, e a limitação da palha seca |
 | `test_servico.py` | 9 | Evidência adulterada, arquivo ilegível, lote vazio, falha de rede |
 | `test_rede.py` | 10 | Pesos que carregam fora do treino, classes incompatíveis recusadas, padronização e tamanho de entrada iguais aos do treino |
+| `test_preparo.py` | 5 | Bandas nomeadas no RGB, tradução das classes, divisão por faixas, ordem de classes conferida |

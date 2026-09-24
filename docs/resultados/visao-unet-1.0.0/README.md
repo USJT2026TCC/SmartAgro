@@ -1,5 +1,11 @@
 # Resultado: visao-unet-1.0.0
 
+> **RESULTADO INVALIDADO — não citar no TCC.** Esta rodada usou o subconjunto v1.0 da base, cujas
+> máscaras foram calculadas pelos autores com as bandas de infravermelho e red-edge trocadas: 56% da
+> lavoura rotulada como estresse, contra 5,8% com os rótulos corrigidos na v2.1. O modelo aprendeu
+> o rótulo errado, e as medições abaixo foram feitas contra o mesmo rótulo errado. Fica aqui como
+> registro dos defeitos que a rodada revelou. Ver DECISOES.md 2.22.
+
 Primeira rodada de treino do segmentador de estresse hídrico. Google Colab, GPU, 30 épocas,
 23/09/2026.
 

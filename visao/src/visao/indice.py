@@ -1,7 +1,7 @@
 """
 Do mapa de classes ao indice de dano que vai para a cadeia (RF15, RF16).
 
-O modelo de visao classifica cada pixel em uma de cinco classes. Esta e a parte
+O modelo de visao classifica cada pixel em uma de quatro classes. Esta e a parte
 que transforma esse mapa em UM numero entre 0 e 1 — o percentual da lavoura
 prejudicado — e em uma confianca. Depois desse ponto, o numero atravessa a
 fronteira e o contrato paga com base nele, sem revisar nada.
@@ -37,9 +37,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from statistics import pstdev
 
-# Classes do mapa de segmentacao. A ordem e a do dataset de referencia
-# (ver docs/DADOS.md, secao 2.1).
-CLASSES = ("solo", "saudavel", "estresse_leve", "estresse_severo", "outro_dano")
+# Classes do mapa de segmentacao.
+#
+# Doenca (ferrugem) NAO e uma classe. O trabalho trata de dano por estiagem, e a
+# base de referencia traz a ferrugem de um voo separado, sobre outra lavoura: um
+# modelo treinado com as duas aprendeu a reconhecer o VOO em vez da lesao, e
+# chamou de doenca 13% da lavoura em estresse hidrico — dano que sumia da conta
+# (ver DECISOES.md 2.21). Doenca fica fora do escopo, e o modelo nao a ve.
+CLASSES = ("solo", "saudavel", "estresse_leve", "estresse_severo")
 
 # Peso de cada classe no numerador do indice de dano.
 PESOS_PADRAO = {
@@ -47,14 +52,10 @@ PESOS_PADRAO = {
     "saudavel": 0.0,
     "estresse_leve": 0.5,
     "estresse_severo": 1.0,
-    # Ferrugem e outras doencas nao sao dano por seca. Entram com peso zero no
-    # indice climatico-hidrico; se um dia virarem cobertura propria, ganham o
-    # proprio indice, e nao um peso aqui dentro.
-    "outro_dano": 0.0,
 }
 
 # Classes que compoem a lavoura — o denominador.
-CLASSES_DE_LAVOURA = ("saudavel", "estresse_leve", "estresse_severo", "outro_dano")
+CLASSES_DE_LAVOURA = ("saudavel", "estresse_leve", "estresse_severo")
 
 # Abaixo disto, a imagem e quase toda solo: um talhao recem-plantado, uma foto do
 # carreador, uma foto do ceu. A proporcao de dano sobre tao pouca lavoura nao

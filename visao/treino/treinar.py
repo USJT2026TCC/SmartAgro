@@ -69,7 +69,9 @@ class BaseDeRecortes(Dataset):
     como ela chegou.
     """
 
-    def __init__(self, raiz: Path, divisao: str, aumentar: bool = False):
+    def __init__(
+        self, raiz: Path, divisao: str, aumentar: bool = False, cobertura_minima: float = 0.0
+    ):
         self.raiz = raiz
         self.aumentar = aumentar
 
@@ -80,7 +82,11 @@ class BaseDeRecortes(Dataset):
             )
 
         with (raiz / "indice.csv").open(encoding="utf-8") as arquivo:
-            self.linhas = [l for l in csv.DictReader(arquivo) if l["divisao"] == divisao]
+            self.linhas = [
+                l
+                for l in csv.DictReader(arquivo)
+                if l["divisao"] == divisao and float(l["lavoura"]) >= cobertura_minima
+            ]
 
         if not self.linhas:
             raise SystemExit(f"Nenhum recorte na divisao '{divisao}'. Rode preparar_dados.py.")
@@ -95,14 +101,10 @@ class BaseDeRecortes(Dataset):
         mascara = Image.open(self.raiz / "masks" / linha["mascara"])
 
         x = padronizar(torch.from_numpy(np.asarray(imagem, dtype=np.float32) / 255.0).permute(2, 0, 1))
-        bruto = np.asarray(mascara, dtype=np.int64)
 
-        # base -> AgroSmart, o mesmo mapa de preparar_dados.py
-        traduzido = np.zeros_like(bruto)
-        for origem, destino in {0: 0, 1: 2, 2: 3, 3: 1, 4: 4}.items():
-            traduzido[bruto == origem] = destino
-
-        y = torch.from_numpy(traduzido)
+        # A mascara ja vem na ordem do AgroSmart: a traducao e feita uma vez so,
+        # em preparar_dados.py.
+        y = torch.from_numpy(np.asarray(mascara, dtype=np.int64))
 
         if self.aumentar:
             # A MESMA transformacao na imagem e na mascara. Girar so uma das
@@ -119,13 +121,14 @@ class BaseDeRecortes(Dataset):
         return x, y.contiguous()
 
 
-def pesos_das_classes(base: BaseDeRecortes, amostras: int = 100) -> torch.Tensor:
+def pesos_das_classes(base: BaseDeRecortes, amostras: int = 10_000) -> torch.Tensor:
     """
     Peso inverso a frequencia.
 
     Sem isso, a classe mais comum domina a funcao de perda e o modelo aprende a
     responder "saudavel" para tudo — o que da acuracia alta e indice de dano
-    sempre zero, ou seja, uma apolice que nunca paga.
+    sempre zero, ou seja, uma apolice que nunca paga. Com os rotulos corrigidos o
+    estresse e so uns 3,5% dos pixels, e o peso importa ainda mais.
     """
     contagem = torch.zeros(CLASSES)
 
@@ -211,13 +214,11 @@ def main() -> None:
     treino = BaseDeRecortes(opcoes.dados, "treino", aumentar=not opcoes.sem_aumento)
     validacao = BaseDeRecortes(opcoes.dados, "validacao")
 
-    # A prova que decide a melhor epoca: so os recortes de ESTRESSE HIDRICO, os
-    # mesmos em que a linha de base foi medida. Nos de ferrugem o dano por seca
-    # verdadeiro e zero, e acertar zero e facil; mistura-los faria o erro parecer
-    # metade do que e. A primeira rodada no Colab reportou 7,4 pontos na
-    # validacao inteira — nos de estresse hidrico, eram 14,7.
-    validacao_hidrica = BaseDeRecortes(opcoes.dados, "validacao")
-    validacao_hidrica.linhas = [l for l in validacao_hidrica.linhas if l["grupo"] == "water"]
+    # A prova que decide a melhor epoca: os recortes da validacao com pelo menos
+    # 10% de lavoura, a mesma prova de treino/avaliacao.py. Abaixo disso o recorte
+    # e carreador ou borda do voo, o dano de referencia e zero por falta de
+    # planta, e acertar zero ali nao diz nada.
+    validacao_hidrica = BaseDeRecortes(opcoes.dados, "validacao", cobertura_minima=0.10)
 
     if opcoes.limite:
         treino.linhas = treino.linhas[: opcoes.limite]
@@ -226,7 +227,7 @@ def main() -> None:
 
     print(
         f"treino {len(treino)} recortes · validacao {len(validacao)} "
-        f"({len(validacao_hidrica)} de estresse hidrico) · dispositivo {dispositivo}"
+        f"({len(validacao_hidrica)} com lavoura) · dispositivo {dispositivo}"
     )
 
     carregador_treino = DataLoader(treino, batch_size=opcoes.lote, shuffle=True)
@@ -243,6 +244,11 @@ def main() -> None:
     agenda = torch.optim.lr_scheduler.CosineAnnealingLR(otimizador, T_max=opcoes.epocas)
 
     opcoes.saida.parent.mkdir(parents=True, exist_ok=True)
+
+    # Erro de quem responde sempre 0%: o dano medio de referencia da validacao.
+    danos = [float(l["dano"]) for l in validacao_hidrica.linhas]
+    trivial = sum(danos) / len(danos)
+    print(f"referencia trivial: responder sempre 0% erraria {trivial:.1%} na validacao")
 
     historico = []
     melhor = None
@@ -285,7 +291,7 @@ def main() -> None:
 
         print(
             f"epoca {epoca:3d}  perda {erro:.4f}  IoU media {metricas['iou_media']:.3f}  "
-            f"erro do indice (estresse hidrico) {atual:.3f}  ({metricas['segundos']:.0f}s){estrela}"
+            f"erro do indice {atual:.3f}  ({metricas['segundos']:.0f}s){estrela}"
         )
 
     caminho_do_historico = opcoes.saida.with_suffix(".historico.json")
@@ -298,7 +304,8 @@ def main() -> None:
                 "aumento_de_dados": not opcoes.sem_aumento,
                 "dispositivo": dispositivo,
                 "recortes_de_validacao_hidrica": len(validacao_hidrica),
-                "criterio_da_melhor_epoca": "erro do indice nos recortes de estresse hidrico",
+                "criterio_da_melhor_epoca": "erro do indice nos recortes de validacao com lavoura",
+                "erro_de_responder_sempre_zero": trivial,
                 "melhor_erro_do_indice": melhor,
                 "epocas": historico,
             },
@@ -318,7 +325,13 @@ def main() -> None:
     print(f"\nPesos da melhor epoca em {opcoes.saida}")
     print(f"Historico em {caminho_do_historico}")
     print("Para usar: VISAO_PESOS=<caminho> no .env do modulo de visao.")
-    print(f"Melhor erro do indice de dano, nos recortes de estresse hidrico: {melhor:.1%}")
+    print(f"Melhor erro do indice de dano: {melhor:.1%}")
+    print(f"Responder sempre 0% erraria: {trivial:.1%}")
+    if melhor >= trivial:
+        print(
+            "ATENCAO: o modelo nao vence a referencia trivial. Ele nao esta enxergando o "
+            "estresse, so acompanhando a media — nao use estes pesos em producao."
+        )
 
 
 if __name__ == "__main__":
