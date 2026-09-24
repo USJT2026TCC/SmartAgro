@@ -56,7 +56,7 @@ class BaseDeRecortes(Dataset):
 
     AUMENTO DE DADOS, so no treino
 
-    Sao 738 recortes de treino, poucos para uma rede de segmentacao. Espelhar e
+    Sao 257 recortes de treino, poucos para uma rede de segmentacao. Espelhar e
     girar em multiplos de 90 graus multiplica isso por oito, e e um aumento
     legitimo aqui: lavoura vista de cima nao tem lado certo — o drone sobrevoa
     em qualquer direcao, e o talhao continua o mesmo.
@@ -121,7 +121,9 @@ class BaseDeRecortes(Dataset):
         return x, y.contiguous()
 
 
-def pesos_das_classes(base: BaseDeRecortes, amostras: int = 10_000) -> torch.Tensor:
+def pesos_das_classes(
+    base: BaseDeRecortes, expoente: float = 0.5, amostras: int = 10_000
+) -> torch.Tensor:
     """
     Peso inverso a frequencia.
 
@@ -138,7 +140,11 @@ def pesos_das_classes(base: BaseDeRecortes, amostras: int = 10_000) -> torch.Ten
 
     frequencia = contagem / contagem.sum().clamp(min=1)
 
-    return (1.0 / frequencia.clamp(min=1e-4)).sqrt()
+    # expoente 0,5 (raiz do inverso) e o padrao. Com ele, o modelo da 2.0.0 ficou
+    # puxado para a media: subestimou pela metade os recortes de dano alto e
+    # superestimou os sadios. Expoente 1,0 (inverso inteiro) pesa mais as classes
+    # raras e tende a marcar mais estresse — e o experimento a fazer.
+    return (1.0 / frequencia.clamp(min=1e-4)) ** expoente
 
 
 def uma_epoca(modelo, carregador, otimizador, perda, dispositivo) -> float:
@@ -205,6 +211,12 @@ def main() -> None:
     parser.add_argument("--limite", type=int, default=0, help="usa so N recortes (teste rapido)")
     parser.add_argument("--versao", default="visao-unet-1.0.0", help="gravada junto dos pesos")
     parser.add_argument("--sem-aumento", action="store_true", help="desliga espelhamento e giros")
+    parser.add_argument(
+        "--expoente-dos-pesos",
+        type=float,
+        default=0.5,
+        help="peso das classes = (1/frequencia)^expoente; 0.5 padrao, 1.0 pesa mais o estresse",
+    )
     opcoes = parser.parse_args()
 
     dispositivo = "cuda" if torch.cuda.is_available() else "cpu"
@@ -236,7 +248,9 @@ def main() -> None:
 
     modelo = UNet().to(dispositivo)
     otimizador = torch.optim.AdamW(modelo.parameters(), lr=opcoes.taxa)
-    perda = nn.CrossEntropyLoss(weight=pesos_das_classes(treino).to(dispositivo))
+    pesos = pesos_das_classes(treino, opcoes.expoente_dos_pesos)
+    print("peso de cada classe:", {n: round(float(v), 2) for n, v in zip(NOMES_DAS_CLASSES, pesos)})
+    perda = nn.CrossEntropyLoss(weight=pesos.to(dispositivo))
 
     # Taxa de aprendizado que decresce ao longo do treino. Na primeira rodada, com
     # taxa fixa, o erro do indice oscilava entre 7 e 14 pontos de uma epoca para a
@@ -302,6 +316,7 @@ def main() -> None:
                 "recortes_de_treino": len(treino),
                 "recortes_de_validacao": len(validacao),
                 "aumento_de_dados": not opcoes.sem_aumento,
+                "expoente_dos_pesos": opcoes.expoente_dos_pesos,
                 "dispositivo": dispositivo,
                 "recortes_de_validacao_hidrica": len(validacao_hidrica),
                 "criterio_da_melhor_epoca": "erro do indice nos recortes de validacao com lavoura",

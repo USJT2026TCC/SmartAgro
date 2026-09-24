@@ -168,10 +168,25 @@ rótulos corrigidos. O modelo aprendeu o rótulo errado, e as medições dela �
 A rodada ainda serviu: revelou os defeitos 2.19, 2.20 e 2.21 de DECISOES.md, e o histórico fica em
 [resultados/visao-unet-1.0.0](resultados/visao-unet-1.0.0/README.md) como registro.
 
-### 3.4 Segunda rodada — base v2.1, só estresse hídrico
+### 3.4 Segunda rodada (visao-unet-2.0.0) — base v2.1, só estresse hídrico
 
-Pendente: rodar o notebook do Colab com a base corrigida. A tabela do TCC sai da seção 7 do
-notebook, que mede heurística e modelo pelo mesmo código e mostra a referência trivial ao lado.
+Validação de 79 recortes com pelo menos 10% de lavoura, rótulos corrigidos:
+
+| | Sempre 0% | Heurística | **U-Net 2.0.0** |
+|---|---:|---:|---:|
+| Erro absoluto médio, por recorte | 4,9 | 13,9 | **3,3** |
+| Viés | −4,9 | +13,1 | **+0,1** |
+| Dano da área, somando os recortes (real: 4,3%) | 0% | 18,6% | **4,6%** |
+
+**No nível do talhão, o modelo acerta o dano da área com 0,3 ponto de diferença.** É o número que
+importa para a apólice, que soma os pixels de um lote de fotos.
+
+**Mas o modelo é puxado para a média:** superestima o dano de lavoura sadia (+4 pontos) e
+**subestima pela metade o dano alto** (15,6% real, 8,1% estimado). Por isso o índice de dano por
+imagem continua complementar ao índice climático, e não gatilho principal. O experimento natural é
+treinar com `--expoente-dos-pesos 1.0`, que pesa mais o estresse.
+
+Detalhes, figuras e ressalvas em [resultados/visao-unet-2.0.0](resultados/visao-unet-2.0.0/README.md).
 
 ## 4. TerraMind (IBM + ESA): serve, mas para outra coisa
 
