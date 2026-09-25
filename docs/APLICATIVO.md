@@ -109,6 +109,45 @@ estiagem chega a 60 dias."*
 
 **A conta do dinheiro é feita em BigInt, sobre wei.** Ver a seção 5.
 
+### Produtor · Fotos da lavoura — RF14, RF16, HU11
+
+O produtor fotografa o talhão, e as fotos seguem para o módulo de visão, que estima quanto da
+lavoura foi afetado pela seca ([VISAO.md](VISAO.md)).
+
+**Onde cada foto foi tirada.** O aplicativo lê o GPS gravado na própria foto (EXIF), no
+navegador, antes de enviar, e mostra cada ponto num mapa do talhão desenhado em SVG — sem
+biblioteca de mapas, que traria tiles, chave de API e dependência de rede para desenhar um
+polígono e alguns pontos. A foto que cai fora aparece em vermelho, e o produtor pode descartá-la
+antes de gastar a conexão, que no campo costuma ser ruim.
+
+Foto sem GPS — encaminhada por aplicativo de mensagem, por exemplo, que apaga o EXIF — pode ser
+localizada pela posição atual do aparelho ou marcando o ponto no mapa. As três origens são
+enviadas ao servidor e **ficam registradas**:
+
+| Origem | O que prova |
+|---|---|
+| GPS da foto | onde a foto foi **tirada** |
+| localização do aparelho | onde a foto foi **enviada** — vale se a pessoa estiver no talhão |
+| marcada no mapa | nada; é a mais fácil de forjar |
+
+Nenhuma é recusada, porque uma foto sem GPS continua sendo evidência. Mas a lista de lotes e a
+tela do perito mostram quantas fotos de cada lote tiveram o local marcado à mão (DECISOES.md 1.14).
+
+A conferência de "dentro do talhão" no navegador é só uma prévia. **Quem decide é o servidor**,
+com o PostGIS: uma conta no navegador pode ser adulterada por quem controla o navegador.
+
+**O lote.** As fotos vão em lotes. Ao fechar, o servidor calcula o resumo criptográfico do
+conjunto — o valor que vai para a blockchain com o índice de dano (RF16) — e o lote não aceita
+mais nada. Por isso fechar pede confirmação: acrescentar uma foto depois mudaria o conjunto que o
+resumo registrado descreve.
+
+**No celular**, "Tirar foto" abre direto a câmera e "Escolher fotos" abre a galeria.
+
+Para testar e demonstrar, há fotos com GPS em
+[`docs/demonstracao/fotos/`](demonstracao/fotos/LEIAME.md): seis dentro do talhão-01, uma fora e
+uma sem GPS. As imagens são recortes reais da base de referência; as coordenadas foram
+inventadas para cair no talhão, e isso está escrito no nome dos arquivos e no LEIAME.
+
 ### Produtor · Minha carteira — RF02, HU07
 
 Vincula a carteira ao cadastro por assinatura de mensagem. O **backend** gera o desafio com um

@@ -109,8 +109,9 @@ acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), s
 ```
 contratos   94 testes · 100% de statements, branches, funções e linhas
 oraculo     67 testes
-backend     87 testes + 4 de integração com um nó real
+backend     91 testes + 4 de integração com um nó real
 simulador   19 testes
+app         11 testes (mapa do talhão e leitura do GPS das fotos)
 visao       49 testes
 ```
 

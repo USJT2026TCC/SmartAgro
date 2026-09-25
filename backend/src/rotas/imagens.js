@@ -15,7 +15,7 @@ import {
   exigirSessao,
   limitarIngestao,
 } from "../seguranca/sessoes.js";
-import { texto, uuid } from "../validacao.js";
+import { texto, umDe, uuid } from "../validacao.js";
 
 /**
  * Imagens do talhao e resultados da visao computacional (RF14, RF15, RF16, RF17).
@@ -37,6 +37,9 @@ import { texto, uuid } from "../validacao.js";
  */
 
 const TIPOS_ACEITOS = new Set(["image/jpeg", "image/png"]);
+
+/** De onde veio a coordenada da foto — ver migracoes/002_origem_da_localizacao.sql. */
+const ORIGENS_DA_LOCALIZACAO = ["exif", "dispositivo", "manual"];
 const EXTENSOES = { "image/jpeg": "jpg", "image/png": "png" };
 
 /** Abaixo disso, a analise vai para o perito (RF17). 70%, o mesmo limiar do oraculo. */
@@ -140,6 +143,8 @@ export function rotasDeImagens() {
     const { rows } = await banco.query(
       `SELECT lt.id, lt.hash_evidencias, lt.fechado_em, lt.criado_em,
               (SELECT count(*)::int FROM imagens i WHERE i.lote_id = lt.id) AS imagens,
+              (SELECT count(*)::int FROM imagens i
+                WHERE i.lote_id = lt.id AND i.origem_da_localizacao = 'manual') AS imagens_com_local_manual,
               (SELECT json_build_object('indiceDanoBps', an.indice_dano_bps, 'confiancaBps', an.confianca_bps,
                                         'versaoModelo', an.versao_modelo,
                                         'encaminhadaAoPerito', an.encaminhada_ao_perito,
@@ -162,9 +167,13 @@ export function rotasDeImagens() {
   /**
    * Envio de imagem georreferenciada (RF14, HU11 criterio 1).
    *
-   * Multipart com o arquivo em `imagem` e os campos `lon`, `lat` e `capturadaEm`.
-   * A leitura automatica do EXIF fica para a Sprint 3, junto do modulo de visao;
-   * por enquanto a coordenada vem do formulario.
+   * Multipart com o arquivo em `imagem` e os campos `lon`, `lat`, `capturadaEm` e
+   * `origemDaLocalizacao`. O aplicativo le o GPS gravado na foto (EXIF) no proprio
+   * navegador; quando a foto nao tem GPS, usa a localizacao do aparelho ou um
+   * ponto marcado no mapa — e diz qual das tres, para o perito saber.
+   *
+   * A coordenada informada nunca e aceita sem conferencia: quem decide se o ponto
+   * esta no talhao e o PostGIS, aqui.
    */
   r.post(
     "/lotes/:id/imagens",
@@ -192,6 +201,14 @@ export function rotasDeImagens() {
       const lon = Number(req.body?.lon);
       const lat = Number(req.body?.lat);
       const capturadaEm = new Date(req.body?.capturadaEm);
+
+      // De onde veio a coordenada (migracao 002). Sem o campo, vale 'manual': e
+      // o que um cliente antigo, que so tinha coordenada digitada, mandava.
+      const origemDaLocalizacao = umDe(
+        req.body?.origemDaLocalizacao ?? "manual",
+        "origemDaLocalizacao",
+        ORIGENS_DA_LOCALIZACAO,
+      );
 
       if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
         throw pedidoInvalido("Imagem sem geolocalizacao: informe lon e lat.");
@@ -222,16 +239,29 @@ export function rotasDeImagens() {
       writeFileSync(caminho, req.file.buffer);
 
       const { rows } = await banco.query(
-        `INSERT INTO imagens (lote_id, sha256, caminho, capturada_em, local, bytes, tipo)
-         VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326), $7, $8)
+        `INSERT INTO imagens (lote_id, sha256, caminho, capturada_em, local, bytes, tipo,
+                              origem_da_localizacao)
+         VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326), $7, $8, $9)
          ON CONFLICT (lote_id, sha256) DO NOTHING
          RETURNING id`,
-        [loteId, sha256, caminho, capturadaEm, lon, lat, req.file.size, req.file.mimetype],
+        [
+          loteId,
+          sha256,
+          caminho,
+          capturadaEm,
+          lon,
+          lat,
+          req.file.size,
+          req.file.mimetype,
+          origemDaLocalizacao,
+        ],
       );
 
       if (rows.length === 0) throw conflito("Esta imagem ja foi enviada neste lote.");
 
-      res.status(201).json({ imagem: { id: rows[0].id, sha256, bytes: req.file.size } });
+      res.status(201).json({
+        imagem: { id: rows[0].id, sha256, bytes: req.file.size, origemDaLocalizacao },
+      });
     },
   );
 
@@ -284,6 +314,7 @@ export function rotasDeImagens() {
               (SELECT json_agg(json_build_object(
                         'id', i.id, 'sha256', i.sha256, 'tipo', i.tipo, 'bytes', i.bytes,
                         'capturadaEm', i.capturada_em,
+                        'origemDaLocalizacao', i.origem_da_localizacao,
                         'lon', ST_X(i.local), 'lat', ST_Y(i.local))
                       ORDER BY i.capturada_em)
                  FROM imagens i WHERE i.lote_id = lt.id) AS imagens
@@ -416,7 +447,9 @@ export function rotasDeImagens() {
       `SELECT an.id, an.indice_dano_bps, an.confianca_bps, an.versao_modelo, an.encaminhada_ao_perito,
               an.decisao_do_perito, an.parecer_do_perito, an.revisada_em, an.criada_em,
               lt.id AS lote_id, lt.hash_evidencias, t.identificador AS talhao,
-              (SELECT count(*)::int FROM imagens i WHERE i.lote_id = lt.id) AS imagens
+              (SELECT count(*)::int FROM imagens i WHERE i.lote_id = lt.id) AS imagens,
+              (SELECT count(*)::int FROM imagens i
+                WHERE i.lote_id = lt.id AND i.origem_da_localizacao = 'manual') AS imagens_com_local_manual
          FROM analises_de_imagem an
          JOIN lotes_de_imagens lt ON lt.id = an.lote_id
          JOIN talhoes t ON t.id = lt.talhao_id

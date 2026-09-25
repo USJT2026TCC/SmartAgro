@@ -174,6 +174,21 @@ de um lado e não do outro produziria um modelo com validação boa e desempenho
 e sem nenhum erro aparecer, porque o número continuaria plausível.
 
 
+### 1.14 A origem da localização da foto é registrada, e não usada para recusar
+
+O servidor sempre conferiu se a foto cai dentro do talhão. Não sabia **quanto confiar** no ponto:
+GPS gravado na foto, posição do aparelho no envio ou ponto marcado à mão no mapa provam coisas
+muito diferentes. A partir da migração 002, cada imagem guarda a origem da coordenada.
+
+A alternativa — recusar foto sem GPS — puniria o produtor cuja foto passou por um aplicativo de
+mensagem, que apaga o EXIF. A foto continua sendo evidência; o que muda é que o perito vê quantas
+fotos de cada lote tiveram o local informado à mão.
+
+**Em aberto, para a equipe decidir:** hoje a origem é só informada. Um lote com fotos de local
+manual pode ser liberado direto ao oráculo, se a confiança do modelo passar do limiar — o teste da
+tela fez isso, com 1 de 7 fotos marcada à mão. Uma regra possível é derrubar a confiança pela
+fração de fotos com local manual, mandando esses lotes ao perito.
+
 ## 2. Defeitos encontrados durante a implementação
 
 Todos foram corrigidos. Ficam registrados porque são o tipo de coisa que volta a acontecer.
@@ -542,6 +557,23 @@ Estava no dado de terceiro. O que o encontrou foi desconfiar de um resultado fis
 uma versão corrigida. Para o TCC,
 o ponto é que rótulo automático herda os erros do processo que o gerou, e que a documentação da
 base precisa ser lida por inteiro, inclusive nas versões posteriores.
+
+### 2.23 A data da foto trocada, em silêncio, pela data do arquivo
+
+**Sintoma:** encontrado pelo teste escrito junto com a tela de fotos, antes de chegar ao
+aplicativo.
+
+**Causa:** a leitura do EXIF pedia os campos de data com a opção `pick`, que a versão enxuta da
+biblioteca `exifr` não suporta. A chamada lançava erro, o erro era tratado como "foto sem data", e
+a data da foto virava a data de modificação do arquivo — que muda a cada cópia.
+
+**Correção:** a leitura passou a pedir os blocos do EXIF sem filtrar campos. O teste usa as fotos de
+demonstração com uma data de arquivo propositalmente diferente, e falharia se a leitura voltasse a
+cair nela.
+
+**Por que importa:** o tratamento de erro estava certo — foto sem data não pode travar o envio —,
+mas escondia um erro de programação atrás de um caso legítimo. Só um teste com o resultado
+esperado, e não apenas "não quebrou", separa os dois.
 
 ---
 

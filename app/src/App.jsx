@@ -11,6 +11,7 @@ import ApoliceDetalhe from "./paginas/ApoliceDetalhe";
 import MinhasApolices from "./paginas/produtor/MinhasApolices";
 import Cotacao from "./paginas/produtor/Cotacao";
 import VincularCarteira from "./paginas/produtor/VincularCarteira";
+import FotosDaLavoura from "./paginas/produtor/FotosDaLavoura";
 import CarteiraDaSeguradora from "./paginas/seguradora/CarteiraDaSeguradora";
 import Propostas from "./paginas/seguradora/Propostas";
 import TalhoesEProdutos from "./paginas/seguradora/TalhoesEProdutos";
@@ -86,6 +87,14 @@ export default function App() {
           element={
             <RotaProtegida perfis={[PERFIS.PRODUTOR]}>
               <Cotacao />
+            </RotaProtegida>
+          }
+        />
+        <Route
+          path="/produtor/fotos"
+          element={
+            <RotaProtegida perfis={[PERFIS.PRODUTOR]}>
+              <FotosDaLavoura />
             </RotaProtegida>
           }
         />

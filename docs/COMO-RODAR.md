@@ -339,6 +339,25 @@ Para o roteiro antigo, que mostra o índice subindo 28 → 29 → 30 um dia de c
 No modo escalonado, o pagamento é parcial. A seguradora pode então resgatar a sobra pelo botão
 que aparece na própria apólice.
 
+
+### No navegador e no Terminal 2 — as fotos e o índice de dano
+
+1. Como **produtor**, abrir **Fotos da lavoura**, escolher o talhão-01 e **Abrir lote de fotos**.
+2. **Escolher fotos** e selecionar as oito de `docs/demonstracao/fotos/`. O mapa mostra seis
+   pontos dentro do talhão, um fora, em vermelho, e a foto sem GPS pede localização: use
+   **Marcar no mapa** e clique dentro do talhão.
+3. **Enviar**: o servidor aceita sete e recusa a de fora do talhão, com o motivo na tela.
+4. **Fechar lote e mandar para análise**. A tabela mostra "aguardando análise" e o resumo das
+   evidências.
+5. O módulo de visão analisa, com o modelo treinado:
+
+```bash
+cd visao && .venv/Scripts/python -m visao servico --uma-vez
+```
+
+Com `VISAO_PESOS=pesos/unet.pt` no `visao/.env`. Recarregando a tela, o lote mostra o dano
+estimado — ou "com o perito", se a confiança ficou abaixo de 70%.
+
 ---
 
 ## 6. Verificar o comportamento sob falha (RF21)

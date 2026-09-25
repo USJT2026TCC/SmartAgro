@@ -146,7 +146,7 @@ Todas sob `/api`. Formato de erro único: `{ "erro": { "codigo", "mensagem" } }`
 |---|---|---|
 | `POST /leituras` | fonte (assinatura) | ingestão de lote assinado |
 | `GET /leituras` | seguradora, perito | consulta por talhão |
-| `POST /talhoes/:id/lotes` · `POST /lotes/:id/imagens` · `POST /lotes/:id/fechar` | produtor, seguradora | upload de imagens; confere formato real do arquivo e se a coordenada cai **dentro** do talhão (`ST_Contains`); fechar calcula o resumo das evidências |
+| `POST /talhoes/:id/lotes` · `POST /lotes/:id/imagens` · `POST /lotes/:id/fechar` | produtor, seguradora | upload de imagens; confere formato real do arquivo e se a coordenada cai **dentro** do talhão (`ST_Contains`); grava de onde veio a coordenada (`origemDaLocalizacao`: `exif`, `dispositivo` ou `manual`); fechar calcula o resumo das evidências |
 | `GET /visao/pendentes` | serviço de visão | lotes fechados ainda sem análise, com as imagens |
 | `GET /visao/imagens/:id/arquivo` | serviço de visão | o arquivo, conferido contra o sha256 registrado antes de ser entregue |
 | `POST /visao/resultados` | serviço de visão | índice de dano e confiança; abaixo de 70% vai para o perito |
@@ -281,7 +281,7 @@ Comando: `node src/index.js servico` em `oraculo/`, com `API_URL` e `CHAVE_DE_SE
 ## 9. Testes
 
 ```
-npm run testar              87 testes · banco em memória, cadeia simulada
+npm run testar              91 testes · banco em memória, cadeia simulada
 npm run testar:integracao    4 testes · indexador contra um hardhat node real
 ```
 

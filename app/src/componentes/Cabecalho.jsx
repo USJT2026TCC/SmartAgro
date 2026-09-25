@@ -18,6 +18,7 @@ const MENUS = {
   [PERFIS.PRODUTOR]: [
     { para: "/produtor", texto: "Minhas apolices", fim: true },
     { para: "/produtor/cotacao", texto: "Simular e contratar" },
+    { para: "/produtor/fotos", texto: "Fotos da lavoura" },
     { para: "/produtor/carteira", texto: "Minha carteira" },
   ],
   [PERFIS.SEGURADORA]: [

@@ -42,16 +42,25 @@ describe("imagens e visao", () => {
 
   function enviarImagem(
     loteId,
-    { conteudo = png(Math.random()), lon = -47.58, lat = -21.46, tipo = "image/png" } = {},
+    {
+      conteudo = png(Math.random()),
+      lon = -47.58,
+      lat = -21.46,
+      tipo = "image/png",
+      origem = undefined,
+    } = {},
   ) {
-    return ctx
+    const pedido = ctx
       .api()
       .post(`/api/lotes/${loteId}/imagens`)
       .set(com(produtor))
       .field("lon", String(lon))
       .field("lat", String(lat))
-      .field("capturadaEm", "2026-09-20T10:00:00.000Z")
-      .attach("imagem", conteudo, { filename: "foto.png", contentType: tipo });
+      .field("capturadaEm", "2026-09-20T10:00:00.000Z");
+
+    if (origem !== undefined) pedido.field("origemDaLocalizacao", origem);
+
+    return pedido.attach("imagem", conteudo, { filename: "foto.png", contentType: tipo });
   }
 
   test("imagem dentro do poligono do talhao e aceita", async () => {
@@ -66,6 +75,44 @@ describe("imagens e visao", () => {
 
     assert.equal(r.status, 400);
     assert.match(r.body.erro.mensagem, /fora do poligono/);
+  });
+
+  describe("de onde veio a coordenada (migracao 002)", () => {
+    test("a origem informada pelo aplicativo e gravada", async () => {
+      const lote = await abrirLote();
+
+      for (const origem of ["exif", "dispositivo", "manual"]) {
+        const r = await enviarImagem(lote, { origem });
+        assert.equal(r.status, 201, JSON.stringify(r.body));
+        assert.equal(r.body.imagem.origemDaLocalizacao, origem);
+      }
+    });
+
+    test("sem o campo, vale 'manual': o cliente antigo so tinha coordenada digitada", async () => {
+      const r = await enviarImagem(await abrirLote());
+
+      assert.equal(r.body.imagem.origemDaLocalizacao, "manual");
+    });
+
+    test("origem desconhecida e recusada", async () => {
+      const r = await enviarImagem(await abrirLote(), { origem: "satelite" });
+
+      assert.equal(r.status, 400);
+      assert.match(r.body.erro.mensagem, /origemDaLocalizacao/);
+    });
+
+    test("a lista de lotes e o perito sabem quantas fotos tiveram o local informado a mao", async () => {
+      const lote = await abrirLote();
+      await enviarImagem(lote, { origem: "exif" });
+      await enviarImagem(lote, { origem: "manual" });
+      await enviarImagem(lote, { origem: "manual" });
+
+      const r = await ctx.api().get(`/api/lotes?talhaoId=${talhaoId}`).set(com(produtor));
+      const este = r.body.lotes.find((l) => l.id === lote);
+
+      assert.equal(este.imagens, 3);
+      assert.equal(este.imagens_com_local_manual, 2);
+    });
   });
 
   test("imagem sem geolocalizacao e recusada", async () => {
@@ -167,7 +214,10 @@ describe("imagens e visao", () => {
       ]);
       writeFileSync(rows[0].caminho, png(0.123456));
 
-      const r = await ctx.api().get(`/api/visao/imagens/${envio.body.imagem.id}/arquivo`).set(CHAVE);
+      const r = await ctx
+        .api()
+        .get(`/api/visao/imagens/${envio.body.imagem.id}/arquivo`)
+        .set(CHAVE);
 
       assert.equal(r.status, 409, JSON.stringify(r.body));
     });

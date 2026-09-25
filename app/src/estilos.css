@@ -561,3 +561,170 @@ tbody tr:last-child td {
   color: var(--erro);
   font-weight: 650;
 }
+
+/* ------------------------------------------------------ fotos da lavoura */
+
+.fotos-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .fotos-grade {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mapa-do-talhao {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--papel);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+}
+
+.mapa-do-talhao.marcando {
+  cursor: crosshair;
+  outline: 2px solid var(--alerta);
+  outline-offset: 2px;
+}
+
+.mapa-do-talhao .contorno {
+  fill: var(--verde-100);
+  stroke: var(--verde-700);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.mapa-do-talhao .ponto {
+  stroke: var(--papel-elevado);
+  stroke-width: 2;
+}
+
+/* Verde mais claro que o do contorno: no tema escuro, o ponto no verde-700
+   desaparecia dentro do poligono. */
+.mapa-do-talhao .ponto.dentro {
+  fill: var(--verde-500);
+}
+
+.mapa-do-talhao .ponto.fora {
+  fill: var(--erro);
+}
+
+/* Local marcado a mao: mesma cor de dentro/fora, com contorno tracejado, para o
+   produtor e o perito distinguirem sem depender so da cor. */
+.mapa-do-talhao .ponto.manual {
+  stroke: var(--alerta);
+  stroke-dasharray: 3 2;
+}
+
+.mapa-do-talhao .ponto.destaque {
+  stroke: var(--alerta);
+  stroke-width: 3;
+}
+
+.mapa-do-talhao .norte {
+  fill: var(--tinta-suave);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.legenda-mapa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.legenda-mapa .bola {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: -8px;
+}
+
+.legenda-mapa .bola.dentro {
+  background: var(--verde-500);
+}
+
+.legenda-mapa .bola.fora {
+  background: var(--erro);
+}
+
+.legenda-mapa .bola.manual {
+  background: transparent;
+  border: 2px dashed var(--alerta);
+}
+
+.ajuda-fotos {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.lista-de-fotos {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.lista-de-fotos li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pequeno);
+}
+
+.lista-de-fotos li.marcando {
+  border-color: var(--alerta);
+  background: var(--alerta-fundo);
+}
+
+.lista-de-fotos img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--raio-pequeno);
+}
+
+.dados-da-foto {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.dados-da-foto strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erro-da-foto {
+  color: var(--erro);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 560px) {
+  .lista-de-fotos li {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .lista-de-fotos img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .lista-de-fotos li > .linha-de-botoes {
+    grid-column: 1 / -1;
+  }
+}
