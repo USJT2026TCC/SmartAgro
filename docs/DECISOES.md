@@ -184,10 +184,12 @@ A alternativa — recusar foto sem GPS — puniria o produtor cuja foto passou p
 mensagem, que apaga o EXIF. A foto continua sendo evidência; o que muda é que o perito vê quantas
 fotos de cada lote tiveram o local informado à mão.
 
-**Em aberto, para a equipe decidir:** hoje a origem é só informada. Um lote com fotos de local
-manual pode ser liberado direto ao oráculo, se a confiança do modelo passar do limiar — o teste da
-tela fez isso, com 1 de 7 fotos marcada à mão. Uma regra possível é derrubar a confiança pela
-fração de fotos com local manual, mandando esses lotes ao perito.
+**Decidido pela equipe (25/09/2026): a origem é só informada, e não altera a confiança.** Um lote
+com fotos de local manual pode ser liberado direto ao oráculo, se a confiança do modelo passar do
+limiar — o teste da tela fez isso, com 1 de 7 fotos marcada à mão. A alternativa considerada foi
+derrubar a confiança pela fração de fotos com local manual, mandando esses lotes ao perito; ficou
+registrada como melhoria possível, para o caso de a fraude por localização se mostrar um problema
+na prática. Até lá, o controle é a informação visível ao perito e à seguradora na lista de lotes.
 
 ## 2. Defeitos encontrados durante a implementação
 
