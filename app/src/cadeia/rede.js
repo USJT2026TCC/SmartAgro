@@ -23,7 +23,9 @@ export const REDES = {
     chainId: 11155111,
     nome: "Sepolia",
     moeda: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
-    rpc: import.meta.env.VITE_RPC_SEPOLIA || "https://rpc.sepolia.org",
+    // Endpoint publico, sem conta. O rpc.sepolia.org, usado antes, saiu do ar
+    // (respondia 404 em 25/09/2026).
+    rpc: import.meta.env.VITE_RPC_SEPOLIA || "https://ethereum-sepolia-rpc.publicnode.com",
     explorador: "https://sepolia.etherscan.io",
   },
 };
