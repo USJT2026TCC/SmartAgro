@@ -601,10 +601,10 @@ diária. Pagar mil vezes o preço esgotaria o saldo antes do fim da demonstraç�
 | Item | Requisito | Situação |
 |---|---|---|
 | Análise estática dos contratos | RNF13 | **Feito.** Slither sem nenhum achado; ver [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
-| Verificação do código-fonte no Etherscan | — | Permite que a banca leia o contrato implantado no explorador |
-| Medição de latência em rede pública | Capítulo 7 do manual | Comparar com os ~170 ms da rede local |
+| Verificação do código-fonte no Etherscan | — | **Pendente**: precisa de uma chave da API do Etherscan (COMO-RODAR.md 7.7) |
+| Medição de latência em rede pública | Capítulo 7 do manual | **Medido**: ~27 s da publicação à segunda confirmação, contra ~170 ms na rede local |
 | Implantação em Sepolia | — | **Feito** em 07/10/2026: contratos e uma apólice de teste; endereços em `contratos/implantacoes/sepolia.json` |
-| Custo em gas na Sepolia | RNF09, RNF10 | **Medido** para implantação e emissão (CONTRATOS.md §4); falta a publicação do oráculo e o pagamento |
+| Custo em gas na Sepolia | RNF09, RNF10 | **Medido** (CONTRATOS.md §4). Pagamento pelos dois índices feito em 07/10/2026: [resultados/sepolia-2026-10-07](resultados/sepolia-2026-10-07/README.md) |
 
 ---
 

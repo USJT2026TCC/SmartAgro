@@ -221,6 +221,7 @@ Medidos na primeira implantação pública, em 07/10/2026 (endereços em
 | `emitirApolice` | ~1.507.000 | 10.452.332 | 6,9× |
 | `depositarGarantia` | 47.132 | 135.152 | 2,9× |
 | `autorizar` | ~70.000 | 240.099 | 3,4× |
+| Publicação que aciona e paga | 231.192 | 956.334 | 4,1× |
 
 A diferença não é do contrato. O upgrade **Glamsterdam** foi ativado na Sepolia em 06/10/2026, um
 dia antes, e trouxe o EIP-8037, que encarece a criação de estado: gravar código passou de 200 para

@@ -28,11 +28,16 @@ que a condição de pagamento é uma função computável sobre grandezas medida
 | Módulo | Situação | Conteúdo |
 |---|---|---|
 | [`contratos/`](contratos) | **Pronto** | Apólice, registro de oráculos e fábrica em Solidity, com 94 testes e 100% de cobertura |
-| [`oraculo/`](oraculo) | **Pronto** | Consolidação dos índices, assinatura, publicação, fila de retomada e registro de custos, com 65 testes |
-| [`app/`](app) | **Pronto** | Aplicativo do produtor, painel da seguradora e revisão do perito, em React, integrados ao backend e aos contratos |
-| [`backend/`](backend) | **Pronto** | API, PostgreSQL + PostGIS, ingestão assinada, indexador de eventos e notificações, com 87 testes |
+| [`oraculo/`](oraculo) | **Pronto** | Consolidação dos índices, assinatura, publicação, fila de retomada e registro de custos, com 67 testes |
+| [`app/`](app) | **Pronto** | Aplicativo do produtor, painel da seguradora e revisão do perito e envio georreferenciado de fotos, em React, integrados ao backend e aos contratos, com 11 testes |
+| [`backend/`](backend) | **Pronto** | API, PostgreSQL + PostGIS, ingestão assinada, indexador de eventos e notificações, com 91 testes |
 | [`simulador/`](simulador) | **Pronto** | Estações em Python + MQTT, enviando a série histórica real do INMET, assinada, com 19 testes |
 | [`visao/`](visao) | **Pronto, com ressalvas** | Índice de dano por imagem, integrado ao backend, com 49 testes. Na base corrigida, acerta o dano da área com 0,3 ponto de diferença (a heurística de cor erra por 14), mas subestima o dano alto. Ver [docs/resultados](docs/resultados/visao-unet-2.0.0/README.md) |
+
+**Na rede pública:** em 07/10/2026 o fluxo completo rodou na Sepolia, e as duas apólices de teste
+pagaram o produtor sem intervenção humana — uma pelos 39 dias secos medidos pelo INMET, outra
+pelos 9,98% de dano estimados nas fotos. Cada transação pode ser conferida no Etherscan:
+[docs/resultados/sepolia-2026-10-07](docs/resultados/sepolia-2026-10-07/README.md).
 
 O simulador envia dados **reais**: a série horária da estação automática A770 do INMET, em São
 Simão/SP, que registra uma estiagem de 39 dias em julho e agosto de 2024. A fonte simulada

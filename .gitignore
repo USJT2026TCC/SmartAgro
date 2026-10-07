@@ -21,6 +21,7 @@ oraculo/dados/fila.json
 oraculo/dados/publicacoes.jsonl
 oraculo/dados/reputacao.json
 oraculo/dados/*.log
+oraculo/dados-sepolia/
 
 # Enderecos de rede local mudam a cada `npx hardhat node`. Os de rede de teste
 # publica (sepolia*.json) sao versionados de proposito: a banca precisa poder

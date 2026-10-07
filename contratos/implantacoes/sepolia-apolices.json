@@ -10,5 +10,19 @@
     "hashTermos": "0x0e38a770c7ca0e8ec7c44519aa8e434693562888c2069b0b50a847be8a8a15fc",
     "emitidaEm": "2026-10-07T23:26:36.969Z",
     "txEmissao": "0xbebe3a577a6f001c34d453c8b414f4084800888d33ef45d65da4f901174d14c2"
+  },
+  {
+    "endereco": "0xCDaF8A03cD4b54145B28A5F00746dC58B7F2D830",
+    "produtor": "0xC8fdFcA3CfEc202D8BaBf4E89bEcaB5E57773071",
+    "cultura": "soja",
+    "talhao": "talhao-01",
+    "operador": "dano",
+    "limiarDias": null,
+    "limiarDanoBps": 500,
+    "valorIndenizacao": "5000000000000000",
+    "descricaoDosTermos": "AgroSmart|soja|talhao-01|dano de 5% da lavoura|0.005 ETH|vigencia 2026-10-07 a 2027-04-05",
+    "hashTermos": "0x877e62208fce604cf365e32ec7af2f81688afd2d075b332685d2fc9953b5dbfb",
+    "emitidaEm": "2026-10-07T23:44:01.570Z",
+    "txEmissao": "0x7067e74908cccf3a3e334ffce7c9bca74570c4a205f007de2485f2bffe1b7956"
   }
 ]

@@ -13,7 +13,9 @@
  *
  * Variaveis opcionais:
  *   ENDERECO_PRODUTOR   carteira beneficiaria (padrao: segunda conta da rede)
+ *   OPERADOR            climatico (padrao) | dano — o que aciona o pagamento
  *   LIMIAR_DIAS         dias consecutivos sem chuva que acionam (padrao: 30)
+ *   LIMIAR_DANO_BPS     dano da lavoura que aciona, em pontos-base (padrao: 2000 = 20%)
  *   VALOR_INDENIZACAO   valor em ether (padrao: 1.0)
  *   CULTURA / TALHAO    identificadores (padrao: soja / talhao-01)
  */
@@ -45,7 +47,16 @@ async function main() {
   const produtor = process.env.ENDERECO_PRODUTOR || contaProdutor?.address;
   if (!produtor) throw new Error("Defina ENDERECO_PRODUTOR: nenhuma conta disponivel na rede.");
 
+  const OPERADORES = { climatico: 0, dano: 1 };
+  const nomeOperador = (process.env.OPERADOR || "climatico").toLowerCase();
+  if (!(nomeOperador in OPERADORES)) throw new Error(`OPERADOR invalido: ${nomeOperador}`);
+  const porDano = nomeOperador === "dano";
+
   const limiarDias = Number(process.env.LIMIAR_DIAS || 30);
+  const limiarDanoBps = Number(process.env.LIMIAR_DANO_BPS || 2000);
+  const condicao = porDano
+    ? `dano de ${limiarDanoBps / 100}% da lavoura`
+    : `${limiarDias} dias consecutivos sem chuva`;
   const valorIndenizacao = ethers.parseEther(process.env.VALOR_INDENIZACAO || "1.0");
   const cultura = process.env.CULTURA || "soja";
   const talhao = process.env.TALHAO || "talhao-01";
@@ -59,7 +70,7 @@ async function main() {
     "AgroSmart",
     cultura,
     talhao,
-    `${limiarDias} dias consecutivos sem chuva`,
+    condicao,
     `${ethers.formatEther(valorIndenizacao)} ETH`,
     `vigencia ${new Date(agora * 1000).toISOString().slice(0, 10)} a ${new Date((agora + 180 * DIA) * 1000).toISOString().slice(0, 10)}`,
   ].join("|");
@@ -69,11 +80,11 @@ async function main() {
     registry: ethers.ZeroAddress, // a fabrica sobrescreve com o registro oficial
     cultura: ethers.encodeBytes32String(cultura),
     talhao: ethers.encodeBytes32String(talhao),
-    operador: 0, // CLIMATICO
+    operador: OPERADORES[nomeOperador],
     modoPagamento: 0, // INTEGRAL
-    limiarClimatico: limiarDias,
+    limiarClimatico: porDano ? 0 : limiarDias,
     limiarClimaticoIntegral: 0,
-    limiarDanoBps: 0,
+    limiarDanoBps: porDano ? limiarDanoBps : 0,
     limiarDanoIntegralBps: 0,
     vigenciaInicio: agora,
     vigenciaFim: agora + 180 * DIA,
@@ -84,7 +95,7 @@ async function main() {
   console.log(`Rede......: ${network.name}`);
   console.log(`Seguradora: ${seguradora.address}`);
   console.log(`Produtor..: ${produtor}`);
-  console.log(`Condicao..: ${limiarDias} dias consecutivos sem chuva`);
+  console.log(`Condicao..: ${condicao}`);
   console.log(`Limite....: ${ethers.formatEther(valorIndenizacao)} ETH`);
   console.log("");
 
@@ -122,7 +133,9 @@ async function main() {
     produtor,
     cultura,
     talhao,
-    limiarDias,
+    operador: nomeOperador,
+    limiarDias: porDano ? null : limiarDias,
+    limiarDanoBps: porDano ? limiarDanoBps : null,
     valorIndenizacao: valorIndenizacao.toString(),
     descricaoDosTermos,
     hashTermos: termos.hashTermos,
