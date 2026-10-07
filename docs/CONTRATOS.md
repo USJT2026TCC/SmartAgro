@@ -209,6 +209,38 @@ Três observações que interessam ao capítulo de resultados do TCC:
    um slot de armazenamento que estava zerado custa mais que sobrescrever um já usado. É um
    detalhe da EVM, não do contrato, mas aparece nos números e vale explicar na defesa.
 
+### Na Sepolia, depois do Glamsterdam
+
+Medidos na primeira implantação pública, em 07/10/2026 (endereços em
+`contratos/implantacoes/sepolia.json`):
+
+| Operação | Rede local | Sepolia | Razão |
+|---|---:|---:|---:|
+| Implantar `OracleRegistry` | 321.819 | 2.063.565 | 6,4× |
+| Implantar `ApoliceFactory` | 2.241.625 | 15.885.657 | 7,1× |
+| `emitirApolice` | ~1.507.000 | 10.452.332 | 6,9× |
+| `depositarGarantia` | 47.132 | 135.152 | 2,9× |
+| `autorizar` | ~70.000 | 240.099 | 3,4× |
+
+A diferença não é do contrato. O upgrade **Glamsterdam** foi ativado na Sepolia em 06/10/2026, um
+dia antes, e trouxe o EIP-8037, que encarece a criação de estado: gravar código passou de 200 para
+1.530 de gas por byte, e cada slot novo de armazenamento de 20.000 para 97.920. A `ApoliceFactory`
+tem 10.141 bytes de código — 10.141 × 1.530 ≈ 15,5 milhões, quase todo o custo da implantação. A
+rede local do Hardhat ainda segue o fork anterior (Osaka), e por isso os números locais ficam
+abaixo.
+
+Consequências para o TCC:
+
+1. **Os números de gas precisam dizer em que fork foram medidos.** A tabela local e a da Sepolia
+   não se comparam diretamente; a rede principal do Ethereum ainda não tinha o Glamsterdam na data
+   da medição.
+2. **O custo em ETH depende mais do preço do gas que da quantidade.** Com a taxa base da Sepolia
+   em poucos wei, a emissão de 10,4 milhões de gas custou 0,0001 ETH a 0,01 gwei. Ao preço que o
+   Hardhat oferecia por padrão, 1 gwei, teria custado 0,0105 ETH (DECISOES.md 2.24).
+3. **Emitir uma apólice implanta um contrato inteiro**, e é isso que o novo preço mais penaliza.
+   Um clone mínimo (EIP-1167) apontando para uma implementação única gravaria ~45 bytes de código
+   por apólice, em vez de ~6.700. Fica registrado como melhoria; não muda nada no comportamento.
+
 O `struct Publicacao` foi ordenado deliberadamente para caber em três slots de 256 bits, com o
 primeiro exatamente cheio: `oraculo(160) + indiceClimatico(32) + indiceDanoBps(16) +
 confiancaBps(16) + publicadoEm(32) = 256`. O empacotamento economiza uma operação de escrita por

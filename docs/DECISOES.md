@@ -577,6 +577,23 @@ cair nela.
 mas escondia um erro de programação atrás de um caso legítimo. Só um teste com o resultado
 esperado, e não apenas "não quebrou", separa os dois.
 
+### 2.24 A implantação na Sepolia pagou mil vezes o preço do gas
+
+**Sintoma:** a primeira implantação na Sepolia (07/10/2026) consumiu 0,018 ETH dos 0,05 obtidos
+no faucet — a estimativa era de menos de 0,01 ETH para a demonstração inteira.
+
+**Causa:** duas coisas somadas. A quantidade de gas subiu de verdade, pelo Glamsterdam (ver
+CONTRATOS.md §4). E o preço pago foi 1 gwei por unidade, quando a rede aceitava 0,001 gwei: sem
+preço configurado, o Hardhat oferece 1 gwei de gorjeta, um padrão pensado para a rede principal.
+
+**Correção:** `PRECO_GAS_GWEI` no `contratos/.env`, lido pelo `hardhat.config.js` (padrão do
+exemplo: 0,01 gwei, dez vezes o que a rede pedia). A emissão seguinte, de 10,4 milhões de gas,
+custou 0,0001 ETH. O serviço de oráculo não tinha o problema: usa o ethers direto, que pergunta o
+preço à rede.
+
+**Por que importa:** em rede de teste o ETH é gratuito, mas escasso — os faucets limitam a retirada
+diária. Pagar mil vezes o preço esgotaria o saldo antes do fim da demonstração.
+
 ---
 
 ## 3. O que falta antes da implantação em Sepolia
@@ -586,7 +603,8 @@ esperado, e não apenas "não quebrou", separa os dois.
 | Análise estática dos contratos | RNF13 | **Feito.** Slither sem nenhum achado; ver [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
 | Verificação do código-fonte no Etherscan | — | Permite que a banca leia o contrato implantado no explorador |
 | Medição de latência em rede pública | Capítulo 7 do manual | Comparar com os ~170 ms da rede local |
-| Custo em gas na Sepolia | RNF09, RNF10 | Confirmar se o custo médio por apólice fica abaixo de 1% do prêmio |
+| Implantação em Sepolia | — | **Feito** em 07/10/2026: contratos e uma apólice de teste; endereços em `contratos/implantacoes/sepolia.json` |
+| Custo em gas na Sepolia | RNF09, RNF10 | **Medido** para implantação e emissão (CONTRATOS.md §4); falta a publicação do oráculo e o pagamento |
 
 ---
 

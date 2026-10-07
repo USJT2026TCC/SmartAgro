@@ -1,0 +1,14 @@
+[
+  {
+    "endereco": "0xB1691Ed23a824642FfB03fD91996075aC6e1ac54",
+    "produtor": "0xC8fdFcA3CfEc202D8BaBf4E89bEcaB5E57773071",
+    "cultura": "soja",
+    "talhao": "talhao-01",
+    "limiarDias": 30,
+    "valorIndenizacao": "10000000000000000",
+    "descricaoDosTermos": "AgroSmart|soja|talhao-01|30 dias consecutivos sem chuva|0.01 ETH|vigencia 2026-10-07 a 2027-04-05",
+    "hashTermos": "0x0e38a770c7ca0e8ec7c44519aa8e434693562888c2069b0b50a847be8a8a15fc",
+    "emitidaEm": "2026-10-07T23:26:36.969Z",
+    "txEmissao": "0xbebe3a577a6f001c34d453c8b414f4084800888d33ef45d65da4f901174d14c2"
+  }
+]

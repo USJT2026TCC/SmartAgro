@@ -19,6 +19,13 @@ const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 
 const contasSepolia = [CHAVE_SEGURADORA, CHAVE_ORACULO].filter(Boolean);
 
+// Preco do gas na Sepolia, em gwei. Sem ele, o Hardhat oferece 1 gwei de gorjeta
+// por transacao — na primeira implantacao (07/10/2026) a rede aceitava 0,001 gwei,
+// e o custo saiu mil vezes maior que o necessario. Se a taxa base da rede subir
+// acima deste valor, a transacao fica parada: suba o numero no .env.
+const PRECO_GAS_GWEI = process.env.PRECO_GAS_GWEI;
+const precoGasSepolia = PRECO_GAS_GWEI ? Math.round(Number(PRECO_GAS_GWEI) * 1e9) : "auto";
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
@@ -49,6 +56,7 @@ module.exports = {
       url: RPC_SEPOLIA,
       accounts: contasSepolia,
       chainId: 11155111,
+      gasPrice: precoGasSepolia,
     },
   },
 
