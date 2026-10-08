@@ -1,0 +1,434 @@
+{
+  "versao": "visao-unet-resnet18-3.0.0-cpu",
+  "recortes_de_treino": 257,
+  "recortes_de_validacao": 87,
+  "aumento_de_dados": true,
+  "expoente_dos_pesos": 0.5,
+  "dispositivo": "cpu",
+  "recortes_de_validacao_hidrica": 79,
+  "criterio_da_melhor_epoca": "erro do indice nos recortes de validacao com lavoura",
+  "erro_de_responder_sempre_zero": 0.0489746835443038,
+  "melhor_erro_do_indice": 0.0324,
+  "epocas": [
+    {
+      "iou_por_classe": {
+        "solo": 0.0002,
+        "saudavel": 0.0057,
+        "estresse_leve": 0.0074,
+        "estresse_severo": 0.0041
+      },
+      "iou_media": 0.0043,
+      "erro_medio_do_indice": 0.4564,
+      "erro_do_indice_hidrico": 0.452,
+      "epoca": 1,
+      "perda": 1.4739,
+      "segundos": 89.6
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.6672,
+        "saudavel": 0.0074,
+        "estresse_leve": 0.0104,
+        "estresse_severo": 0.2155
+      },
+      "iou_media": 0.2251,
+      "erro_medio_do_indice": 0.4765,
+      "erro_do_indice_hidrico": 0.474,
+      "epoca": 2,
+      "perda": 1.1694,
+      "segundos": 85.3
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.6728,
+        "saudavel": 0.6683,
+        "estresse_leve": 0.0185,
+        "estresse_severo": 0.2404
+      },
+      "iou_media": 0.4,
+      "erro_medio_do_indice": 0.1121,
+      "erro_do_indice_hidrico": 0.0771,
+      "epoca": 3,
+      "perda": 1.0574,
+      "segundos": 88.4
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.6608,
+        "saudavel": 0.657,
+        "estresse_leve": 0.0323,
+        "estresse_severo": 0.2396
+      },
+      "iou_media": 0.3974,
+      "erro_medio_do_indice": 0.0545,
+      "erro_do_indice_hidrico": 0.0587,
+      "epoca": 4,
+      "perda": 1.0103,
+      "segundos": 100.1
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.6859,
+        "saudavel": 0.7613,
+        "estresse_leve": 0.0303,
+        "estresse_severo": 0.2566
+      },
+      "iou_media": 0.4335,
+      "erro_medio_do_indice": 0.0318,
+      "erro_do_indice_hidrico": 0.0342,
+      "epoca": 5,
+      "perda": 0.9512,
+      "segundos": 105.8
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7039,
+        "saudavel": 0.7379,
+        "estresse_leve": 0.068,
+        "estresse_severo": 0.2512
+      },
+      "iou_media": 0.4402,
+      "erro_medio_do_indice": 0.047,
+      "erro_do_indice_hidrico": 0.0486,
+      "epoca": 6,
+      "perda": 0.9193,
+      "segundos": 105.9
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.6764,
+        "saudavel": 0.7639,
+        "estresse_leve": 0.0786,
+        "estresse_severo": 0.2597
+      },
+      "iou_media": 0.4447,
+      "erro_medio_do_indice": 0.0325,
+      "erro_do_indice_hidrico": 0.0324,
+      "epoca": 7,
+      "perda": 0.873,
+      "segundos": 108.1
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.6841,
+        "saudavel": 0.6354,
+        "estresse_leve": 0.0857,
+        "estresse_severo": 0.2127
+      },
+      "iou_media": 0.4045,
+      "erro_medio_do_indice": 0.1118,
+      "erro_do_indice_hidrico": 0.1189,
+      "epoca": 8,
+      "perda": 0.8557,
+      "segundos": 105.7
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7137,
+        "saudavel": 0.7325,
+        "estresse_leve": 0.1052,
+        "estresse_severo": 0.2754
+      },
+      "iou_media": 0.4567,
+      "erro_medio_do_indice": 0.0425,
+      "erro_do_indice_hidrico": 0.0428,
+      "epoca": 9,
+      "perda": 0.8267,
+      "segundos": 106.0
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.323,
+        "saudavel": 0.6741,
+        "estresse_leve": 0.0671,
+        "estresse_severo": 0.1885
+      },
+      "iou_media": 0.3132,
+      "erro_medio_do_indice": 0.0355,
+      "erro_do_indice_hidrico": 0.0365,
+      "epoca": 10,
+      "perda": 0.8029,
+      "segundos": 106.5
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.6988,
+        "saudavel": 0.7139,
+        "estresse_leve": 0.1118,
+        "estresse_severo": 0.2746
+      },
+      "iou_media": 0.4498,
+      "erro_medio_do_indice": 0.0344,
+      "erro_do_indice_hidrico": 0.0342,
+      "epoca": 11,
+      "perda": 0.7752,
+      "segundos": 108.5
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7161,
+        "saudavel": 0.6506,
+        "estresse_leve": 0.0642,
+        "estresse_severo": 0.2207
+      },
+      "iou_media": 0.4129,
+      "erro_medio_do_indice": 0.1267,
+      "erro_do_indice_hidrico": 0.132,
+      "epoca": 12,
+      "perda": 0.7563,
+      "segundos": 105.5
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7084,
+        "saudavel": 0.6954,
+        "estresse_leve": 0.1091,
+        "estresse_severo": 0.2726
+      },
+      "iou_media": 0.4464,
+      "erro_medio_do_indice": 0.0727,
+      "erro_do_indice_hidrico": 0.0734,
+      "epoca": 13,
+      "perda": 0.7324,
+      "segundos": 109.7
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7282,
+        "saudavel": 0.7185,
+        "estresse_leve": 0.1068,
+        "estresse_severo": 0.2698
+      },
+      "iou_media": 0.4558,
+      "erro_medio_do_indice": 0.0682,
+      "erro_do_indice_hidrico": 0.0686,
+      "epoca": 14,
+      "perda": 0.7014,
+      "segundos": 109.0
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.743,
+        "saudavel": 0.7451,
+        "estresse_leve": 0.1117,
+        "estresse_severo": 0.2726
+      },
+      "iou_media": 0.4681,
+      "erro_medio_do_indice": 0.0556,
+      "erro_do_indice_hidrico": 0.0582,
+      "epoca": 15,
+      "perda": 0.6942,
+      "segundos": 108.0
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.727,
+        "saudavel": 0.6621,
+        "estresse_leve": 0.0831,
+        "estresse_severo": 0.2186
+      },
+      "iou_media": 0.4227,
+      "erro_medio_do_indice": 0.132,
+      "erro_do_indice_hidrico": 0.1408,
+      "epoca": 16,
+      "perda": 0.681,
+      "segundos": 106.2
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7052,
+        "saudavel": 0.6842,
+        "estresse_leve": 0.1194,
+        "estresse_severo": 0.2682
+      },
+      "iou_media": 0.4442,
+      "erro_medio_do_indice": 0.0701,
+      "erro_do_indice_hidrico": 0.0712,
+      "epoca": 17,
+      "perda": 0.6776,
+      "segundos": 101.3
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.735,
+        "saudavel": 0.7173,
+        "estresse_leve": 0.107,
+        "estresse_severo": 0.2605
+      },
+      "iou_media": 0.4549,
+      "erro_medio_do_indice": 0.0789,
+      "erro_do_indice_hidrico": 0.0794,
+      "epoca": 18,
+      "perda": 0.6477,
+      "segundos": 103.2
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7365,
+        "saudavel": 0.7643,
+        "estresse_leve": 0.118,
+        "estresse_severo": 0.2729
+      },
+      "iou_media": 0.4729,
+      "erro_medio_do_indice": 0.0487,
+      "erro_do_indice_hidrico": 0.0456,
+      "epoca": 19,
+      "perda": 0.6442,
+      "segundos": 103.1
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.745,
+        "saudavel": 0.7541,
+        "estresse_leve": 0.1144,
+        "estresse_severo": 0.2649
+      },
+      "iou_media": 0.4696,
+      "erro_medio_do_indice": 0.0669,
+      "erro_do_indice_hidrico": 0.064,
+      "epoca": 20,
+      "perda": 0.6341,
+      "segundos": 104.3
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7356,
+        "saudavel": 0.7876,
+        "estresse_leve": 0.1176,
+        "estresse_severo": 0.278
+      },
+      "iou_media": 0.4797,
+      "erro_medio_do_indice": 0.0384,
+      "erro_do_indice_hidrico": 0.0328,
+      "epoca": 21,
+      "perda": 0.6378,
+      "segundos": 106.0
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.683,
+        "saudavel": 0.7546,
+        "estresse_leve": 0.0948,
+        "estresse_severo": 0.2728
+      },
+      "iou_media": 0.4513,
+      "erro_medio_do_indice": 0.054,
+      "erro_do_indice_hidrico": 0.049,
+      "epoca": 22,
+      "perda": 0.63,
+      "segundos": 106.5
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7451,
+        "saudavel": 0.7256,
+        "estresse_leve": 0.109,
+        "estresse_severo": 0.2516
+      },
+      "iou_media": 0.4578,
+      "erro_medio_do_indice": 0.0901,
+      "erro_do_indice_hidrico": 0.0893,
+      "epoca": 23,
+      "perda": 0.621,
+      "segundos": 102.5
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7402,
+        "saudavel": 0.7261,
+        "estresse_leve": 0.115,
+        "estresse_severo": 0.263
+      },
+      "iou_media": 0.4611,
+      "erro_medio_do_indice": 0.0784,
+      "erro_do_indice_hidrico": 0.078,
+      "epoca": 24,
+      "perda": 0.6054,
+      "segundos": 98.3
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7408,
+        "saudavel": 0.7269,
+        "estresse_leve": 0.1117,
+        "estresse_severo": 0.2572
+      },
+      "iou_media": 0.4591,
+      "erro_medio_do_indice": 0.0802,
+      "erro_do_indice_hidrico": 0.0784,
+      "epoca": 25,
+      "perda": 0.6127,
+      "segundos": 102.8
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.75,
+        "saudavel": 0.746,
+        "estresse_leve": 0.111,
+        "estresse_severo": 0.2587
+      },
+      "iou_media": 0.4664,
+      "erro_medio_do_indice": 0.0741,
+      "erro_do_indice_hidrico": 0.0727,
+      "epoca": 26,
+      "perda": 0.6049,
+      "segundos": 96.2
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7472,
+        "saudavel": 0.7387,
+        "estresse_leve": 0.1138,
+        "estresse_severo": 0.2605
+      },
+      "iou_media": 0.4651,
+      "erro_medio_do_indice": 0.0758,
+      "erro_do_indice_hidrico": 0.0741,
+      "epoca": 27,
+      "perda": 0.6118,
+      "segundos": 107.1
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7439,
+        "saudavel": 0.7285,
+        "estresse_leve": 0.1129,
+        "estresse_severo": 0.259
+      },
+      "iou_media": 0.4611,
+      "erro_medio_do_indice": 0.0804,
+      "erro_do_indice_hidrico": 0.08,
+      "epoca": 28,
+      "perda": 0.6054,
+      "segundos": 102.3
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7478,
+        "saudavel": 0.7436,
+        "estresse_leve": 0.1175,
+        "estresse_severo": 0.2676
+      },
+      "iou_media": 0.4691,
+      "erro_medio_do_indice": 0.0702,
+      "erro_do_indice_hidrico": 0.0686,
+      "epoca": 29,
+      "perda": 0.6056,
+      "segundos": 104.6
+    },
+    {
+      "iou_por_classe": {
+        "solo": 0.7471,
+        "saudavel": 0.7358,
+        "estresse_leve": 0.1129,
+        "estresse_severo": 0.2606
+      },
+      "iou_media": 0.4641,
+      "erro_medio_do_indice": 0.0787,
+      "erro_do_indice_hidrico": 0.0767,
+      "epoca": 30,
+      "perda": 0.5978,
+      "segundos": 105.2
+    }
+  ]
+}

@@ -188,6 +188,29 @@ treinar com `--expoente-dos-pesos 1.0`, que pesa mais o estresse.
 
 Detalhes, figuras e ressalvas em [resultados/visao-unet-2.0.0](resultados/visao-unet-2.0.0/README.md).
 
+### 3.5 Terceira rodada (visao-unet-resnet18-3.0.0) — transferência de aprendizado
+
+A tabela de tecnologias da Entrega 3 justifica o PyTorch pela transferência de aprendizado. A
+`UNetResNet18` (`rede.py`, `treinar.py --arquitetura unet-resnet18`) troca o codificador da U-Net
+por uma ResNet-18 pré-treinada na ImageNet, e foi treinada com os mesmos dados da 2.0.0:
+
+| | U-Net 2.0.0 | ResNet-18 3.0.0 |
+|---|---:|---:|
+| Erro absoluto médio, por recorte | 3,3 | **3,2** |
+| Dano da área (real: 4,3%) | **4,6%** | 4,7% |
+| Época do melhor resultado | 18 | **7** |
+| Recortes com confiança acima do limiar de 70% | **78 de 79** | 0 de 79 |
+
+**A precisão empata, e o treino custa cerca de 40% do tempo** — a justificativa da Entrega 3,
+medida. **Mas a confiança da 3.0.0 fica sempre entre 39% e 50%**: com ela, todo lote iria ao
+perito. A 2.0.0 continua em operação; a 3.0.0 entra trocando `VISAO_PESOS`, depois de calibrada.
+Detalhes em [resultados/visao-unet-resnet18-3.0.0](resultados/visao-unet-resnet18-3.0.0/README.md).
+
+### 3.6 Tempo de análise (RNF02)
+
+`treino/medir_lote.py` envia 50 fotos de celular ao `POST /analisar` e mede o lote inteiro: 6,2 s
+com qualquer das duas redes, 13,4 s com a heurística, em CPU. O limite do RNF02 é 600 s.
+
 ## 4. TerraMind (IBM + ESA): serve, mas para outra coisa
 
 [TerraMind](https://ibm.github.io/terramind/) é um modelo fundacional multimodal de observação
@@ -259,18 +282,43 @@ Para analisar arquivos locais, sem backend:
 .venv/Scripts/python -m visao analisar foto1.jpg foto2.jpg
 ```
 
+A API HTTP, em FastAPI (tabela de tecnologias da Entrega 3), para submeter imagens direto — o
+perito reexaminando uma contestação (RF28), ou alguém reproduzindo uma análise com a mesma versão
+do modelo (HU11, critério 4):
+
+```bash
+.venv/Scripts/python -m visao api --porta 8000
+```
+
+| Rota | O que faz |
+|---|---|
+| `GET /saude` | O serviço está de pé, e com qual estimador |
+| `GET /modelo` | Versão e resumo SHA-256 dos pesos carregados (RNF19) |
+| `POST /analisar` | Até 50 imagens JPEG ou PNG → índice de dano, confiança e resumo de cada imagem |
+
+A documentação interativa fica em `http://127.0.0.1:8000/docs`. A API e o serviço chamam as mesmas
+funções: não há uma segunda forma de calcular o mesmo número.
+
+Para medir o tempo de um lote de 50 fotos (RNF02):
+
+```bash
+.venv/Scripts/python treino/medir_lote.py --pesos pesos/unet.pt
+```
+
 ## 6. Testes
 
 ```bash
 cd visao && .venv/Scripts/python -m pytest
 ```
 
-49 testes, sem rede e sem GPU (os 10 de `test_rede.py` são pulados onde o PyTorch não está instalado).
+66 testes, sem rede e sem GPU (os de `test_rede.py` são pulados onde o PyTorch não está instalado). Cobertura de 93% das linhas (`pytest --cov`), acima dos 70% do RNF03.
 
 | Arquivo | Testes | O que cobre |
 |---|---:|---|
-| `test_indice.py` | 15 | Denominador, ponderação, doença fora da conta, confiança por amostragem |
+| `test_indice.py` | 16 | Denominador, ponderação, doença fora da conta, confiança por amostragem |
 | `test_baseline.py` | 9 | Cores conhecidas, invariância a sombra, e a limitação da palha seca |
-| `test_servico.py` | 9 | Evidência adulterada, arquivo ilegível, lote vazio, falha de rede |
-| `test_rede.py` | 10 | Pesos que carregam fora do treino, classes incompatíveis recusadas, padronização e tamanho de entrada iguais aos do treino |
+| `test_servico.py` | 7 | Evidência adulterada, arquivo ilegível, lote vazio, falha de rede |
+| `test_rede.py` | 10 | Pesos que carregam fora do treino, classes incompatíveis recusadas, padronização e tamanho de entrada iguais aos do treino, as duas arquiteturas |
+| `test_api.py` | 6 | Rotas da API, limite de imagens, arquivo que não é imagem, resumo dos pesos |
+| `test_cli_e_cliente.py` | 11 | Linha de comando e cliente do backend |
 | `test_preparo.py` | 5 | Bandas nomeadas no RGB, tradução das classes, divisão por faixas, ordem de classes conferida |
