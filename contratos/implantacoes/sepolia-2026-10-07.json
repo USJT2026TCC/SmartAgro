@@ -1,0 +1,12 @@
+{
+  "rede": "sepolia",
+  "chainId": 11155111,
+  "implantadoEm": "2026-10-07T23:23:49.419Z",
+  "blocoInicial": 11866246,
+  "seguradora": "0x95eA48b7BF91446CF12C156aC2FDeA75Af03fD70",
+  "oraculoAutorizado": "0xeFCf4d0c3f22ac012896c2D9c6bA35e9fd7D691D",
+  "contratos": {
+    "OracleRegistry": "0x58FD352da560c5555D0A1a0fe7e96e96d94f12Ee",
+    "ApoliceFactory": "0x8992e277490BFcfC6BA2c251672f76441bc96b0B"
+  }
+}

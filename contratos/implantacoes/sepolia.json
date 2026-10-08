@@ -1,12 +1,12 @@
 {
   "rede": "sepolia",
   "chainId": 11155111,
-  "implantadoEm": "2026-10-07T23:23:49.419Z",
-  "blocoInicial": 11866246,
+  "implantadoEm": "2026-10-08T16:43:01.836Z",
+  "blocoInicial": 11871430,
   "seguradora": "0x95eA48b7BF91446CF12C156aC2FDeA75Af03fD70",
   "oraculoAutorizado": "0xeFCf4d0c3f22ac012896c2D9c6bA35e9fd7D691D",
   "contratos": {
-    "OracleRegistry": "0x58FD352da560c5555D0A1a0fe7e96e96d94f12Ee",
-    "ApoliceFactory": "0x8992e277490BFcfC6BA2c251672f76441bc96b0B"
+    "OracleRegistry": "0x0e1e833cAdfAbCF046F8d8d0a78908225E15E134",
+    "ApoliceFactory": "0xb641011e692C7135aFE11c457665B2EB28426ceb"
   }
 }
