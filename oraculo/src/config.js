@@ -3,7 +3,11 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+// ARQUIVO_ENV escolhe outro arquivo — `ARQUIVO_ENV=.env.sepolia` roda contra a
+// rede publica sem mexer no .env da rede local. O caminho e relativo a oraculo/.
+require("dotenv").config({
+  path: path.resolve(path.join(__dirname, ".."), process.env.ARQUIVO_ENV || ".env"),
+});
 
 /**
  * Configuracao do servico de oraculo.
@@ -24,7 +28,7 @@ const config = {
   chavePrivada: process.env.CHAVE_PRIVADA_ORACULO || "",
 
   /** Diretorio dos arquivos de estado do servico (fila e registro de publicacoes). */
-  dirDados: process.env.DIR_DADOS || path.join(RAIZ, "dados"),
+  dirDados: path.resolve(RAIZ, process.env.DIR_DADOS || "dados"),
 
   /** Onde o script de implantacao dos contratos grava os enderecos. */
   dirImplantacoes:

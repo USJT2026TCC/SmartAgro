@@ -396,14 +396,34 @@ referência original foi preservado.
 
 ## 7. Rede de teste pública (Sepolia)
 
-### 7.1 Carteira
+Executado de ponta a ponta em 07/10/2026, com os dois pagamentos confirmados na rede:
+[resultados/sepolia-2026-10-07](resultados/sepolia-2026-10-07/README.md). Os contratos já estão
+implantados, e os endereços estão em `contratos/implantacoes/sepolia.json`. Os passos 7.1 a 7.3 só
+são necessários para uma implantação nova.
 
-1. Instale a extensão **MetaMask** no navegador.
-2. Crie uma carteira **nova** — não use nenhuma que já tenha valor real.
-3. Troque a rede para **Sepolia**.
-4. Pegue gas gratuito em um faucet de Sepolia. Cada integrante pega o seu.
+### 7.1 Carteiras e ETH de teste
 
-Você vai precisar de três endereços distintos: seguradora, produtor e oráculo.
+São três endereços distintos (RNF12), todos de carteiras **só de teste**:
+
+| Papel | Onde fica a chave |
+|---|---|
+| Seguradora | `contratos/.env` (`CHAVE_PRIVADA_SEGURADORA`), e importada na MetaMask para usar o aplicativo |
+| Oráculo | `contratos/.env` e `oraculo/.env.sepolia` (`CHAVE_PRIVADA_ORACULO`); nunca vai para a MetaMask |
+| Produtor | só na MetaMask de quem faz o papel de produtor; o sistema conhece apenas o endereço |
+
+Uma carteira nova se gera com:
+
+```bash
+node -e "const w=require('./contratos/node_modules/ethers').Wallet.createRandom(); console.log(w.address)"
+```
+
+O comando acima imprime só o endereço, para mostrar o formato. Para gravar a chave, escreva-a
+direto no `.env` por um script, nunca copiando de um terminal ou de um chat.
+
+O ETH de teste vai para a seguradora, por um faucet: Google Cloud Web3 Faucet (conta Google),
+Alchemy (conta grátis) ou o PoW Faucet de pk910 (sem conta). 0,05 ETH sobram para a
+demonstração inteira, com o preço do gas configurado (7.2). Depois, a seguradora repassa
+0,002 ETH ao oráculo, que paga o gas das publicações.
 
 ### 7.2 Configurar
 
@@ -411,43 +431,100 @@ Você vai precisar de três endereços distintos: seguradora, produtor e orácul
 cd contratos && copy .env.example .env
 ```
 
-Preencha `RPC_SEPOLIA` (Infura, Alchemy ou outro provedor), `CHAVE_PRIVADA_SEGURADORA`,
-`CHAVE_PRIVADA_ORACULO` e, opcionalmente, `ETHERSCAN_API_KEY`.
+| Variável | Valor |
+|---|---|
+| `RPC_SEPOLIA` | `https://ethereum-sepolia-rpc.publicnode.com` — público, sem conta. O `rpc.sepolia.org` saiu do ar |
+| `CHAVE_PRIVADA_SEGURADORA`, `CHAVE_PRIVADA_ORACULO` | as chaves de teste |
+| `ENDERECO_ORACULO`, `ENDERECO_PRODUTOR` | os endereços correspondentes |
+| `PRECO_GAS_GWEI` | `0.01`. **Não deixe em branco**: o Hardhat pagaria mil vezes o preço da rede (DECISOES.md 2.24) |
+| `VALOR_INDENIZACAO` | `0.01` — o padrão de 1 ETH esgota o faucet |
 
-### 7.3 Implantar
+O oráculo lê `oraculo/.env.sepolia`, uma cópia do `.env.example` com `REDE=sepolia`, o mesmo
+`RPC_URL`, `CHAVE_PRIVADA_ORACULO`, `CONFIRMACOES=2`,
+`CHAVE_DE_SERVICO=desenvolvimento-apenas-nao-use-em-producao` e `DIR_DADOS=dados-sepolia`. O
+`.env` da rede local continua intacto; `ARQUIVO_ENV` escolhe qual dos dois usar.
+
+### 7.3 Implantar e emitir
 
 ```bash
 cd contratos && npx hardhat run scripts/implantar.js --network sepolia
 ```
 
+Apólice pelo índice climático (30 dias sem chuva):
+
 ```bash
 cd contratos && npx hardhat run scripts/emitir-apolice.js --network sepolia
 ```
 
-### 7.4 Rodar o oráculo contra a Sepolia
-
-No `oraculo/.env`:
-
-```
-REDE=sepolia
-RPC_URL=<o mesmo endpoint usado em RPC_SEPOLIA>
-CONFIRMACOES=2
-```
-
-`CONFIRMACOES=2` reduz o risco de uma reorganização de bloco desfazer uma publicação que o
-serviço já deu por concluída. Em rede local, 1 basta.
+Apólice pelo índice de dano. No PowerShell, defina antes `$env:OPERADOR="dano"`,
+`$env:LIMIAR_DANO_BPS="500"` e `$env:VALOR_INDENIZACAO="0.005"`:
 
 ```bash
-cd oraculo && node src/index.js status
+cd contratos && npx hardhat run scripts/emitir-apolice.js --network sepolia
+```
+
+Pela Sepolia, cada emissão leva cerca de 30 segundos e custa ~10 milhões de gas — 0,0001 ETH a
+0,01 gwei.
+
+### 7.4 O backend acompanhando a Sepolia
+
+Com banco próprio, para não misturar com as apólices da rede local. No PowerShell:
+
+```
+$env:REDE="sepolia"; $env:RPC_URL="https://ethereum-sepolia-rpc.publicnode.com"; $env:DIR_BANCO="dados/pg-sepolia"
 ```
 
 ```bash
-cd oraculo && node src/index.js ciclo --cenario estiagem_severa
+cd backend && npm run iniciar
 ```
 
-Copie o identificador da transação de pagamento e cole em `https://sepolia.etherscan.io`. É esse
-o momento da demonstração para a banca: o pagamento aconteceu de verdade, em uma rede pública,
-e qualquer pessoa pode conferir sem depender da palavra de ninguém.
+O indexador lê os eventos da fábrica desde o bloco da implantação e registra sozinho as apólices
+emitidas por script, ligando-as ao talhão pelo identificador gravado no contrato.
+
+### 7.5 Pagamento pelo índice climático
+
+As duas estações enviam a estiagem real, como no 5A:
+
+```bash
+cd simulador && .venv/Scripts/python -m simulador enviar --estacao A770 --ano 2024 --de 2024-06-25 --ate 2024-08-09 --fonte estacao-inmet-a770 --ate-hoje
+```
+
+```bash
+cd simulador && .venv/Scripts/python -m simulador enviar --estacao A747 --ano 2024 --de 2024-06-25 --ate 2024-08-09 --fonte estacao-inmet-a747 --ate-hoje
+```
+
+O oráculo publica, com o período impresso pelo simulador. No PowerShell, antes:
+`$env:ARQUIVO_ENV=".env.sepolia"`.
+
+```bash
+cd oraculo && node src/index.js servico --uma-vez --periodo <o periodo impresso>
+```
+
+A linha da apólice termina em `SIM` e no identificador da transação. Cole-o em
+`https://sepolia.etherscan.io`: a mesma transação publica o índice e transfere a indenização.
+
+### 7.6 Pagamento pelo índice de dano
+
+1. Envie as fotos pela tela **Fotos da lavoura** (5A) e feche o lote.
+2. Rode a visão: `cd visao && .venv/Scripts/python -m visao servico --uma-vez`, com
+   `VISAO_PESOS=pesos/unet.pt`.
+3. Rode o oráculo sem `--periodo` — vale o dia de hoje, que é o dia da análise:
+
+```bash
+cd oraculo && node src/index.js servico --uma-vez
+```
+
+O aviso `Nenhuma leitura valida para o proprio periodo` é esperado: o índice climático do dia fica
+em 0, e a apólice por dano não depende dele.
+
+### 7.7 Verificar o código no Etherscan
+
+Opcional, e ainda não feito: precisa de uma chave grátis da API do Etherscan em
+`ETHERSCAN_API_KEY`.
+
+```bash
+cd contratos && npx hardhat verify --network sepolia <endereco do OracleRegistry> <endereco da seguradora>
+```
 
 ---
 
