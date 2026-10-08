@@ -14,6 +14,10 @@ contratos/cache/
 contratos/typechain-types/
 contratos/coverage/
 contratos/coverage.json
+# Medicoes de cobertura (RNF03): geradas a cada execucao, nao versionadas.
+coverage/
+.coverage
+htmlcov/
 contratos/gas-report.txt
 
 # Saidas de execucao do oraculo: estado local, nao codigo-fonte
