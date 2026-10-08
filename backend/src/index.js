@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import https from "node:https";
+
 import { criarApp } from "./app.js";
 import { config } from "./config.js";
 import { abrirBanco } from "./banco/conexao.js";
@@ -36,15 +39,26 @@ async function iniciar() {
 
   const app = criarApp({ banco, cadeia, indexador });
 
-  const servidor = app.listen(config.porta, () => {
-    console.log(`AgroSmart backend em http://localhost:${config.porta}/api`);
+  const comTls = Boolean(config.tlsCertificado && config.tlsChave);
+  const aoOuvir = () => {
+    console.log(`AgroSmart backend em ${comTls ? "https" : "http"}://localhost:${config.porta}/api`);
     console.log(`Banco: ${banco.motor}${config.urlDoBanco ? "" : ` (${config.dirBanco})`}`);
     console.log(
       cadeia.disponivel()
         ? `Cadeia: ${config.rede}, fabrica ${cadeia.enderecoDaFabrica()}`
         : `Cadeia: nenhuma implantacao encontrada para "${config.rede}"; indexador em espera.`,
     );
-  });
+  };
+
+  // RNF17: com certificado e chave, a API atende so em https.
+  const servidor = comTls
+    ? https
+        .createServer(
+          { cert: readFileSync(config.tlsCertificado), key: readFileSync(config.tlsChave) },
+          app,
+        )
+        .listen(config.porta, aoOuvir)
+    : app.listen(config.porta, aoOuvir);
 
   indexador?.iniciar();
   despachante?.iniciar();

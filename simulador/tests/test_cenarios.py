@@ -57,3 +57,30 @@ def test_sem_intervalo_e_rajada():
     esperas = []
     enviar_cadenciado([[1], [2]], enviar=lambda lote: lote, intervalo_s=0, dormir=esperas.append)
     assert esperas == []
+
+
+def test_envio_sempre_confere_o_certificado_do_servidor(monkeypatch):
+    """RNF17: com https, o certificado e conferido; nao ha como desligar."""
+    from simulador import envio
+    from simulador.inmet import Leitura
+    from datetime import datetime, timezone
+
+    chamadas = []
+
+    class Resposta:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"aceitas": 1, "recusadas": 0, "duplicadas": 0, "escore": 1.0}
+
+    monkeypatch.setattr(envio.requests, "post", lambda *a, **k: chamadas.append(k) or Resposta())
+
+    leitura = Leitura(datetime(2024, 7, 1, tzinfo=timezone.utc), 0.0, 20.0, 70.0)
+    chave = "0x" + "11" * 32
+
+    envio.enviar_lote("https://api", "fonte", [leitura], chave)
+    envio.enviar_lote("https://api", "fonte", [leitura], chave, tls_ca="autoridade.crt")
+
+    assert chamadas[0]["verify"] is True
+    assert chamadas[1]["verify"] == "autoridade.crt"

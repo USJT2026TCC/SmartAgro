@@ -41,9 +41,22 @@ def montar_lote(fonte: str, leituras: list[Leitura]) -> dict:
 
 
 def enviar_lote(
-    api: str, fonte: str, leituras: list[Leitura], chave_privada: str, tempo_limite: int = 60
+    api: str,
+    fonte: str,
+    leituras: list[Leitura],
+    chave_privada: str,
+    tempo_limite: int = 60,
+    tls_ca: str | None = None,
 ) -> Resultado:
-    """Assina e envia um unico lote."""
+    """
+    Assina e envia um unico lote.
+
+    Com a API em https, o certificado do servidor e sempre conferido (RNF17):
+    contra as autoridades do sistema, ou contra `tls_ca` quando o servidor usa
+    um certificado de autoridade propria, como o de desenvolvimento. Nao ha
+    opcao para desligar a conferencia — um canal cifrado com quem nao se sabe
+    quem e nao protege nada.
+    """
     corpo = corpo_em_bytes(montar_lote(fonte, leituras))
 
     resposta = requests.post(
@@ -54,6 +67,7 @@ def enviar_lote(
             "X-Assinatura": assinar(corpo, chave_privada),
         },
         timeout=tempo_limite,
+        verify=tls_ca or True,
     )
 
     dados = {}

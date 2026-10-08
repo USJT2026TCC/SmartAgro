@@ -228,7 +228,7 @@ def comando_enviar(opcoes) -> None:
 
     envio.enviar_cadenciado(
         lotes,
-        lambda lote: envio.enviar_lote(opcoes.api, opcoes.fonte, lote, chave),
+        lambda lote: envio.enviar_lote(opcoes.api, opcoes.fonte, lote, chave, tls_ca=opcoes.tls_ca),
         opcoes.intervalo,
         ao_enviar=relatar,
     )
@@ -289,7 +289,7 @@ def construir_parser() -> argparse.ArgumentParser:
     )
     enviar.add_argument(
         "--tls-ca",
-        help="certificado da autoridade que assinou o broker MQTT, para conexao cifrada (RNF17)",
+        help="certificado da autoridade que assinou a API https ou o broker MQTT (RNF17)",
     )
     enviar.add_argument("--ano", type=int, default=2024)
     enviar.add_argument("--de", help="AAAA-MM-DD")

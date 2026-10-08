@@ -43,6 +43,15 @@ export const config = {
   porta: Number(process.env.PORTA || 3001),
 
   /**
+   * HTTPS (RNF17: leitura transmitida por canal cifrado). Com os dois caminhos
+   * definidos, a API so atende em https. Para desenvolver, gere com
+   * scripts/gerar-certificados.sh. Em producao, o usual e um proxy reverso com
+   * certificado publico na frente da API; o efeito para o RNF17 e o mesmo.
+   */
+  tlsCertificado: process.env.TLS_CERTIFICADO || "",
+  tlsChave: process.env.TLS_CHAVE || "",
+
+  /**
    * Endereco do PostgreSQL. Vazio significa usar o PostgreSQL embutido (PGlite),
    * com PostGIS, gravado em `dirBanco`. O SQL e o mesmo nos dois casos.
    */
