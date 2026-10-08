@@ -6,7 +6,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { anelDoPoligono, criarProjecao, pontoNoPoligono } from "../src/fotos/geografia.js";
+import {
+  anelDoGeoJson,
+  anelDoPoligono,
+  criarProjecao,
+  pontoNoPoligono,
+} from "../src/fotos/geografia.js";
 
 const TALHAO = {
   type: "Polygon",
@@ -81,4 +86,29 @@ test("o talhao cabe na area de desenho, com margem", () => {
     assert.ok(x > 0 && x < 400, `x=${x}`);
     assert.ok(y > 0 && y < 300, `y=${y}`);
   }
+});
+
+// ------------------------------------------------- importacao de GeoJSON (HU09)
+
+
+const ANEL = [
+  [-47.59, -21.45],
+  [-47.57, -21.45],
+  [-47.57, -21.47],
+  [-47.59, -21.47],
+];
+const FECHADO = [...ANEL, ANEL[0]];
+
+test("le o anel de um Polygon, de uma Feature e de uma FeatureCollection", () => {
+  const poligono = { type: "Polygon", coordinates: [FECHADO] };
+  const feature = { type: "Feature", properties: {}, geometry: poligono };
+  const colecao = { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point", coordinates: [0, 0] } }, feature] };
+
+  for (const g of [poligono, feature, colecao, JSON.stringify(colecao)]) {
+    assert.deepEqual(anelDoGeoJson(g), ANEL);
+  }
+});
+
+test("arquivo sem poligono e recusado com mensagem legivel", () => {
+  assert.throws(() => anelDoGeoJson({ type: "Point", coordinates: [0, 0] }), /Polygon/);
 });
