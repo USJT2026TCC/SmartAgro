@@ -119,10 +119,14 @@ def ponte(
     porta: int = 1883,
     topico_base: str = TOPICO_BASE,
     ao_entregar=None,
+    tls_ca: str | None = None,
 ) -> None:
     """
     Assina o topico de leituras e repassa cada envelope para a API, sem alterar
     os bytes assinados. Roda ate ser interrompida.
+
+    `tls_ca` cifra os dois trechos (RNF17): a conexao com o broker e a chamada
+    a API em https, conferindo os certificados contra essa autoridade.
     """
     import paho.mqtt.client as mqtt
     import requests
@@ -142,6 +146,7 @@ def ponte(
                 "X-Assinatura": envelope.assinatura,
             },
             timeout=60,
+            verify=tls_ca or True,
         )
 
         print(f"{envelope.fonte}: HTTP {resposta.status_code} {resposta.text[:160]}")
@@ -151,6 +156,8 @@ def ponte(
 
     cliente = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     cliente.on_message = entregar
+    if tls_ca:
+        cliente.tls_set(ca_certs=tls_ca)
     cliente.connect(broker, porta, keepalive=30)
     cliente.subscribe(f"{topico_base}/#", qos=1)
 

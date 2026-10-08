@@ -235,7 +235,7 @@ def comando_enviar(opcoes) -> None:
 
 
 def comando_ponte(opcoes) -> None:
-    mqtt.ponte(opcoes.api, broker=opcoes.broker, porta=opcoes.porta)
+    mqtt.ponte(opcoes.api, broker=opcoes.broker, porta=opcoes.porta, tls_ca=opcoes.tls_ca)
 
 
 def comando_endereco(opcoes) -> None:
@@ -316,6 +316,7 @@ def construir_parser() -> argparse.ArgumentParser:
     ponte.add_argument("--api", default=os.environ.get("API_URL", "http://localhost:3001/api"))
     ponte.add_argument("--broker", default="localhost")
     ponte.add_argument("--porta", type=int, default=1883)
+    ponte.add_argument("--tls-ca", help="autoridade do broker e da API https (RNF17)")
     ponte.set_defaults(funcao=comando_ponte)
 
     historico = sub.add_parser(

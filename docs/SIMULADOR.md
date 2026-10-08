@@ -45,7 +45,7 @@ No Linux ou macOS, `.venv/bin/python`.
 | Comando | O que faz |
 |---|---|
 | `baixar --ano 2024` | Baixa o ZIP anual do INMET para `simulador/dados/` |
-| `estacoes --uf SP --perto -21.46,-47.58` | Lista as estações mais próximas de um ponto |
+| `estacoes --uf SP --perto=-21.46,-47.58` | Lista as estações mais próximas de um ponto |
 | `analisar --estacao A770 --ano 2024` | Qualidade da série e maior estiagem, pela regra do oráculo |
 | `enviar --estacao A770 ...` | Envia a série assinada para a API ou para o MQTT |
 | `ponte --api http://localhost:3001/api` | Repassa do broker MQTT para a API |
