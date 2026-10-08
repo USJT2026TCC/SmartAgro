@@ -10,7 +10,7 @@ Linha de comando do simulador de estacoes (HU04).
     python -m simulador ponte --api http://localhost:3001/api
 
 As chaves privadas das estacoes vem do arquivo `.env` (CHAVE_<FONTE>) ou da
-opcao `--chave`. Nunca sao gravadas no repositorio (RNF16).
+opcao `--chave`. Nunca sao gravadas no repositorio (RNF14).
 """
 
 from __future__ import annotations

@@ -37,7 +37,7 @@ export function criarApp({ banco, cadeia, indexador = null }) {
   app.disable("x-powered-by");
 
   // O corpo bruto e guardado junto com o JSON interpretado: a ingestao de
-  // leituras confere a assinatura sobre os bytes exatos que chegaram (RNF19).
+  // leituras confere a assinatura sobre os bytes exatos que chegaram (RNF17).
   app.use(
     express.json({
       limit: "2mb",

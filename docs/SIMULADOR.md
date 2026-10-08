@@ -132,7 +132,7 @@ quebraria a assinatura.
 
 Cada estação tem seu par de chaves. O endereço público é o que a seguradora cadastra em
 *Fontes*; a chave privada fica no equipamento — aqui, no `.env` do simulador, que está no
-`.gitignore` (RNF16).
+`.gitignore` (RNF14).
 
 ```bash
 python -c "from eth_account import Account; c=Account.create(); print(c.key.hex(), c.address)"

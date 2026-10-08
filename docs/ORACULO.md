@@ -44,7 +44,7 @@ Presumir seco inflaria o índice e comprometeria exatamente a auditabilidade que
 o sistema. Quando isso acontece, o resultado traz o alerta de que o número é um **piso**, não a
 medida completa da estiagem.
 
-**Alertas.** O resultado inclui avisos quando há menos de duas fontes independentes (RNF18),
+**Alertas.** O resultado inclui avisos quando há menos de duas fontes independentes (RNF16),
 quando não há leitura do próprio período, e quando a contagem parou por falta de dado.
 
 ### `reputacao.js` — escore por fonte (RF13)
@@ -59,9 +59,9 @@ cair abaixo do limiar. Com média móvel (α = 0,2), duas semanas de defeito bas
 para isso.
 
 O estado é persistido: o histórico da fonte é parte do que torna a decisão reconstituível
-(RNF20).
+(RNF18).
 
-### `fila.js` — retomada após falha (RF21, RNF22)
+### `fila.js` — retomada após falha (RF21, RNF20)
 
 Fila persistente em disco. A publicação é gravada **antes** de qualquer tentativa de envio e só
 sai da fila depois da confirmação em cadeia.
@@ -100,7 +100,7 @@ publicação à fila. O tempo limite foi reduzido para 10 segundos e a repetiç�
 importa aqui é falhar rápido, porque a entrada continua na fila e a próxima tentativa vem com
 espera crescente.
 
-### `registro.js` — trilha de auditoria (RF22, RNF20)
+### `registro.js` — trilha de auditoria (RF22, RNF18)
 
 Grava, para cada publicação: identificador da transação, gas consumido, custo em wei, bloco,
 instante de envio, instante de confirmação, latência, se acionou o pagamento, e a **procedência
@@ -119,7 +119,7 @@ Substituto temporário do simulador em Python + MQTT previsto na HU04. Existe pa
 possa ser exercitado ponta a ponta desde a Sprint 1, sem esperar a outra trilha.
 
 **A geração é determinística**: o mesmo cenário produz sempre a mesma série. Isso importa porque
-o RNF21 exige reprodutibilidade, e porque um número de gas medido sobre uma série aleatória não
+o RNF19 exige reprodutibilidade, e porque um número de gas medido sobre uma série aleatória não
 pode ser comparado com o da execução seguinte.
 
 Três cenários, conforme a HU04:
@@ -220,7 +220,7 @@ o pagamento. Nenhum ser humano aprovou nada.
 ## 4. Configuração
 
 Copie `oraculo/.env.example` para `oraculo/.env` e preencha. O `.env` está no `.gitignore` e
-**nunca** deve ir para o repositório (RNF16).
+**nunca** deve ir para o repositório (RNF14).
 
 | Variável | Padrão | Para quê |
 |---|---|---|

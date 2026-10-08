@@ -13,7 +13,7 @@ import { emEth, emPercentual } from "../../cadeia/formatos";
 import { Aviso, Campo, Carregando, RodapeDaFronteira } from "../../componentes/ui";
 
 /**
- * Simulacao de cotacao e envio da proposta (RF06, RNF06, HU10).
+ * Simulacao de cotacao e envio da proposta (RF06, RNF04, HU10).
  *
  * O limite e o premio vem do servidor, calculados em BigInt sobre a area que o
  * PostGIS mediu no elipsoide. Os exemplos numericos do que aciona e do que nao
@@ -82,7 +82,7 @@ export default function Cotacao() {
 
   const exemplos = useMemo(() => (termos ? exemplosDeAcionamento(termos) : []), [termos]);
 
-  /** A condicao em linguagem corrente (RNF06). */
+  /** A condicao em linguagem corrente (RNF04). */
   const condicaoEmPalavras = useMemo(() => {
     if (!produto) return null;
 
@@ -168,7 +168,7 @@ export default function Cotacao() {
       {enviada ? (
         <Aviso tipo="sucesso" titulo="Proposta enviada a seguradora.">
           A seguradora precisa emitir a apolice, porque so a carteira dela pode implantar o contrato
-          na rede (RNF12). Voce recebera uma notificacao quando a apolice for emitida.
+          na rede (RNF10). Voce recebera uma notificacao quando a apolice for emitida.
         </Aviso>
       ) : null}
 

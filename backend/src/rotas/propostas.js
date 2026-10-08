@@ -28,7 +28,7 @@ import { decimalPositivo, hashDeTransacao, uuid } from "../validacao.js";
  *     ele mesmo gerou no passo 2.
  *
  * O backend nao assina nada. Quem implanta o contrato continua sendo a carteira
- * da seguradora, e quem responde pela emissao na cadeia e ela (RNF12).
+ * da seguradora, e quem responde pela emissao na cadeia e ela (RNF10).
  */
 
 function propostaPublica(p) {

@@ -1,5 +1,5 @@
 """
-Assinatura do lote de leituras (RNF19).
+Assinatura do lote de leituras (RNF17).
 
 A API do AgroSmart so aceita um lote se ele vier assinado pela chave registrada
 para aquela fonte. O formato esta especificado em docs/BACKEND.md, secao 5, e e
@@ -17,7 +17,7 @@ exatamente o texto do outro. Assinando os bytes enviados, cada lado so precisa
 calcular SHA-256 sobre o mesmo corpo.
 
 A chave privada da estacao fica no `.env` do simulador, nunca no repositorio
-(RNF16). Em campo, cada estacao guarda a sua.
+(RNF14). Em campo, cada estacao guarda a sua.
 """
 
 from __future__ import annotations

@@ -16,7 +16,7 @@ defesa e evitar que alguém refaça uma escolha já examinada.
 no esqueleto do manual da equipe.
 
 **Por quê:** revogar um oráculo comprometido passa a ser uma transação só, em vez de uma por
-apólice. Com a carteira de dez mil talhões prevista no RNF04, a diferença é entre possível e
+apólice. Com uma carteira de dez mil talhões, a diferença é entre possível e
 inviável. Também barateia a implantação de cada apólice, que passa a guardar só a referência.
 
 **O que custa:** uma chamada externa de leitura por publicação. Está medido e documentado na
@@ -28,7 +28,7 @@ tabela de gas.
 
 **Por quê:** o RF07 pede a implantação na contratação. Sem a fábrica, a lista de endereços
 implantados viveria só no banco do back-end, e deixaria de ser auditável na cadeia — o que
-contraria o RNF20.
+contraria o RNF18.
 
 A fábrica **sobrescreve** o campo `registry` dos termos recebidos. Sem isso, uma apólice poderia
 ser emitida apontando para uma lista de oráculos diferente da acordada, e todo o controle de
@@ -114,7 +114,7 @@ média móvel, duas semanas de defeito bastam.
 
 **Decidido:** a consolidação grava em disco **antes** de qualquer tentativa de envio.
 
-**Por quê:** o RNF22 diz que indisponibilidade do oráculo ou da rede não pode causar perda de
+**Por quê:** o RNF20 diz que indisponibilidade do oráculo ou da rede não pode causar perda de
 dados. Se o índice existisse só na memória do processo, uma queda entre consolidar e confirmar o
 perderia.
 
@@ -233,7 +233,7 @@ detecção automática de rede ainda repete a tentativa.
 **Correção:** `FetchRequest` com tempo limite de 10 segundos, repetição desligada, e `chainId`
 informado a partir do arquivo de implantação para dispensar a detecção automática.
 
-**Por que importa:** o RNF22 exige que a indisponibilidade da rede não cause perda de dados. Um
+**Por que importa:** o RNF20 exige que a indisponibilidade da rede não cause perda de dados. Um
 serviço travado não perde dado, mas também não retoma — e o operador não tem como saber o que
 está acontecendo. O comportamento correto é falhar rápido: a entrada continua na fila e a
 próxima tentativa vem com espera crescente.
@@ -273,7 +273,7 @@ que recebia a indenização.
 **Correção:** convenção explícita — conta #0 seguradora, #1 produtor, #2 oráculo — documentada
 no código e em [COMO-RODAR.md](COMO-RODAR.md).
 
-**Por que importa:** funcionava, mas destruía a separação de papéis do RNF12 justamente na
+**Por que importa:** funcionava, mas destruía a separação de papéis do RNF10 justamente na
 demonstração. Um avaliador atento perguntaria por que quem publica o dado é quem recebe o
 dinheiro, e a resposta certa não seria "foi sem querer".
 
@@ -600,17 +600,17 @@ diária. Pagar mil vezes o preço esgotaria o saldo antes do fim da demonstraç�
 
 | Item | Requisito | Situação |
 |---|---|---|
-| Análise estática dos contratos | RNF13 | **Feito.** Slither sem nenhum achado; ver [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
+| Análise estática dos contratos | RNF11 | **Feito.** Slither sem nenhum achado; ver [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
 | Verificação do código-fonte no Etherscan | — | **Pendente**: precisa de uma chave da API do Etherscan (COMO-RODAR.md 7.7) |
 | Medição de latência em rede pública | Capítulo 7 do manual | **Medido**: ~27 s da publicação à segunda confirmação, contra ~170 ms na rede local |
 | Implantação em Sepolia | — | **Feito** em 07/10/2026: contratos e uma apólice de teste; endereços em `contratos/implantacoes/sepolia.json` |
-| Custo em gas na Sepolia | RNF09, RNF10 | **Medido** (CONTRATOS.md §4). Pagamento pelos dois índices feito em 07/10/2026: [resultados/sepolia-2026-10-07](resultados/sepolia-2026-10-07/README.md) |
+| Custo em gas na Sepolia | RNF07, RNF08 | **Medido** (CONTRATOS.md §4). Pagamento pelos dois índices feito em 07/10/2026: [resultados/sepolia-2026-10-07](resultados/sepolia-2026-10-07/README.md) |
 
 ---
 
 ## 4. Requisitos ainda não atendidos, por decisão
 
-Constam como itens de reserva no Quadro 19 da documentação de software.
+Constam como itens de reserva no Quadro 18 da documentação de software.
 
 | Requisito | Por que pode esperar |
 |---|---|
@@ -619,7 +619,7 @@ Constam como itens de reserva no Quadro 19 da documentação de software.
 
 O **RF09** (linha do tempo reconstruída dos eventos) também constava como reserva, e foi
 implementado. Com os contratos já emitindo os eventos, montar a linha do tempo na tela de detalhe
-da apólice custou pouco, e entrega a parte do RNF20 que o usuário efetivamente vê: o histórico
+da apólice custou pouco, e entrega a parte do RNF18 que o usuário efetivamente vê: o histórico
 remontado da rede, auditável sem depender da palavra da seguradora.
 
 O RF17 (encaminhamento ao perito por baixa confiança) também constava como reserva, mas a parte

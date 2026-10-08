@@ -20,7 +20,7 @@ Lista dos endereços autorizados a publicar índices. Administrada pela segurado
 | `ehAutorizado(address)` | qualquer um | Consulta de leitura, usada por cada apólice |
 
 **Por que um contrato separado.** Revogar um oráculo comprometido vira uma única transação, e
-não uma por apólice. Com a carteira de dez mil talhões prevista no RNF04, a diferença é entre
+não uma por apólice. Com uma carteira de dez mil talhões, a diferença é entre
 possível e inviável.
 
 ## 2. `ApolicePolicy.sol`
@@ -74,7 +74,7 @@ Exemplo do modo escalonado, com gatilho em 30 dias e limiar integral em 60:
 
 A função `simularPercentual(indiceClimatico, indiceDanoBps)` é pública e de leitura. O aplicativo
 a usa para mostrar ao produtor, antes do aceite, exatamente o que aciona e o que não aciona o
-pagamento (RNF06).
+pagamento (RNF04).
 
 Na tela de cotação, porém, ainda não existe contrato implantado para consultar, e a regra precisa
 estar reimplementada em JavaScript. `contratos/test/RegraDeGatilho.test.js` compara as duas
@@ -110,7 +110,7 @@ Um segundo resgate é barrado pelo saldo zerado (`SemSaldoParaResgatar`).
 
 ### 2.5 As proteções
 
-**Controle de acesso (RF18, RNF12).** `publicarIndices` consulta o `OracleRegistry` a cada
+**Controle de acesso (RF18, RNF10).** `publicarIndices` consulta o `OracleRegistry` a cada
 chamada. Endereço não autorizado é revertido com `OrigemNaoAutorizada`. Um oráculo revogado
 deixa de conseguir publicar na transação seguinte à revogação — há teste para isso.
 
@@ -118,7 +118,7 @@ deixa de conseguir publicar na transação seguinte à revogação — há teste
 período, preservando o valor original. O teste confere não só a reversão, mas que o valor
 gravado antes continuou intacto.
 
-**Reentrância (RNF11).** Duas camadas, porque o requisito pede as duas:
+**Reentrância (RNF09).** Duas camadas, porque o requisito pede as duas:
 
 1. A ordem *verificar → atualizar estado → interagir*. A linha `situacao = LIQUIDADA` vem antes
    da transferência, então uma reentrada cai no modificador `naSituacao` e é revertida.
@@ -134,7 +134,7 @@ vez.
 A mesma proteção é testada na outra saída de valor, a devolução da garantia à seguradora, com um
 contrato `SeguradoraMaliciosa`.
 
-**Atomicidade (RF26, RNF15).** Se a transferência falhar, a função reverte a transação inteira.
+**Atomicidade (RF26, RNF13).** Se a transferência falhar, a função reverte a transação inteira.
 O teste usa um beneficiário que rejeita qualquer transferência e verifica, depois da falha, que
 o período **não** ficou marcado como publicado, que a apólice segue `ATIVA` e que a garantia
 permanece íntegra. Não há pagamento parcial nem estado inconsistente.
@@ -274,16 +274,16 @@ cd contratos && npx hardhat coverage
 | Bloco | Testes | Requisitos |
 |---|---|---|
 | Implantação e parâmetros inválidos | 16 | RF07, RF08 |
-| Depósito da garantia | 6 | RNF12 |
+| Depósito da garantia | 6 | RNF10 |
 | Publicação de índices | 10 | RF16, RF18, RF20 |
 | Avaliação da condição e liquidação | 5 | RF23, RF24, RF26 |
 | Operadores da condição | 4 | — |
 | Pagamento escalonado | 7 | RF25 |
 | Resgate da garantia, incluindo a sobra do escalonado | 11 | RF25 |
-| Registro de oráculos | 13 | RF18, RNF12 |
+| Registro de oráculos | 13 | RF18, RNF10 |
 | Fábrica de apólices | 7 | RF07 |
-| Segurança: reentrância e atomicidade | 8 | RNF11, RNF15 |
-| Equivalência com a regra do aplicativo | 7 | RNF06 |
+| Segurança: reentrância e atomicidade | 8 | RNF09, RNF13 |
+| Equivalência com a regra do aplicativo | 7 | RNF04 |
 
 ---
 
@@ -300,20 +300,20 @@ cd contratos && npx hardhat coverage
 | RF24 — transferir imediatamente após o acionamento | mesma transação de `publicarIndices` |
 | RF25 — pagamento escalonado | `ModoPagamento.ESCALONADO` + `_interpolar` |
 | RF26 — impedir acionamento duplicado, sem estado inconsistente | `naSituacao(ATIVA)` + reversão em falha de transferência |
-| RNF08 — determinismo | nenhuma aleatoriedade; `block.timestamp` só para vigência e auditoria, nunca como entropia |
-| RNF09 — medir e documentar o gas de cada função | tabela da seção 4 |
-| RNF11 — imunidade a reentrância | ordem verificar/atualizar/interagir + guarda `naoReentrante` |
-| RNF12 — controle de acesso por função | `somenteSeguradora`, `somenteOraculoAutorizado` |
-| RNF14 — cobrir 100% dos caminhos condicionais | relatório da seção 5 |
-| RNF15 — atomicidade | reversão total em qualquer falha |
-| RNF13 — análise estática antes de implantar | Slither, 0 achados — [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
-| RNF16 — chaves fora do código-fonte | `hardhat.config.js` lê de variáveis de ambiente |
-| RNF20 — decisão reconstituível | `publicacao(periodo)` + eventos + registro do oráculo |
-| RNF21 — preservar a versão do modelo | campo `versaoModelo`, imutável após a publicação |
+| RNF06 — determinismo | nenhuma aleatoriedade; `block.timestamp` só para vigência e auditoria, nunca como entropia |
+| RNF07 — medir e documentar o gas de cada função | tabela da seção 4 |
+| RNF09 — imunidade a reentrância | ordem verificar/atualizar/interagir + guarda `naoReentrante` |
+| RNF10 — controle de acesso por função | `somenteSeguradora`, `somenteOraculoAutorizado` |
+| RNF12 — cobrir 100% dos caminhos condicionais | relatório da seção 5 |
+| RNF13 — atomicidade | reversão total em qualquer falha |
+| RNF11 — análise estática antes de implantar | Slither, 0 achados — [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
+| RNF14 — chaves fora do código-fonte | `hardhat.config.js` lê de variáveis de ambiente |
+| RNF18 — decisão reconstituível | `publicacao(periodo)` + eventos + registro do oráculo |
+| RNF19 — preservar a versão do modelo | campo `versaoModelo`, imutável após a publicação |
 
 ### Ainda não atendidos nos contratos
 
 | Requisito | Situação |
 |---|---|
-| RF10 — cancelamento antes da vigência | Item de reserva (Quadro 19). Não participa do fluxo de apuração |
+| RF10 — cancelamento antes da vigência | Item de reserva (Quadro 18). Não participa do fluxo de apuração |
 | RF28 — contestação da avaliação | Item de reserva. Exige retificação do índice em cadeia |

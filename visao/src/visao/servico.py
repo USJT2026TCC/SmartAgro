@@ -7,7 +7,7 @@ O laco do modulo de visao: pega lote pendente, analisa, devolve o resultado.
 
 A versao do modelo vai junto do resultado e e gravada com a analise. Nao e
 enfeite: sem ela, ninguem consegue dizer, seis meses depois, qual codigo
-produziu o numero que pagou uma indenizacao (RNF20, RNF21).
+produziu o numero que pagou uma indenizacao (RNF18, RNF19).
 """
 
 from __future__ import annotations

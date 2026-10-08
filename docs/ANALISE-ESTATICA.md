@@ -1,6 +1,6 @@
 # Análise estática dos contratos
 
-Atende ao **RNF13**: submeter os contratos a análise estática antes de implantar, sem nenhum
+Atende ao **RNF11**: submeter os contratos a análise estática antes de implantar, sem nenhum
 achado de severidade alta sem tratamento.
 
 Ferramenta: **Slither 0.11.6** (Trail of Bits), 102 detectores, sobre os três contratos de
@@ -86,7 +86,7 @@ partir do limite contratado, e não do saldo, então valor forçado também não
 Comparações com `block.timestamp` na checagem da vigência, em `publicarIndices` e
 `resgatarGarantia`.
 
-A marca de tempo do bloco é usada como **relógio**, não como fonte de aleatoriedade. O RNF08
+A marca de tempo do bloco é usada como **relógio**, não como fonte de aleatoriedade. O RNF06
 proíbe a segunda, não a primeira — vigência é, por natureza, um intervalo de datas. O validador
 consegue desviar a marca de tempo em alguns segundos, o que é irrelevante diante de uma vigência
 de 180 dias.

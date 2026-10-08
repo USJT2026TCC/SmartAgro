@@ -9,7 +9,7 @@ src/
 ├── reputacao.js      escore por fonte de dados (RF13)
 ├── fila.js           retomada apos falha de rede ou queda do processo (RF21)
 ├── publicador.js     assinatura e submissao a cadeia (RF19, RF22)
-├── registro.js       trilha de auditoria: gas, latencia, procedencia (RNF20)
+├── registro.js       trilha de auditoria: gas, latencia, procedencia (RNF18)
 ├── fonteSimulada.js  leituras deterministicas ate o simulador oficial existir
 ├── oraculo.js        orquestrador
 └── index.js          linha de comando
@@ -30,7 +30,7 @@ node src/index.js estatisticas                # gas e latencia coletados
 ## Configuração
 
 Copie `.env.example` para `.env` e preencha `CHAVE_PRIVADA_ORACULO` e `ENDERECO_APOLICE`.
-O `.env` está no `.gitignore` e **nunca** deve ir para o repositório (RNF16).
+O `.env` está no `.gitignore` e **nunca** deve ir para o repositório (RNF14).
 
 Os endereços dos contratos vêm de `contratos/implantacoes/<rede>.json`, gerado pelo script de
 implantação — não precisam ser copiados à mão.

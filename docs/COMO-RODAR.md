@@ -403,7 +403,7 @@ são necessários para uma implantação nova.
 
 ### 7.1 Carteiras e ETH de teste
 
-São três endereços distintos (RNF12), todos de carteiras **só de teste**:
+São três endereços distintos (RNF10), todos de carteiras **só de teste**:
 
 | Papel | Onde fica a chave |
 |---|---|

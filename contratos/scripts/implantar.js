@@ -30,7 +30,7 @@ async function main() {
   //
   // O oraculo precisa ser um endereco distinto do produtor: se fossem o mesmo,
   // quem publica o indice seria tambem quem recebe a indenizacao, e a separacao
-  // de papeis que o RNF12 exige deixaria de existir na demonstracao.
+  // de papeis que o RNF10 exige deixaria de existir na demonstracao.
   const enderecoOraculo = process.env.ENDERECO_ORACULO || contas[2]?.address;
 
   if (!enderecoOraculo) {

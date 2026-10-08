@@ -191,7 +191,7 @@ export default function RevisaoTecnica() {
           <RodapeDaFronteira>
             O resumo das evidencias identifica exatamente qual lote de imagens produziu o numero, e
             a versao diz qual modelo o produziu. Com os dois, a analise pode ser reexecutada e
-            conferida depois (RNF20, RNF21).
+            conferida depois (RNF18, RNF19).
           </RodapeDaFronteira>
         </>
       )}

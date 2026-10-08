@@ -4,12 +4,12 @@ require("dotenv").config();
 /**
  * Configuracao do ambiente de contratos do AgroSmart.
  *
- * Duas redes sao usadas no trabalho, conforme a secao 3.3 da documentacao:
+ * Duas redes sao usadas no trabalho, conforme a secao 1.5 da documentacao de software:
  *  - hardhat/localhost: rede local, para desenvolvimento e medicao de gas isolada;
  *  - sepolia: rede de teste publica, onde os numeros finais sao coletados.
  *
  * Nenhuma chave privada aparece aqui. Elas sao lidas de variaveis de ambiente
- * definidas no arquivo .env, que esta no .gitignore (RNF16).
+ * definidas no arquivo .env, que esta no .gitignore (RNF14).
  */
 
 const CHAVE_SEGURADORA = process.env.CHAVE_PRIVADA_SEGURADORA;
@@ -31,7 +31,7 @@ module.exports = {
   solidity: {
     version: "0.8.24",
     settings: {
-      // O otimizador fica ligado porque o RNF09 exige medir e documentar o gas de
+      // O otimizador fica ligado porque o RNF07 exige medir e documentar o gas de
       // cada funcao publica. Medir com o otimizador desligado produziria numeros
       // que nao correspondem ao que seria implantado de fato.
       optimizer: {
@@ -60,7 +60,7 @@ module.exports = {
     },
   },
 
-  // Relatorio de gas por funcao (RNF09, HU01 criterio 4, HU03).
+  // Relatorio de gas por funcao (RNF07, HU01 criterio 4, HU03).
   gasReporter: {
     enabled: process.env.REPORT_GAS === "true",
     currency: "BRL",

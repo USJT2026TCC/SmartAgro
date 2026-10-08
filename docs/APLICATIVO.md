@@ -55,7 +55,7 @@ reimplementada em JavaScript, em `app/src/cadeia/regraDeGatilho.js`.
 
 Reimplementar uma regra é um risco conhecido: as duas cópias divergem com o tempo. E aqui a
 divergência seria grave, porque o produtor aceitaria a apólice com base num número que o
-contrato não vai honrar — o oposto do que o RNF06 pretende.
+contrato não vai honrar — o oposto do que o RNF04 pretende.
 
 Duas coisas impedem isso:
 
@@ -88,7 +88,7 @@ sem entender por quê.
 Lista vinda do backend (espelho mantido pelo indexador), com as propostas ainda em andamento.
 Cada apólice leva à tela de detalhe, que lê tudo da cadeia.
 
-### Produtor · Simular e contratar — RF06, RNF06, HU10
+### Produtor · Simular e contratar — RF06, RNF04, HU10
 
 O coração da tela é a tabela de exemplos numéricos:
 
@@ -152,16 +152,16 @@ inventadas para cair no talhão, e isso está escrito no nome dos arquivos e no 
 
 Vincula a carteira ao cadastro por assinatura de mensagem. O **backend** gera o desafio com um
 número único e prazo de cinco minutos, a carteira assina, e o backend confere que o endereço que
-produziu a assinatura é o mesmo que o produtor declarou (ver [DECISOES.md §2.11](DECISOES.md)). A chave privada nunca sai da carteira (RNF17).
+produziu a assinatura é o mesmo que o produtor declarou (ver [DECISOES.md §2.11](DECISOES.md)). A chave privada nunca sai da carteira (RNF15).
 
 O número único impede que uma assinatura capturada de uma sessão anterior seja reapresentada
 como nova.
 
-### Seguradora · Carteira — RF15, UC15
+### Seguradora · Carteira — RF29, UC15
 
 Indicadores do relatório do backend: apólices emitidas, exposição atual (soma das garantias
 retidas), prêmios, indenizações pagas, taxa de acionamento, e o custo em gas e a latência das
-publicações do oráculo (RF15, RNF09). Mostra também a saúde do backend e do indexador. A seguradora vê exatamente o mesmo
+publicações do oráculo (RF29, RNF07). Mostra também a saúde do backend e do indexador. A seguradora vê exatamente o mesmo
 que o produtor e a fiscalização veriam.
 
 ### Seguradora · Propostas — RF07, UC05
@@ -199,7 +199,7 @@ de **todas** as apólices da carteira.
 A lista é montada dos eventos `OraculoAutorizado` e conferida contra o estado atual do contrato:
 o evento diz quem já foi autorizado algum dia, só o estado diz quem ainda pode publicar.
 
-### Seguradora · Fontes — RF11, RF13, RNF19
+### Seguradora · Fontes — RF11, RF13, RNF17
 
 Estações e sensores cadastrados, cada um com o endereço da chave que assina seus lotes e o escore
 de reputação atualizado a cada lote recebido. A seguradora pode desativar uma fonte suspeita.
@@ -222,7 +222,7 @@ A tela escuta os eventos ao vivo. Durante a demonstração, o oráculo publica e
 linha do tempo cresce sozinha, sem recarregar.
 
 O RF09 constava como item de reserva (HU12). Com os eventos já emitidos pelos contratos, montar a
-linha do tempo custou pouco e entrega a parte do RNF20 que é visível ao usuário.
+linha do tempo custou pouco e entrega a parte do RNF18 que é visível ao usuário.
 
 ### Perito · Revisão técnica
 

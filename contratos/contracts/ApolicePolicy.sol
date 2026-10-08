@@ -21,10 +21,10 @@ import {OracleRegistry} from "./OracleRegistry.sol";
  *  RF24 - a transferencia ocorre na mesma transacao do acionamento;
  *  RF25 - pagamento integral ou escalonado por faixa do indice;
  *  RF26 - acionamento duplicado impedido e falha de transferencia nao deixa estado inconsistente;
- *  RNF08 - nenhuma decisao depende de aleatoriedade ou de marca de tempo como entropia;
- *  RNF11 - imune a reentrancia: verificar, atualizar estado, so entao interagir;
- *  RNF12 - controle de acesso por funcao (seguradora, oraculo, produtor);
- *  RNF15 - toda operacao e atomica: ou a publicacao e o pagamento completam, ou a
+ *  RNF06 - nenhuma decisao depende de aleatoriedade ou de marca de tempo como entropia;
+ *  RNF09 - imune a reentrancia: verificar, atualizar estado, so entao interagir;
+ *  RNF10 - controle de acesso por funcao (seguradora, oraculo, produtor);
+ *  RNF13 - toda operacao e atomica: ou a publicacao e o pagamento completam, ou a
  *          transacao inteira e revertida.
  *
  * O contrato NAO verifica se o indice esta correto, apenas se quem publicou tinha
@@ -95,7 +95,7 @@ contract ApolicePolicy {
         uint16 confiancaBps; // grau de confianca do modelo (RF16)
         uint32 publicadoEm; // marca de tempo do bloco, apenas para auditoria
         bytes32 hashEvidencias; // resumo criptografico do lote de imagens (RF16)
-        bytes32 versaoModelo; // identificador da versao do modelo (RF16, RNF21)
+        bytes32 versaoModelo; // identificador da versao do modelo (RF16, RNF19)
     }
 
     // ---------------------------------------------------------------------
@@ -143,7 +143,7 @@ contract ApolicePolicy {
     /// @notice Periodos publicados, na ordem em que chegaram.
     uint256[] public periodos;
 
-    /// @dev Guarda de reentrancia (RNF11). 1 = livre, 2 = em execucao.
+    /// @dev Guarda de reentrancia (RNF09). 1 = livre, 2 = em execucao.
     uint256 private _trava = 1;
 
     // ---------------------------------------------------------------------
@@ -329,7 +329,7 @@ contract ApolicePolicy {
         if (situacao == Situacao.ATIVA) {
             uint64 agora = uint64(block.timestamp);
             // A marca de tempo do bloco e usada como relogio, nao como fonte de
-            // aleatoriedade — o RNF08 proibe a segunda, nao a primeira. O
+            // aleatoriedade — o RNF06 proibe a segunda, nao a primeira. O
             // validador consegue desviar alguns segundos, o que e irrelevante
             // diante de uma vigencia de meses (Slither: timestamp).
             // slither-disable-next-line timestamp
@@ -349,7 +349,7 @@ contract ApolicePolicy {
         // slither-disable-next-line incorrect-equality
         if (saldo == 0) revert SemSaldoParaResgatar();
 
-        // Efeitos antes da interacao (RNF11). A apolice liquidada nao muda de
+        // Efeitos antes da interacao (RNF09). A apolice liquidada nao muda de
         // situacao; nela, a protecao contra repeticao e o proprio saldo, que ja
         // esta zerado quando a chamada reentrante chegaria.
         if (situacao == Situacao.ATIVA) situacao = Situacao.ENCERRADA;
@@ -381,7 +381,7 @@ contract ApolicePolicy {
      * @param versaoModelo Identificador da versao do modelo que produziu o indice.
      *
      * @dev A ordem das operacoes e deliberada e segue verificar, atualizar estado e
-     *      so entao interagir. O RNF11 exige as duas protecoes, entao a guarda
+     *      so entao interagir. O RNF09 exige as duas protecoes, entao a guarda
      *      `naoReentrante` aparece como primeiro modificador: assim ela e a checagem
      *      mais externa e uma reentrada e barrada antes de qualquer outra validacao.
      */
@@ -468,7 +468,7 @@ contract ApolicePolicy {
      *
      * @dev Funcao pura e publica de proposito: a aplicacao do produtor a usa para
      *      mostrar, antes do aceite, exatamente o que aciona e o que nao aciona o
-     *      pagamento (RNF06), com a garantia de ser a mesma regra da liquidacao.
+     *      pagamento (RNF04), com a garantia de ser a mesma regra da liquidacao.
      */
     function simularPercentual(
         uint32 indiceClimatico,
@@ -559,7 +559,7 @@ contract ApolicePolicy {
         return termos;
     }
 
-    /// @notice Devolve o registro completo de uma publicacao (RNF20).
+    /// @notice Devolve o registro completo de uma publicacao (RNF18).
     function publicacao(uint256 periodo) external view returns (Publicacao memory) {
         return _publicacoes[periodo];
     }

@@ -134,7 +134,7 @@ export async function lerPublicacoes(endereco, provedor) {
  *
  * Nada aqui vem de banco de dados: o historico e remontado a partir do que a
  * propria rede guarda, o que e justamente o que torna a decisao auditavel por
- * qualquer parte, sem depender da palavra da seguradora (RNF20).
+ * qualquer parte, sem depender da palavra da seguradora (RNF18).
  */
 export async function lerLinhaDoTempo(endereco, provedor) {
   const contrato = contratoApolice(endereco, provedor);
@@ -196,7 +196,7 @@ export async function listarOraculos(provedor) {
   );
 }
 
-/** Indicadores da carteira da seguradora (RF15). */
+/** Indicadores da carteira da seguradora (RF29). */
 export function resumirCarteira(apolices) {
   const total = apolices.length;
   const ativas = apolices.filter((a) => a.situacao === 1).length;

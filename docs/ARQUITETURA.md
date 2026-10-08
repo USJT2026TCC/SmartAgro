@@ -80,7 +80,7 @@ checagem em tempo de execução.
 
 **Por que o registro é um contrato separado?** Se a lista de oráculos vivesse dentro de cada
 apólice, revogar um endereço comprometido exigiria uma transação por apólice. Com dez mil
-apólices ativas, isso é inviável — e o RNF04 pede suporte a dez mil talhões monitorados. Com
+apólices ativas, isso é inviável — e a meta é suportar dez mil talhões monitorados. Com
 o registro compartilhado, a revogação é uma transação só e passa a valer imediatamente para
 toda a carteira.
 
@@ -92,7 +92,7 @@ embutida. É um trade-off consciente, discutido em [DECISOES.md](DECISOES.md).
 
 ```
   fonteSimulada ──► consolidador ──► fila ──► publicador ──► registro
-   (leituras)       (RF12, RF13,    (RF21)   (RF19, RF22)   (RNF20)
+   (leituras)       (RF12, RF13,    (RF21)   (RF19, RF22)   (RNF18)
                      RF19)             │
                        ▲               │
                        │               ▼
@@ -103,7 +103,7 @@ embutida. É um trade-off consciente, discutido em [DECISOES.md](DECISOES.md).
 A ordem importa e não é acidental. **A consolidação grava em disco antes de qualquer tentativa
 de publicação.** Entre consolidar um índice e vê-lo confirmado na cadeia existe uma janela em
 que tudo pode dar errado: a rede congestiona, o nó RPC cai, o processo morre. Se o índice
-existisse apenas na memória do processo, ele se perderia — e o RNF22 diz que indisponibilidade
+existisse apenas na memória do processo, ele se perderia — e o RNF20 diz que indisponibilidade
 do oráculo ou da rede não pode causar perda de dados.
 
 Com a fila em disco, reiniciar o serviço retoma exatamente de onde parou, **preservando o
@@ -159,7 +159,7 @@ Os passos 6 a 11 acontecem **dentro de uma única transação**. Ou todos comple
 acontece. Não existe estado intermediário em que o índice ficou publicado mas o pagamento
 falhou: nesse caso a transação inteira é revertida e o período volta a ficar disponível.
 
-Essa é a garantia de atomicidade do RNF15, e ela é testada com um contrato beneficiário que
+Essa é a garantia de atomicidade do RNF13, e ela é testada com um contrato beneficiário que
 rejeita transferências de propósito.
 
 ## 5. Onde a intervenção humana entra — e onde não entra
@@ -169,8 +169,8 @@ deposita a garantia. Um perito entra nas contestações e nos casos de baixa con
 
 **Não entra na decisão de pagar.** A mensagem 10 do fluxo acima é a única que movimenta valor,
 e não passa por aprovação. É o principal benefício do sistema e também o seu principal risco —
-o que justifica o rigor dos requisitos RNF08 a RNF17 e a cobertura de 100% dos caminhos
-condicionais exigida pelo RNF14.
+o que justifica o rigor dos requisitos RNF06 a RNF15 e a cobertura de 100% dos caminhos
+condicionais exigida pelo RNF12.
 
 ## 6. O que ainda falta
 

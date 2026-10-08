@@ -511,7 +511,7 @@ export default function ApoliceDetalhe() {
           <RodapeDaFronteira>
             O contrato nao verifica se o indice esta correto, apenas se quem publicou tinha
             autorizacao. O resumo das evidencias e a versao do modelo ficam gravados para que a
-            analise possa ser reexecutada e conferida depois (RNF20, RNF21).
+            analise possa ser reexecutada e conferida depois (RNF18, RNF19).
           </RodapeDaFronteira>
         </div>
       </div>
@@ -525,7 +525,7 @@ export default function ApoliceDetalhe() {
         <h2>Linha do tempo</h2>
         <p className="silencioso">
           Reconstruida a partir dos eventos registrados na rede, e nao de um banco de dados. E o que
-          permite a qualquer parte auditar a decisao de pagamento (RF09, RNF20).
+          permite a qualquer parte auditar a decisao de pagamento (RF09, RNF18).
         </p>
 
         {linhaDoTempo.length === 0 ? (

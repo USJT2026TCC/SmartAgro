@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 /**
  * Configuracao do backend.
  *
- * Todo segredo vem de variavel de ambiente (RNF16). Nenhum valor sensivel tem
+ * Todo segredo vem de variavel de ambiente (RNF14). Nenhum valor sensivel tem
  * padrao embutido no codigo: se `SEGREDO_DE_SESSAO` ou `CHAVE_DO_ORACULO` faltar
  * em producao, o servico recusa subir, em vez de rodar com um segredo que esta
  * publicado no repositorio.
@@ -79,7 +79,7 @@ export const config = {
   /** Janela aceita para a marca de tempo de um lote de leituras (antirrepeticao). */
   janelaDoLoteMin: Number(process.env.JANELA_LOTE_MIN || 10),
 
-  /** Limites de requisicao por origem nas rotas sensiveis (RNF26). */
+  /** Limites de requisicao por origem nas rotas sensiveis. */
   limiteDeLogin: Number(process.env.LIMITE_LOGIN || 10),
   limiteDeIngestao: Number(process.env.LIMITE_INGESTAO || 120),
 };

@@ -13,11 +13,11 @@
  *  RF13 - atribuir a cada fonte um escore de reputacao, condicionando o uso dos
  *         dados a um limiar minimo;
  *  RF19 - consolidar os indices do periodo para submissao em transacao unica;
- *  RNF18 - exigir mais de uma fonte por talhao, ou evidencia por imagem.
+ *  RNF16 - exigir mais de uma fonte por talhao, ou evidencia por imagem.
  *
  * Todas as funcoes aqui sao puras: recebem leituras, devolvem um resultado, e nao
  * tocam em rede nem em disco. Isso e o que torna a regra testavel sem blockchain
- * e reproduzivel meses depois, como exige o RNF20.
+ * e reproduzivel meses depois, como exige o RNF18.
  */
 
 /**
@@ -198,7 +198,7 @@ function contarDiasSecosConsecutivos(porDia, periodoReferencia, limiarChuvaMm) {
  * @param {number} [opcoes.limiarChuvaMm=1] Chuva diaria abaixo da qual o dia e seco.
  * @param {object} [opcoes.reputacao] Instancia de RegistroReputacao, se houver.
  * @param {number} [opcoes.limiarReputacao=0.5] Escore minimo para usar a fonte.
- * @param {number} [opcoes.minimoDeFontes=2] Fontes independentes exigidas (RNF18).
+ * @param {number} [opcoes.minimoDeFontes=2] Fontes independentes exigidas (RNF16).
  *
  * @returns {{
  *   periodo: number,
@@ -270,7 +270,7 @@ function consolidarIndiceClimatico(leituras, opcoes) {
 
   if (fontesUsadas.length < minimoDeFontes) {
     alertas.push(
-      `RNF18: o talhao tem ${fontesUsadas.length} fonte(s) valida(s); ` +
+      `RNF16: o talhao tem ${fontesUsadas.length} fonte(s) valida(s); ` +
         `o minimo e ${minimoDeFontes} ou evidencia por imagem obrigatoria.`,
     );
   }

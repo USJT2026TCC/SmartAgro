@@ -9,7 +9,7 @@ const { consolidarIndiceClimatico, validarLeitura } = require("../src/consolidad
 /**
  * Testes da fonte simulada.
  *
- * O ponto central e a reprodutibilidade (RNF21): o mesmo cenario precisa gerar
+ * O ponto central e a reprodutibilidade (RNF19): o mesmo cenario precisa gerar
  * sempre a mesma serie, senao os numeros de gas medidos em execucoes diferentes
  * nao sao comparaveis entre si.
  */
@@ -41,7 +41,7 @@ test("todas as leituras geradas sao plausiveis", () => {
   }
 });
 
-test("cada dia tem leituras das duas fontes independentes (RNF18)", () => {
+test("cada dia tem leituras das duas fontes independentes (RNF16)", () => {
   const leituras = gerarLeituras({ cenario: "safra_normal", periodoFinal: PERIODO, dias: 10 });
 
   assert.equal(leituras.length, 20);

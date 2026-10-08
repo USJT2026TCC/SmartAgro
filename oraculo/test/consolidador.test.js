@@ -209,13 +209,13 @@ test("consolidarIndiceClimatico descarta leituras implausiveis sem derrubar o in
   assert.equal(resultado.descartes[0].motivo, MOTIVOS.FORA_DE_FAIXA);
 });
 
-test("consolidarIndiceClimatico alerta quando ha menos de duas fontes (RNF18)", () => {
+test("consolidarIndiceClimatico alerta quando ha menos de duas fontes (RNF16)", () => {
   const resultado = consolidarIndiceClimatico(serie(["unica"], 20261015, [0, 0]), {
     periodo: 20261015,
   });
 
   assert.equal(resultado.fontesUsadas.length, 1);
-  assert.ok(resultado.alertas.some((a) => a.includes("RNF18")));
+  assert.ok(resultado.alertas.some((a) => a.includes("RNF16")));
 });
 
 test("consolidarIndiceClimatico alerta quando a contagem para por falta de dado", () => {

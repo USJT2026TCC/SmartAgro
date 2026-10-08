@@ -12,7 +12,7 @@ require("dotenv").config({
 /**
  * Configuracao do servico de oraculo.
  *
- * Todo segredo vem de variavel de ambiente, nunca do codigo (RNF16). O arquivo
+ * Todo segredo vem de variavel de ambiente, nunca do codigo (RNF14). O arquivo
  * .env fica no .gitignore e cada integrante mantem o seu.
  *
  * Os enderecos dos contratos vem de `contratos/implantacoes/<rede>.json`, gerado
@@ -57,7 +57,7 @@ const config = {
    *
    * O padrao do ethers e de 300 segundos. Com o no fora do ar, isso faria o
    * servico travar em vez de devolver a publicacao a fila e tentar de novo mais
-   * tarde, que e o comportamento exigido pelo RNF22.
+   * tarde, que e o comportamento exigido pelo RNF20.
    */
   timeoutMs: Number(process.env.TIMEOUT_MS || 10000),
 

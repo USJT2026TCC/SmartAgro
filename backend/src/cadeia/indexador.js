@@ -23,7 +23,7 @@ import {
  * O `contract.on(...)` do ethers so ve o que acontece enquanto o processo esta de
  * pe. Se o backend reinicia no momento de um pagamento, o evento se perde. O
  * indexador guarda o ultimo bloco processado no banco e, ao voltar, continua dali
- * — nenhum evento fica de fora, o que e o mesmo principio do RNF22 aplicado ao
+ * — nenhum evento fica de fora, o que e o mesmo principio do RNF20 aplicado ao
  * caminho de volta, da cadeia para o sistema.
  *
  * IDEMPOTENCIA

@@ -45,7 +45,7 @@ function talhaoPublico(linha) {
       identificador: linha.produtor_identificador,
     },
     fontesAtivas: linha.fontes_ativas,
-    // RNF18: ao menos duas fontes independentes, ou evidencia por imagem.
+    // RNF16: ao menos duas fontes independentes, ou evidencia por imagem.
     atendeMinimoDeFontes: linha.fontes_ativas >= 2,
     criadoEm: linha.criado_em,
   };
@@ -306,7 +306,7 @@ export function rotasDeCadastro() {
   /**
    * Registro de fonte (RF11). O endereco e a chave publica com que a estacao ou
    * o sensor assina os lotes; sem ele cadastrado, nenhuma leitura da fonte e
-   * aceita (RNF19).
+   * aceita (RNF17).
    */
   r.post("/fontes", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
     const { banco } = req.app.locals;

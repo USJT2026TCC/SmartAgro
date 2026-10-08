@@ -9,7 +9,7 @@ import { auditar, exigirPerfil, exigirSessao, limitarIngestao } from "../seguran
 import { texto, uuid } from "../validacao.js";
 
 /**
- * Ingestao de leituras de campo (RF11, RF12, RF13, RNF19).
+ * Ingestao de leituras de campo (RF11, RF12, RF13, RNF17).
  *
  * Esta rota nao usa sessao de usuario: quem chama e a estacao, o sensor ou o
  * simulador. A autenticacao e a assinatura do lote, conferida contra a chave

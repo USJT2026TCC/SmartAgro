@@ -31,7 +31,7 @@ import { config } from "../config.js";
  */
 const CUSTO_BCRYPT = config.ambiente === "teste" ? 4 : 12;
 
-/** RNF24: senha guardada com hash e sal. O bcrypt gera e embute o sal. */
+/** HU13, criterio 1: senha guardada com hash e sal. O bcrypt gera e embute o sal. */
 export function gerarHashDeSenha(senha) {
   return bcrypt.hash(senha, CUSTO_BCRYPT);
 }

@@ -104,7 +104,7 @@ acontecendo sozinho na tela — siga [docs/COMO-RODAR.md](docs/COMO-RODAR.md), s
 | [docs/VISAO.md](docs/VISAO.md) | Como o percentual de dano é calculado, os estimadores e a avaliação do TerraMind |
 | [docs/DADOS.md](docs/DADOS.md) | De onde vem cada dado, sob que licença e como citar |
 | [docs/COMO-RODAR.md](docs/COMO-RODAR.md) | Passo a passo, da instalação à demonstração na Sepolia |
-| [docs/ANALISE-ESTATICA.md](docs/ANALISE-ESTATICA.md) | Triagem do Slither, achado por achado (RNF13) |
+| [docs/ANALISE-ESTATICA.md](docs/ANALISE-ESTATICA.md) | Triagem do Slither, achado por achado (RNF11) |
 | [docs/DECISOES.md](docs/DECISOES.md) | Decisões de projeto, alternativas descartadas e defeitos encontrados |
 | `docs/AgroSmart_Documentacao_Software.docx` | Documentação acadêmica: requisitos, UML, planejamento |
 | `docs/AgroSmart_Manual_da_Equipe.docx` | Manual interno da equipe |

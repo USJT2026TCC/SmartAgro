@@ -432,7 +432,7 @@ export default function TalhoesEProdutos() {
           </table>
 
           <RodapeDaFronteira>
-            Area calculada pelo PostGIS sobre o elipsoide. O RNF18 pede ao menos duas fontes
+            Area calculada pelo PostGIS sobre o elipsoide. O RNF16 pede ao menos duas fontes
             independentes por talhao, ou evidencia por imagem obrigatoria.
           </RodapeDaFronteira>
         </div>

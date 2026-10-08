@@ -4,12 +4,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 /**
- * Fila persistente de publicacoes (RF21, RNF22).
+ * Fila persistente de publicacoes (RF21, RNF20).
  *
  * O problema que ela resolve: entre consolidar o indice e ve-lo confirmado na
  * cadeia existe uma janela em que tudo pode dar errado — a rede congestiona, o
  * no RPC cai, o processo do oraculo morre. Se o indice existir apenas na memoria
- * do processo, ele se perde, e o RNF22 diz que indisponibilidade do oraculo ou da
+ * do processo, ele se perde, e o RNF20 diz que indisponibilidade do oraculo ou da
  * rede nao pode causar perda de dados.
  *
  * Por isso a consolidacao grava em disco ANTES de tentar publicar, e a entrada so

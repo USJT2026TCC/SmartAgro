@@ -15,7 +15,7 @@ import {
 
 /**
  * Painel da seguradora: carteira, indicadores e os numeros do experimento
- * (RF15, UC15).
+ * (RF29, UC15).
  *
  * Os indicadores vem do backend, que o indexador mantem em dia com a cadeia. As
  * estatisticas de gas e latencia contam so publicacoes confirmadas na rede — o

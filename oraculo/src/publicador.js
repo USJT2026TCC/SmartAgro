@@ -11,7 +11,7 @@ const { ABI_APOLICE, ABI_REGISTRY, SITUACOES } = require("./abi");
  * a regra de consolidacao fica em `consolidador.js`, testavel sem blockchain, e
  * aqui ficam apenas assinatura, envio e leitura do recibo.
  *
- * A chave privada vem de variavel de ambiente e nunca e escrita em log (RNF16).
+ * A chave privada vem de variavel de ambiente e nunca e escrita em log (RNF14).
  */
 class Publicador {
   /**
@@ -27,7 +27,7 @@ class Publicador {
     // O tempo limite padrao do ethers para uma requisicao e de 300 segundos, e
     // na deteccao inicial de rede ele ainda repete a tentativa varias vezes. Com
     // o no fora do ar, o servico simplesmente travaria, em vez de falhar e
-    // devolver a publicacao a fila. Como o RNF22 exige que a indisponibilidade da
+    // devolver a publicacao a fila. Como o RNF20 exige que a indisponibilidade da
     // rede nao cause perda de dados, o que importa aqui e falhar rapido: a
     // entrada continua na fila e a proxima tentativa vem com espera crescente.
     const requisicao = new ethers.FetchRequest(rpcUrl);

@@ -24,7 +24,7 @@ CREATE TABLE usuarios (
   perfil                text NOT NULL CHECK (perfil IN ('produtor', 'seguradora', 'perito')),
   documento             text,
 
-  -- RNF24: hash com sal. O bcrypt embute o sal e o custo no proprio texto.
+  -- HU13, criterio 1: hash com sal. O bcrypt embute o sal e o custo no proprio texto.
   hash_senha            text NOT NULL,
 
   -- RF01: segundo fator por TOTP. O segredo e guardado cifrado (AES-256-GCM);
@@ -231,7 +231,7 @@ CREATE TABLE estado_indexador (
 
 -- Estacoes e sensores de cada talhao (RF11). Cada fonte tem um par de chaves:
 -- os lotes de leitura chegam assinados, e so sao aceitos se a assinatura
--- corresponder ao endereco registrado aqui (RNF19: leitura autenticada na origem).
+-- corresponder ao endereco registrado aqui (RNF17: leitura autenticada na origem).
 CREATE TABLE fontes (
   id                 text PRIMARY KEY,
   talhao_id          uuid NOT NULL REFERENCES talhoes(id),
@@ -318,7 +318,7 @@ CREATE TABLE analises_de_imagem (
   indice_dano_bps        integer NOT NULL CHECK (indice_dano_bps BETWEEN 0 AND 10000),
   confianca_bps          integer NOT NULL CHECK (confianca_bps BETWEEN 0 AND 10000),
 
-  -- RNF21: versao do modelo preservada durante todo o prazo de contestacao.
+  -- RNF19: versao do modelo preservada durante todo o prazo de contestacao.
   versao_modelo          text NOT NULL,
   hash_versao_modelo     text NOT NULL,
 
@@ -387,7 +387,7 @@ CREATE INDEX notificacoes_usuario_idx ON notificacoes (usuario_id, lida_em);
 
 -- ---------------------------------------------------------------- auditoria
 
--- RNF25: log de auditoria correlacionado aos identificadores de transacao.
+-- Log de auditoria correlacionado aos identificadores de transacao.
 -- Apenas insercao: nenhuma rota da API altera ou apaga uma linha daqui.
 CREATE TABLE auditoria (
   id          bigserial PRIMARY KEY,

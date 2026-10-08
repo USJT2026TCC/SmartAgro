@@ -21,7 +21,7 @@ Qualquer pessoa pode conferir cada passo pelos links abaixo, sem depender da pal
 | Oráculo | [`0xeFCf4d0c3f22ac012896c2D9c6bA35e9fd7D691D`](https://sepolia.etherscan.io/address/0xeFCf4d0c3f22ac012896c2D9c6bA35e9fd7D691D) |
 | Produtor | [`0xC8fdFcA3CfEc202D8BaBf4E89bEcaB5E57773071`](https://sepolia.etherscan.io/address/0xC8fdFcA3CfEc202D8BaBf4E89bEcaB5E57773071) (criada na MetaMask; a chave nunca passou pelo sistema) |
 
-São três endereços distintos: quem publica o índice não é quem recebe a indenização (RNF12).
+São três endereços distintos: quem publica o índice não é quem recebe a indenização (RNF10).
 
 ## Contratos
 

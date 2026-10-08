@@ -128,7 +128,7 @@ describe("cadastro", () => {
       assert.equal(cadastro.status, 403);
     });
 
-    test("o talhao indica se atende o minimo de fontes independentes (RNF18)", async () => {
+    test("o talhao indica se atende o minimo de fontes independentes (RNF16)", async () => {
       const { body } = await ctx.api().get("/api/talhoes").set(com(seguradora));
       const t1 = body.talhoes.find((t) => t.identificador === "talhao-01");
       const t2 = body.talhoes.find((t) => t.identificador === "talhao-02");

@@ -4,7 +4,7 @@ import { naoEncontrado } from "../erros.js";
 import { exigirPerfil, exigirSessao } from "../seguranca/sessoes.js";
 
 /**
- * Notificacoes, relatorios, auditoria e saude do servico (RF15, RF27, RNF25).
+ * Notificacoes, relatorios, auditoria e saude do servico (RF27, RF29).
  */
 export function rotasDeAcompanhamento() {
   const r = Router();
@@ -44,7 +44,7 @@ export function rotasDeAcompanhamento() {
   // --------------------------------------------------------- relatorios
 
   /**
-   * Indicadores da carteira (RF15, UC15) e os numeros do capitulo de resultados.
+   * Indicadores da carteira (RF29, UC15) e os numeros do capitulo de resultados.
    *
    * Tudo vem do banco, que o indexador mantem em dia com a cadeia. Os numeros de
    * gas e latencia so contam publicacoes confirmadas na rede: o relato do oraculo
@@ -97,7 +97,7 @@ export function rotasDeAcompanhamento() {
     });
   });
 
-  /** Trilha de auditoria (RNF25). Somente leitura; nenhuma rota altera esta tabela. */
+  /** Trilha de auditoria. Somente leitura; nenhuma rota altera esta tabela. */
   r.get("/auditoria", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
     const params = [];
     let filtro = "";

@@ -6,7 +6,7 @@
  *
  * Reimplementar a regra no front-end e um risco conhecido: as duas copias podem
  * divergir, e a tela passaria a mostrar ao produtor um numero diferente do que o
- * contrato vai executar. O RNF06 exige apresentar a condicao contratada em
+ * contrato vai executar. O RNF04 exige apresentar a condicao contratada em
  * linguagem nao tecnica antes do aceite, com exemplos numericos — se esses
  * exemplos mentirem, o requisito e pior do que nao ter sido atendido.
  *
@@ -121,7 +121,7 @@ export function valorDevido(termos, indiceClimatico, indiceDanoBps) {
 /**
  * Exemplos numericos do que aciona e do que nao aciona o pagamento.
  *
- * E o que a tela de cotacao mostra ao produtor antes do aceite (RNF06, e o
+ * E o que a tela de cotacao mostra ao produtor antes do aceite (RNF04, e o
  * criterio de aceite 2 da HU10). A escolha dos pontos e deliberada: um pouco
  * abaixo do gatilho, exatamente no gatilho, e dois casos acima — porque e no
  * limite que o produtor costuma se surpreender depois.

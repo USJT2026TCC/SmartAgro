@@ -1,7 +1,7 @@
 # Dependencias
 node_modules/
 
-# Segredos — nunca versionar (RNF16, RNF17)
+# Segredos — nunca versionar (RNF14, RNF15)
 .env
 .env.*
 !.env.example

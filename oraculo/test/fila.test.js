@@ -9,7 +9,7 @@ const path = require("node:path");
 const { FilaDePublicacoes, ESTADOS } = require("../src/fila");
 
 /**
- * Testes da fila de publicacoes (RF21, RNF22).
+ * Testes da fila de publicacoes (RF21, RNF20).
  *
  * O que se verifica aqui e que nenhum indice se perde: nem quando a rede cai, nem
  * quando o processo do oraculo morre no meio de uma tentativa.

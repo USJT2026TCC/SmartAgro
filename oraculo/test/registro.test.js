@@ -9,7 +9,7 @@ const path = require("node:path");
 const { RegistroDePublicacoes } = require("../src/registro");
 
 /**
- * Testes do registro de auditoria (RF22, RNF20).
+ * Testes do registro de auditoria (RF22, RNF18).
  *
  * Sao os numeros deste arquivo que vao para o capitulo de resultados do TCC, entao
  * o que se verifica aqui e que nada se perde e que as contas batem.
@@ -96,7 +96,7 @@ test("estatisticas agregam gas minimo, maximo, medio e latencia", () => {
   assert.equal(estatisticas.acionamentos, 1);
 });
 
-test("a procedencia do indice fica gravada junto com a transacao (RNF20)", () => {
+test("a procedencia do indice fica gravada junto com a transacao (RNF18)", () => {
   const registro = novoRegistro();
 
   registro.registrar(

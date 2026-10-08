@@ -7,7 +7,7 @@ import { carteiraDeFonteDeDemonstracao } from "../src/banco/semente.js";
 import { carteiraAleatoria, montar } from "./ajuda.js";
 
 /**
- * Ingestao de leituras autenticadas na origem (RF11, RF12, RF13, RNF19).
+ * Ingestao de leituras autenticadas na origem (RF11, RF12, RF13, RNF17).
  */
 describe("ingestao de leituras", () => {
   let ctx;
@@ -68,7 +68,7 @@ describe("ingestao de leituras", () => {
     assert.equal(r.body.aceitas, 1);
   });
 
-  test("lote assinado por outra chave e recusado (RNF19)", async () => {
+  test("lote assinado por outra chave e recusado (RNF17)", async () => {
     const r = await enviar([leitura(3, 0)], { carteira: carteiraAleatoria() });
 
     assert.equal(r.status, 401);

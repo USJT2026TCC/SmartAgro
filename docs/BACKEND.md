@@ -80,15 +80,15 @@ JSON e são tratados com `BigInt` no código: nenhum valor monetário passa por 
 
 | Mecanismo | Onde | Requisito |
 |---|---|---|
-| Senha com bcrypt (custo 12) e comparação com hash fictício para usuário inexistente | `seguranca/cripto.js` | RF01, RNF15 |
+| Senha com bcrypt (custo 12) e comparação com hash fictício para usuário inexistente | `seguranca/cripto.js` | RF01, RNF13 |
 | Segundo fator TOTP opcional, ativado só após o primeiro código válido | `rotas/autenticacao.js` | RF01 |
-| Segredo TOTP cifrado em repouso (AES-256-GCM) | `seguranca/cripto.js` | RNF16 |
-| Token de sessão opaco; o banco guarda só o SHA-256; expira em 8 h | `seguranca/sessoes.js` | RNF15 |
+| Segredo TOTP cifrado em repouso (AES-256-GCM) | `seguranca/cripto.js` | RNF14 |
+| Token de sessão opaco; o banco guarda só o SHA-256; expira em 8 h | `seguranca/sessoes.js` | RNF13 |
 | Perfis produtor, seguradora e perito, conferidos em cada rota | `exigirPerfil` | RF04 |
-| Limite de tentativas no login e na ingestão | `express-rate-limit` | RNF15 |
-| Chave de serviço para oráculo e visão, comparada em tempo constante | `exigirServico` | RNF19 |
-| Lotes de leitura assinados pela chave da fonte | `dominio/assinaturaDeLote.js` | RNF19 |
-| Trilha de auditoria de ações sensíveis | tabela `auditoria` | RNF20 |
+| Limite de tentativas no login e na ingestão | `express-rate-limit` | RNF13 |
+| Chave de serviço para oráculo e visão, comparada em tempo constante | `exigirServico` | RNF17 |
+| Lotes de leitura assinados pela chave da fonte | `dominio/assinaturaDeLote.js` | RNF17 |
+| Trilha de auditoria de ações sensíveis | tabela `auditoria` | RNF18 |
 
 Em produção (`NODE_ENV=producao`), o backend **recusa subir** sem `CHAVE_DE_SERVICO` e
 `SEGREDO_DE_CIFRA` definidos. Os valores padrão de desenvolvimento nunca vão para produção por
@@ -166,7 +166,7 @@ Todas sob `/api`. Formato de erro único: `{ "erro": { "codigo", "mensagem" } }`
 | Método e caminho | Quem | O que faz |
 |---|---|---|
 | `GET /notificacoes` · `POST /notificacoes/:id/lida` · `POST /notificacoes/lidas` | sessão | avisos gerados pelos eventos da cadeia (RF27) |
-| `GET /relatorios/carteira` | seguradora | exposição, prêmios, pagamentos, gas e latência (RF15) |
+| `GET /relatorios/carteira` | seguradora | exposição, prêmios, pagamentos, gas e latência (RF29) |
 | `GET /auditoria` | seguradora | trilha de auditoria |
 | `GET /saude` | público | banco, cadeia e indexador |
 
