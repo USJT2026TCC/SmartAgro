@@ -6,6 +6,7 @@ import { emData, emEth, emPercentual } from "../../cadeia/formatos";
 import { implantacaoDaRede } from "../../cadeia/rede";
 import {
   Aviso,
+  Campo,
   Carregando,
   Indicador,
   LinkDaCadeia,
@@ -17,6 +18,9 @@ import {
  * Painel da seguradora: carteira, indicadores e os numeros do experimento
  * (RF29, UC15).
  *
+ * Filtros por periodo de emissao, cultura e regiao (municipio), com a quebra
+ * por cultura e por regiao e o tempo medio de liquidacao, como pede o RF29.
+ *
  * Os indicadores vem do backend, que o indexador mantem em dia com a cadeia. As
  * estatisticas de gas e latencia contam so publicacoes confirmadas na rede — o
  * relato do oraculo sem o evento correspondente nao entra na conta.
@@ -26,6 +30,7 @@ export default function CarteiraDaSeguradora() {
   const [apolices, setApolices] = useState(null);
   const [saude, setSaude] = useState(null);
   const [erro, setErro] = useState(null);
+  const [filtros, setFiltros] = useState({ de: "", ate: "", cultura: "", regiao: "" });
 
   const implantacao = useMemo(() => implantacaoDaRede(), []);
 
@@ -33,8 +38,11 @@ export default function CarteiraDaSeguradora() {
     setErro(null);
 
     try {
+      const consulta = new URLSearchParams(
+        Object.entries(filtros).filter(([, valor]) => valor),
+      ).toString();
       const [r, a, s] = await Promise.all([
-        api("/relatorios/carteira"),
+        api(`/relatorios/carteira${consulta ? `?${consulta}` : ""}`),
         api("/apolices"),
         api("/saude"),
       ]);
@@ -44,11 +52,14 @@ export default function CarteiraDaSeguradora() {
     } catch (falha) {
       setErro(falha.message);
     }
-  }, []);
+  }, [filtros]);
 
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  const mudar = (campo) => (e) => setFiltros({ ...filtros, [campo]: e.target.value });
+  const filtrando = Object.values(filtros).some(Boolean);
 
   const c = relatorio?.carteira;
   const p = relatorio?.publicacoes;
@@ -78,6 +89,46 @@ export default function CarteiraDaSeguradora() {
         </Aviso>
       ) : null}
 
+      <div className="cartao">
+        <h2>Filtros do relatorio</h2>
+        <div className="grade">
+          <Campo rotulo="Emitidas de" htmlFor="filtro-de">
+            <input id="filtro-de" type="date" value={filtros.de} onChange={mudar("de")} />
+          </Campo>
+          <Campo rotulo="ate" htmlFor="filtro-ate">
+            <input id="filtro-ate" type="date" value={filtros.ate} onChange={mudar("ate")} />
+          </Campo>
+          <Campo rotulo="Cultura" htmlFor="filtro-cultura">
+            <select id="filtro-cultura" value={filtros.cultura} onChange={mudar("cultura")}>
+              <option value="">todas</option>
+              {(relatorio?.opcoesDeFiltro?.culturas ?? []).map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          <Campo rotulo="Regiao (municipio)" htmlFor="filtro-regiao">
+            <select id="filtro-regiao" value={filtros.regiao} onChange={mudar("regiao")}>
+              <option value="">todas</option>
+              {(relatorio?.opcoesDeFiltro?.regioes ?? []).map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        </div>
+        {filtrando ? (
+          <button
+            className="secundario pequeno"
+            onClick={() => setFiltros({ de: "", ate: "", cultura: "", regiao: "" })}
+          >
+            Limpar filtros
+          </button>
+        ) : null}
+      </div>
+
       {!relatorio ? (
         <Carregando />
       ) : (
@@ -97,8 +148,56 @@ export default function CarteiraDaSeguradora() {
             <Indicador
               rotulo="Taxa de acionamento"
               valor={emPercentual(Math.round(c.taxaDeAcionamento * 10_000))}
-              nota="liquidadas sobre o total emitido"
+              nota={`liquidadas sobre o total · ${c.canceladas} cancelada(s)`}
             />
+            <Indicador
+              rotulo="Tempo medio de liquidacao"
+              valor={
+                relatorio.liquidacao.pagamentos > 0
+                  ? `${Number(relatorio.liquidacao.media_horas).toLocaleString("pt-BR")} h`
+                  : "—"
+              }
+              nota={
+                relatorio.liquidacao.pagamentos > 0
+                  ? `do fim do dia acionador ao pagamento · maximo ${Number(relatorio.liquidacao.maximo_horas).toLocaleString("pt-BR")} h (limite do RNF21: 72 h)`
+                  : "nenhum pagamento no filtro"
+              }
+            />
+          </div>
+
+          <div className="grade-2">
+            {[
+              ["Por cultura", relatorio.porCultura, "cultura"],
+              ["Por regiao", relatorio.porRegiao, "regiao"],
+            ].map(([titulo, linhas, chave]) => (
+              <div className="cartao tabela-rolavel" key={chave}>
+                <h2>{titulo}</h2>
+                {linhas.length === 0 ? (
+                  <p className="silencioso">Nenhuma apolice no filtro.</p>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>{chave === "cultura" ? "Cultura" : "Municipio"}</th>
+                        <th className="numero">Apolices</th>
+                        <th className="numero">Acionadas</th>
+                        <th className="numero">Pago</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {linhas.map((l) => (
+                        <tr key={l[chave]}>
+                          <td>{l[chave]}</td>
+                          <td className="numero">{l.apolices}</td>
+                          <td className="numero">{l.liquidadas}</td>
+                          <td className="numero">{emEth(l.pago_total_wei)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            ))}
           </div>
 
           <div className="cartao" style={{ marginTop: 16 }}>

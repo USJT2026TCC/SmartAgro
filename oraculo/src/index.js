@@ -9,7 +9,7 @@ const { config, lerImplantacao } = require("./config");
 const { ServicoOraculo } = require("./oraculo");
 const { somarDias, diaDe } = require("./consolidador");
 const { CENARIOS, gerarLeituras } = require("./fonteSimulada");
-const { FilaDePublicacoes } = require("./fila");
+const { FilaDePublicacoes, descreverErro } = require("./fila");
 const { RegistroDePublicacoes } = require("./registro");
 
 /**
@@ -288,11 +288,16 @@ async function comandoServico(opcoes) {
       try {
         if (await servico.publicador.periodoJaPublicado(a.endereco, periodo)) continue;
 
+        if (!(await servico.publicador.dentroDaVigencia(a.endereco))) {
+          console.log(`  ${a.endereco}: fora da vigencia, nada a publicar`);
+          continue;
+        }
+
         console.log(`  apolice ${a.endereco} (talhao ${a.talhao})`);
         await publicarPeriodo(servico, fonte, a.endereco, periodo);
       } catch (erro) {
         // Uma apolice com problema nao impede as outras.
-        console.log(`  ${a.endereco}: ${erro.shortMessage || erro.message}`);
+        console.log(`  ${a.endereco}: ${descreverErro(erro)}`);
       }
     }
 
@@ -346,7 +351,7 @@ async function publicarRetificacoes(servico) {
           `${recibo.acionouPagamento ? " · ACIONOU" : ""} · ${recibo.txHash}`,
       );
     } catch (erro) {
-      console.log(`  retificacao ${r.id}: ${erro.shortMessage || erro.message}`);
+      console.log(`  retificacao ${r.id}: ${descreverErro(erro)}`);
     }
   }
 }

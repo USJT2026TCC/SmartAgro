@@ -272,10 +272,10 @@ describe("propostas e emissao", () => {
   });
 
   test("data de inicio no passado, longe demais ou mal formada e recusada", async () => {
-    const ontem = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const anteontem = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
     const daqui200 = new Date(Date.now() + 200 * 86_400_000).toISOString().slice(0, 10);
 
-    for (const inicioDaVigencia of [ontem, daqui200, "15/11/2026"]) {
+    for (const inicioDaVigencia of [anteontem, daqui200, "15/11/2026"]) {
       const r = await ctx
         .api()
         .post("/api/propostas")

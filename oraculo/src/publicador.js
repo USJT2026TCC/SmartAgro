@@ -126,6 +126,20 @@ class Publicador {
     ]);
   }
 
+  /**
+   * Se a apolice esta dentro da vigencia, pelo relogio da propria rede.
+   *
+   * Antes do inicio, ou depois do fim, o contrato recusa a publicacao com
+   * ForaDaVigencia. Conferir antes evita gastar uma chamada e, principalmente,
+   * registrar como falha o que e so uma apolice que ainda nao comecou.
+   */
+  async dentroDaVigencia(enderecoApolice) {
+    const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.provider);
+    const [termos, bloco] = await Promise.all([apolice.verTermos(), this.provider.getBlock("latest")]);
+
+    return bloco.timestamp >= Number(termos.vigenciaInicio) && bloco.timestamp <= Number(termos.vigenciaFim);
+  }
+
   /** Se o periodo ja recebeu retificacao nessa apolice (RF28). */
   async periodoJaRetificado(enderecoApolice, periodo) {
     const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.provider);

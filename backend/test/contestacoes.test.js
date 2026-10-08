@@ -60,7 +60,7 @@ describe("contestacao (RF28)", () => {
     await b.query(
       `INSERT INTO eventos_cadeia (contrato, nome, bloco, indice_log, tx_hash, argumentos)
        VALUES ($1, 'IndicesPublicados', 10, 0, '0xpub', $2)`,
-      [APOLICE, JSON.stringify({ periodo: String(PERIODO), hashEvidencias: HASH_LOTE })],
+      [APOLICE, JSON.stringify({ periodo: String(PERIODO), indiceDanoBps: "1200", hashEvidencias: HASH_LOTE })],
     );
     return rows[0].id;
   });

@@ -180,7 +180,7 @@ function Procedencia({ relato }) {
 export default function ApoliceDetalhe() {
   const { endereco } = useParams();
   const { provedorLeitura, signatario, conta, rede } = useCarteira();
-  const { perfil } = useSessao();
+  const { perfil, usuario } = useSessao();
 
   const [apolice, setApolice] = useState(null);
   const [publicacoes, setPublicacoes] = useState([]);
@@ -383,8 +383,16 @@ export default function ApoliceDetalhe() {
     conta.toLowerCase() === apolice.seguradora.toLowerCase();
 
   const vigenciaVencida = Date.now() / 1000 > t.vigenciaFim;
+  // Titular pela carteira conectada: e quem assina o cancelamento na rede.
   const ehProdutorTitular =
     perfil === PERFIS.PRODUTOR && conta && conta.toLowerCase() === t.produtor.toLowerCase();
+
+  // Titular pelo cadastro: a contestacao e feita no backend, com a sessao, e nao
+  // exige a carteira conectada. O backend confere a mesma coisa.
+  const ehProdutorDoCadastro =
+    perfil === PERFIS.PRODUTOR &&
+    usuario?.carteira &&
+    usuario.carteira.toLowerCase() === t.produtor.toLowerCase();
 
   // A mesma regra do contrato: so antes do inicio da vigencia, e so enquanto a
   // apolice aguarda garantia ou esta ativa.
@@ -615,7 +623,7 @@ export default function ApoliceDetalhe() {
                             {ROTULO_CONTESTACAO[contestacaoDo(p.periodo).situacao]}
                           </div>
                         ) : null}
-                        {ehProdutorTitular &&
+                        {ehProdutorDoCadastro &&
                         apolice.situacao === 1 &&
                         !p.retificacao &&
                         !contestacaoDo(p.periodo) ? (

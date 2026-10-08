@@ -19,6 +19,7 @@ const ABI_APOLICE = [
 
   // --- leitura -------------------------------------------------------------
   "function situacao() view returns (uint8)",
+  "function verTermos() view returns ((address produtor,address registry,bytes32 cultura,bytes32 talhao,uint8 operador,uint8 modoPagamento,uint32 limiarClimatico,uint32 limiarClimaticoIntegral,uint16 limiarDanoBps,uint16 limiarDanoIntegralBps,uint64 vigenciaInicio,uint64 vigenciaFim,uint256 valorIndenizacao,bytes32 hashTermos))",
   "function periodoPublicado(uint256 periodo) view returns (bool)",
   "function periodoRetificado(uint256 periodo) view returns (bool)",
   "function publicacao(uint256 periodo) view returns ((address oraculo,uint32 indiceClimatico,uint16 indiceDanoBps,uint16 confiancaBps,uint32 publicadoEm,bytes32 hashEvidencias,bytes32 versaoModelo))",
@@ -46,6 +47,7 @@ const ABI_APOLICE = [
   "error ParametroInvalido(string campo)",
   "error FalhaNaTransferencia(address destino, uint256 valor)",
   "error ReentranciaDetectada()",
+  "error VigenciaIniciada(uint64 agora, uint64 inicio)",
 ];
 
 const ABI_REGISTRY = [

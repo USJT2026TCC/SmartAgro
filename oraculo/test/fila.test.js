@@ -180,3 +180,34 @@ test("pendentes lista apenas o que ainda precisa de atencao", () => {
     [b.periodo],
   );
 });
+
+// ------------------------------------------------- recusa do contrato
+
+test("recusa explicita do contrato e falha definitiva, sem novas tentativas", () => {
+  const fila = novaFila({ maxTentativas: 5 });
+  const { entrada } = fila.enfileirar({ apolice: "0xabc", periodo: 20261008, payload: {} });
+
+  // Como o ethers entrega um erro customizado decodificado.
+  const recusa = Object.assign(new Error("execution reverted (unknown custom error)"), {
+    shortMessage: "execution reverted (unknown custom error)",
+    revert: { name: "ForaDaVigencia", args: [1n, 2n, 3n] },
+  });
+
+  fila.marcarPublicando(entrada);
+  fila.marcarErro(entrada, recusa);
+
+  assert.equal(entrada.estado, ESTADOS.FALHA);
+  assert.equal(entrada.ultimoErro.mensagem, "ForaDaVigencia(1, 2, 3)");
+  assert.equal(entrada.ultimoErro.recusaDoContrato, true);
+});
+
+test("erro de rede continua pendente para a retomada do RF21", () => {
+  const fila = novaFila({ maxTentativas: 5 });
+  const { entrada } = fila.enfileirar({ apolice: "0xabc", periodo: 20261008, payload: {} });
+
+  fila.marcarPublicando(entrada);
+  fila.marcarErro(entrada, Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }));
+
+  assert.equal(entrada.estado, ESTADOS.PENDENTE);
+  assert.equal(entrada.ultimoErro.recusaDoContrato, false);
+});

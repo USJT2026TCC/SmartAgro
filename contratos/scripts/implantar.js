@@ -31,7 +31,11 @@ async function main() {
   // O oraculo precisa ser um endereco distinto do produtor: se fossem o mesmo,
   // quem publica o indice seria tambem quem recebe a indenizacao, e a separacao
   // de papeis que o RNF10 exige deixaria de existir na demonstracao.
-  const enderecoOraculo = process.env.ENDERECO_ORACULO || contas[2]?.address;
+  // Em rede local o oraculo e sempre a conta 2. ENDERECO_ORACULO vale so para
+  // rede publica: o .env guarda o oraculo da Sepolia, e usa-lo aqui autorizaria
+  // um endereco que nao existe no no local (DECISOES.md 2.25).
+  const redeLocal = Number((await ethers.provider.getNetwork()).chainId) === 31337;
+  const enderecoOraculo = (redeLocal ? null : process.env.ENDERECO_ORACULO) || contas[2]?.address;
 
   if (!enderecoOraculo) {
     throw new Error(

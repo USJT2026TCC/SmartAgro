@@ -81,30 +81,26 @@ export function rotasDeContestacoes() {
       throw conflito("So e possivel contestar enquanto a apolice esta ativa.");
     }
 
-    const { rows: publicacoes } = await banco.query(
-      `SELECT indice_dano_bps FROM publicacoes_oraculo
-        WHERE apolice_endereco = $1 AND periodo = $2`,
-      [apolice, p],
-    );
-    const publicacao = publicacoes[0];
-    if (!publicacao) throw naoEncontrado("Publicacao deste periodo");
-
-    // O lote analisado, se houve: e o que o perito vai reexaminar. O resumo das
-    // evidencias vem do evento que a rede emitiu, e nao do relato do oraculo.
-    const { rows: lotes } = await banco.query(
-      `SELECT lt.id FROM eventos_cadeia e
-         JOIN lotes_de_imagens lt ON lt.hash_evidencias = e.argumentos->>'hashEvidencias'
+    // A publicacao contestada e a que a REDE registrou: o evento IndicesPublicados
+    // gravado pelo indexador, e nao o relato do oraculo. E dele que vem o indice
+    // e o resumo das evidencias que o perito vai reexaminar.
+    const { rows: eventos } = await banco.query(
+      `SELECT (e.argumentos->>'indiceDanoBps')::int AS indice_dano_bps, lt.id AS lote_id
+         FROM eventos_cadeia e
+         LEFT JOIN lotes_de_imagens lt ON lt.hash_evidencias = e.argumentos->>'hashEvidencias'
         WHERE e.contrato = $1 AND e.nome = 'IndicesPublicados' AND e.argumentos->>'periodo' = $2
         LIMIT 1`,
       [apolice, String(p)],
     );
+    const publicacao = eventos[0];
+    if (!publicacao) throw naoEncontrado("Publicacao deste periodo");
 
     const { rows } = await banco.query(
       `INSERT INTO contestacoes (apolice_endereco, periodo, produtor_id, motivo, indice_original_bps, lote_id)
        VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (apolice_endereco, periodo) DO NOTHING
        RETURNING id`,
-      [apolice, p, req.usuario.id, motivo, publicacao.indice_dano_bps, lotes[0]?.id ?? null],
+      [apolice, p, req.usuario.id, motivo, publicacao.indice_dano_bps, publicacao.lote_id ?? null],
     );
 
     if (!rows[0]) {

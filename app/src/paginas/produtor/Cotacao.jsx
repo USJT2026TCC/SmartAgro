@@ -20,6 +20,75 @@ import { Aviso, Campo, Carregando, RodapeDaFronteira } from "../../componentes/u
  * aciona vem de `regraDeGatilho.js`, a mesma regra do contrato — a equivalencia e
  * verificada caso a caso por `contratos/test/RegraDeGatilho.test.js`.
  */
+/**
+ * Historico climatico da localidade (RF06): em quantos dos ultimos anos esta
+ * condicao, com esta janela de vigencia, teria acionado. Calculado no servidor
+ * com a serie do INMET e a mesma regra do oraculo.
+ */
+function HistoricoClimatico({ historico, premioBps }) {
+  if (!historico.aplicavel) {
+    return (
+      <div className="cartao">
+        <h2>Historico da localidade</h2>
+        <p className="silencioso">{historico.motivo}</p>
+      </div>
+    );
+  }
+
+  const avaliados = historico.anos.filter((a) => a.avaliado);
+
+  return (
+    <div className="cartao">
+      <h2>Historico da localidade</h2>
+      <Aviso tipo={historico.frequencia > 0.5 ? "alerta" : "informacao"}>
+        Nos ultimos {historico.anosAvaliados} anos com dados, esta condicao, com a cobertura
+        comecando nesta data, teria acionado em <strong>{historico.acionamentos}</strong>. O
+        pagamento medio teria sido de <strong>{emPercentual(historico.pagamentoMedioBps)}</strong>{" "}
+        do limite por ano
+        {premioBps !== undefined ? <>; o premio cobrado e {emPercentual(premioBps)} do limite</> : null}.
+      </Aviso>
+
+      {historico.observacao ? <p className="silencioso">{historico.observacao}</p> : null}
+
+      <div className="tabela-rolavel">
+        <table>
+          <thead>
+            <tr>
+              <th>Ano</th>
+              <th className="numero">Maior estiagem na janela</th>
+              <th>Teria acionado?</th>
+            </tr>
+          </thead>
+          <tbody>
+            {historico.anos.map((a) => (
+              <tr key={a.ano} className={a.acionaria ? "aciona" : ""}>
+                <td>{a.ano}</td>
+                <td className="numero">{a.maiorIndice} dias</td>
+                <td>
+                  {!a.avaliado
+                    ? `sem dados suficientes (${Math.round(a.coberturaDosDados * 100)}% dos dias)`
+                    : a.acionaria
+                      ? `Sim (${emPercentual(a.percentualBps)})`
+                      : "Nao"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="silencioso">
+        Estacoes do INMET a ate 100 km do talhao: {historico.estacoes.join(", ")}. Regra do
+        oraculo: {historico.regra}. {avaliados.length < historico.anos.length
+          ? "Anos com menos de 90% dos dias medidos ficam fora da conta. "
+          : ""}
+        E uma frequencia historica, nao uma probabilidade atuarial. Fonte: INMET,
+        portal.inmet.gov.br/dadoshistoricos.
+      </p>
+    </div>
+  );
+}
+
 export default function Cotacao() {
   const { usuario } = useSessao();
 
@@ -30,7 +99,8 @@ export default function Cotacao() {
   const [areaSegurada, setAreaSegurada] = useState("");
   // Hoje, por padrao. Uma data futura (o plantio, por exemplo) abre a janela em
   // que o contrato aceita o cancelamento (RF10).
-  const hoje = new Date().toISOString().slice(0, 10);
+  // Data local (sv-SE e AAAA-MM-DD): em UTC, a noite no Brasil ja seria amanha.
+  const hoje = new Date().toLocaleDateString("sv-SE");
   const [inicioDaVigencia, setInicioDaVigencia] = useState(hoje);
   const [cotacao, setCotacao] = useState(null);
   const [enviada, setEnviada] = useState(null);
@@ -61,13 +131,16 @@ export default function Cotacao() {
 
   const produto = produtosCompativeis.find((p) => p.id === produtoId) ?? null;
 
-  /** Recalcula a cotacao no servidor a cada mudanca de talhao, produto ou area. */
+  /** Recalcula a cotacao no servidor a cada mudanca de talhao, produto, area ou inicio. */
   useEffect(() => {
     setCotacao(null);
     if (!talhaoId || !produtoId || !areaSegurada) return undefined;
 
     const temporizador = setTimeout(() => {
-      api("/cotacoes", { metodo: "POST", corpo: { talhaoId, produtoId, areaHa: areaSegurada } })
+      api("/cotacoes", {
+        metodo: "POST",
+        corpo: { talhaoId, produtoId, areaHa: areaSegurada, inicioDaVigencia },
+      })
         .then(({ cotacao: c }) => {
           setCotacao(c);
           setErro(null);
@@ -76,7 +149,7 @@ export default function Cotacao() {
     }, 250);
 
     return () => clearTimeout(temporizador);
-  }, [talhaoId, produtoId, areaSegurada]);
+  }, [talhaoId, produtoId, areaSegurada, inicioDaVigencia]);
 
   /** Termos no formato da regra de gatilho, com o limite cotado pelo servidor. */
   const termos = useMemo(
@@ -223,12 +296,11 @@ export default function Cotacao() {
           <Campo
             rotulo="Inicio da cobertura"
             htmlFor="inicio"
-            ajuda="Hoje ou ate 120 dias a frente. Antes do inicio, a apolice pode ser cancelada e a garantia volta para a seguradora."
+            ajuda="Mude a data para comparar epocas do ano no historico. A proposta aceita de hoje ate 120 dias a frente; antes do inicio, a apolice pode ser cancelada."
           >
             <input
               id="inicio"
               type="date"
-              min={hoje}
               value={inicioDaVigencia}
               onChange={(e) => setInicioDaVigencia(e.target.value)}
             />
@@ -277,12 +349,17 @@ export default function Cotacao() {
               </div>
 
               <Campo rotulo="Vigencia">
-                <div>{produto.vigenciaDias} dias a partir da emissao</div>
+                <div>
+                  {produto.vigenciaDias} dias a partir de{" "}
+                  {new Date(`${inicioDaVigencia}T12:00:00Z`).toLocaleDateString("pt-BR")}
+                </div>
               </Campo>
             </>
           )}
         </div>
       </div>
+
+      {cotacao?.historico ? <HistoricoClimatico historico={cotacao.historico} premioBps={produto?.taxaPremioBps} /> : null}
 
       {termos && produto ? (
         <div className="cartao">

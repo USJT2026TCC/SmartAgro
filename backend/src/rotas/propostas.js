@@ -153,7 +153,8 @@ function dataDeInicio(valor, { limitarAoPrazo = true } = {}) {
   if (!limitarAoPrazo) return texto;
 
   const dias = (Date.parse(`${texto}T00:00:00Z`) - Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`)) / 86_400_000;
-  if (dias < 0 || dias > MAXIMO_DE_DIAS_ATE_O_INICIO) {
+  // -1: a data local do produtor pode estar um dia atras do UTC (Brasil e UTC-3).
+  if (dias < -1 || dias > MAXIMO_DE_DIAS_ATE_O_INICIO) {
     throw pedidoInvalido(`A cobertura deve comecar entre hoje e daqui a ${MAXIMO_DE_DIAS_ATE_O_INICIO} dias.`);
   }
 

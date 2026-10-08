@@ -5,7 +5,7 @@ const path = require("node:path");
 const { config, exigirChave, lerImplantacao } = require("./config");
 const { consolidarIndiceClimatico } = require("./consolidador");
 const { RegistroReputacao } = require("./reputacao");
-const { FilaDePublicacoes, ESTADOS } = require("./fila");
+const { FilaDePublicacoes, ESTADOS, descreverErro } = require("./fila");
 const { RegistroDePublicacoes } = require("./registro");
 const { Publicador, paraBytes32 } = require("./publicador");
 const { ClienteBackend } = require("./clienteBackend");
@@ -224,7 +224,7 @@ class ServicoOraculo {
         await this.relatar("relatarFalha", {
           apolice: entrada.apolice,
           periodo: entrada.periodo,
-          motivo: erro?.shortMessage || erro?.message || String(erro),
+          motivo: descreverErro(erro),
           tentativas: entrada.tentativas,
         });
       }
