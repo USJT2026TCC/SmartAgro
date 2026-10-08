@@ -78,7 +78,8 @@ const publicacao = (sobrescritos = {}) => ({
   ...sobrescritos,
 });
 
-const evento = (nome, argumentos) => ({ nome, bloco: 10, indiceNoBloco: 0, txHash: TX, em: agora, argumentos });
+let proximoIndice = 0;
+const evento = (nome, argumentos) => ({ nome, bloco: 10, indiceNoBloco: proximoIndice++, txHash: TX, em: agora, argumentos });
 
 beforeEach(() => {
   cadeia.apolice = apolice();

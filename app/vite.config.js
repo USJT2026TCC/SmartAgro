@@ -45,7 +45,8 @@ export default defineConfig({
       output: {
         // O ethers responde por quase todo o peso do pacote e quase nunca muda.
         // Separa-lo faz o navegador reaproveitar o arquivo entre versoes do app.
-        manualChunks: { ethers: ["ethers"] },
+        // No Vite 8 (Rolldown) a opcao so aceita a forma de funcao.
+        manualChunks: (id) => (/node_modules[\\/](ethers|@noble|@adraffy)[\\/]/.test(id) ? "ethers" : undefined),
       },
     },
   },
