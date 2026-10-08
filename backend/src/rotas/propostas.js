@@ -45,6 +45,7 @@ function propostaPublica(p) {
     termos: p.termos,
     descricaoDosTermos: p.descricao_dos_termos,
     hashTermos: p.hash_termos,
+    inicioDesejado: p.inicio_desejado,
     vigenciaInicio: p.vigencia_inicio,
     vigenciaFim: p.vigencia_fim,
     apolice: p.apolice_endereco
@@ -124,6 +125,35 @@ function termosDoProduto(produto) {
   };
 }
 
+/** Prazo maximo entre a proposta e o inicio da cobertura. */
+const MAXIMO_DE_DIAS_ATE_O_INICIO = 120;
+
+/** Data como AAAA-MM-DD, venha do banco (Date) ou da requisicao (texto). */
+function isoDaData(valor) {
+  return valor instanceof Date ? valor.toISOString().slice(0, 10) : String(valor).slice(0, 10);
+}
+
+/**
+ * Data de inicio pedida pelo produtor (opcional). Hoje ou ate 120 dias a frente:
+ * mais longe que isso, as condicoes do produto podem mudar antes de a cobertura
+ * comecar.
+ */
+function dataDeInicio(valor) {
+  if (valor === undefined || valor === null || valor === "") return null;
+
+  const texto = String(valor);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || Number.isNaN(Date.parse(`${texto}T00:00:00Z`))) {
+    throw pedidoInvalido('A data de inicio deve estar no formato AAAA-MM-DD.');
+  }
+
+  const dias = (Date.parse(`${texto}T00:00:00Z`) - Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`)) / 86_400_000;
+  if (dias < 0 || dias > MAXIMO_DE_DIAS_ATE_O_INICIO) {
+    throw pedidoInvalido(`A cobertura deve comecar entre hoje e daqui a ${MAXIMO_DE_DIAS_ATE_O_INICIO} dias.`);
+  }
+
+  return texto;
+}
+
 export function rotasDePropostas() {
   const r = Router();
 
@@ -184,11 +214,12 @@ export function rotasDePropostas() {
       valorPorHectareWei: produto.valor_por_hectare_wei,
       taxaPremioBps: produto.taxa_premio_bps,
     });
+    const inicioDesejado = dataDeInicio(req.body?.inicioDaVigencia);
 
     const { rows } = await banco.query(
       `INSERT INTO propostas (produtor_id, talhao_id, produto_id, area_segurada_ha, carteira_produtor,
-                              valor_indenizacao_wei, premio_wei, termos)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                              valor_indenizacao_wei, premio_wei, termos, inicio_desejado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
       [
         req.usuario.id,
@@ -199,6 +230,7 @@ export function rotasDePropostas() {
         valorIndenizacaoWei.toString(),
         premioWei.toString(),
         JSON.stringify(termosDoProduto(produto)),
+        inicioDesejado,
       ],
     );
 
@@ -245,7 +277,14 @@ export function rotasDePropostas() {
       throw conflito("Nenhum contrato implantado na rede configurada. Implante antes de emitir.");
     }
 
-    const inicio = await cadeia.instanteAtual();
+    // A vigencia comeca na data pedida pelo produtor, a meia-noite de Brasilia
+    // (03:00 UTC), ou agora, se a data ja passou ou nao foi pedida. So com o
+    // inicio no futuro existe janela para o cancelamento do RF10.
+    const agora = await cadeia.instanteAtual();
+    const pedido = p.inicio_desejado
+      ? Math.floor(Date.parse(`${isoDaData(p.inicio_desejado)}T03:00:00Z`) / 1000)
+      : 0;
+    const inicio = Math.max(agora, pedido);
     const fim = inicio + Number(p.termos.vigenciaDias) * 86_400;
 
     const dados = {

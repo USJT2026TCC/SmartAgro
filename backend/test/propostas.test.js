@@ -229,6 +229,37 @@ describe("propostas e emissao", () => {
     assert.equal(ethers.decodeBytes32String(preparo.termos.talhao), "talhao-01");
   });
 
+  test("a vigencia comeca na data pedida pelo produtor, a meia-noite de Brasilia (RF10)", async () => {
+    const daqui30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+
+    const r = await ctx
+      .api()
+      .post("/api/propostas")
+      .set(com(produtor))
+      .send({ talhaoId, produtoId, areaHa: "180", inicioDaVigencia: daqui30 });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+
+    const preparo = await preparar(r.body.proposta.id);
+    const esperado = Date.parse(`${daqui30}T03:00:00Z`) / 1000;
+
+    assert.equal(preparo.termos.vigenciaInicio, esperado);
+    assert.equal(preparo.termos.vigenciaFim, esperado + 180 * 86_400);
+  });
+
+  test("data de inicio no passado, longe demais ou mal formada e recusada", async () => {
+    const ontem = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const daqui200 = new Date(Date.now() + 200 * 86_400_000).toISOString().slice(0, 10);
+
+    for (const inicioDaVigencia of [ontem, daqui200, "15/11/2026"]) {
+      const r = await ctx
+        .api()
+        .post("/api/propostas")
+        .set(com(produtor))
+        .send({ talhaoId, produtoId, areaHa: "180", inicioDaVigencia });
+      assert.equal(r.status, 400, inicioDaVigencia);
+    }
+  });
+
   test("emissao correta liga a apolice a proposta", async () => {
     const proposta = await novaProposta();
     const { hashTermos } = await preparar(proposta.id);

@@ -31,6 +31,9 @@ contract AtacanteReentrancia {
     /// @dev Periodo usado na tentativa de reentrada.
     uint256 private _periodoDeAtaque;
 
+    /// @dev Quando verdadeiro, a reentrada tenta a retificacao (RF28), e nao a publicacao.
+    bool private _retificando;
+
     function configurar(address apolice_) external {
         apolice = ApolicePolicy(payable(apolice_));
     }
@@ -57,8 +60,46 @@ contract AtacanteReentrancia {
      *      reentrada acontece, no exato ponto em que um contrato vulneravel ainda
      *      nao teria atualizado o proprio estado.
      */
+    /**
+     * @notice Mesmo ataque pela retificacao (RF28): o periodo ja publicado sem
+     *         acionar recebe um indice retificado que aciona, e a reentrada tenta
+     *         retificar de novo durante o pagamento.
+     */
+    function atacarRetificando(uint256 periodo, uint16 indiceDanoBps) external {
+        _retificando = true;
+        _periodoDeAtaque = periodo;
+
+        apolice.publicarRetificacao(
+            periodo,
+            indiceDanoBps,
+            10_000,
+            keccak256("evidencias-do-atacante"),
+            keccak256("modelo-do-atacante"),
+            keccak256("parecer-do-atacante")
+        );
+    }
+
     receive() external payable {
         vezesRecebido += 1;
+
+        if (_retificando) {
+            try
+                apolice.publicarRetificacao(
+                    _periodoDeAtaque,
+                    10_000,
+                    10_000,
+                    keccak256("reentrada"),
+                    keccak256("reentrada"),
+                    keccak256("reentrada")
+                )
+            {
+                reentradaFalhou = false;
+            } catch (bytes memory erro) {
+                reentradaFalhou = true;
+                ultimoErro = erro;
+            }
+            return;
+        }
 
         try
             apolice.publicarIndices(

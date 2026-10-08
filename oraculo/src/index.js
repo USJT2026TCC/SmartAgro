@@ -296,10 +296,59 @@ async function comandoServico(opcoes) {
       }
     }
 
+    await publicarRetificacoes(servico);
+
     if (opcoes["uma-vez"] || parar) break;
 
     await new Promise((r) => setTimeout(r, intervalo));
   } while (!parar);
+}
+
+/**
+ * Retificacoes de contestacoes deferidas (RF28).
+ *
+ * O perito decide no backend; quem escreve na apolice continua sendo o oraculo,
+ * o unico endereco autorizado (RF18). Uma retificacao por periodo: se a rede ja
+ * tiver a retificacao (o relato anterior falhou depois do envio), nao se envia
+ * de novo.
+ */
+async function publicarRetificacoes(servico) {
+  let pendentes = [];
+
+  try {
+    pendentes = await servico.backend.retificacoesPendentes();
+  } catch (erro) {
+    console.log(`  retificacoes: backend indisponivel (${erro.message})`);
+    return;
+  }
+
+  for (const r of pendentes) {
+    try {
+      if (await servico.publicador.periodoJaRetificado(r.apolice, r.periodo)) {
+        console.log(`  retificacao ${r.id}: periodo ${r.periodo} ja retificado na rede`);
+        continue;
+      }
+
+      const recibo = await servico.publicador.publicarRetificacao({
+        apolice: r.apolice,
+        periodo: r.periodo,
+        indiceDanoBps: r.indice_retificado_bps,
+        hashEvidencias: r.hash_evidencias || ethers.ZeroHash,
+        versaoModelo: r.hash_versao_modelo || ethers.ZeroHash,
+        hashParecer: r.hash_parecer,
+      });
+
+      await servico.backend.relatarRetificacao(r.id, { txHash: recibo.txHash });
+
+      console.log(
+        `  retificacao ${r.apolice} periodo ${r.periodo}: ` +
+          `${r.indice_original_bps / 100}% -> ${r.indice_retificado_bps / 100}%` +
+          `${recibo.acionouPagamento ? " · ACIONOU" : ""} · ${recibo.txHash}`,
+      );
+    } catch (erro) {
+      console.log(`  retificacao ${r.id}: ${erro.shortMessage || erro.message}`);
+    }
+  }
 }
 
 async function comandoCiclo(opcoes) {

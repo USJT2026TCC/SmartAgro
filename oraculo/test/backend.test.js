@@ -284,3 +284,36 @@ test("confianca baixa retem o indice de dano, a nao ser que o perito tenha liber
   assert.equal(liberada.entrada.payload.confiancaBps, 5500);
   assert.ok(!liberada.alertas.some((a) => a.includes("RF17")));
 });
+
+// ------------------------------------------------------------ retificacoes
+
+test("o cliente busca as retificacoes deferidas e relata a transacao (RF28)", async () => {
+  const pendente = {
+    id: "1f0c7a52-0000-4000-8000-000000000001",
+    apolice: "0x00000000000000000000000000000000000a9011",
+    periodo: 20261020,
+    indice_original_bps: 1200,
+    indice_retificado_bps: 3000,
+    hash_parecer: `0x${"ef".repeat(32)}`,
+  };
+  const s = await servidorFalso({
+    "GET /api/oraculo/retificacoes-pendentes": () => [200, { retificacoes: [pendente] }],
+    [`POST /api/oraculo/retificacoes/${pendente.id}`]: () => [200, { situacao: "publicada" }],
+  });
+
+  try {
+    const cliente = new ClienteBackend({ url: s.url, chave: "k" });
+
+    assert.deepEqual(await cliente.retificacoesPendentes(), [pendente]);
+
+    await cliente.relatarRetificacao(pendente.id, { txHash: `0x${"cd".repeat(32)}` });
+
+    const relato = s.recebidas.at(-1);
+    assert.equal(relato.metodo, "POST");
+    assert.equal(relato.url, `/api/oraculo/retificacoes/${pendente.id}`);
+    assert.equal(relato.corpo.txHash, `0x${"cd".repeat(32)}`);
+    assert.equal(relato.cabecalhos["x-chave-de-servico"], "k");
+  } finally {
+    await s.fechar();
+  }
+});

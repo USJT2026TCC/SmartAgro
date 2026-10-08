@@ -28,6 +28,8 @@ export const ABI_APOLICE = [
   "event CondicaoAvaliada(uint256 indexed periodo, bool atendida, uint16 percentualBps)",
   "event PagamentoExecutado(address indexed produtor, uint256 indexed periodo, uint256 valor)",
   "event GarantiaResgatada(address indexed seguradora, uint256 valor)",
+  "event ApoliceCancelada(address indexed solicitante, uint256 garantiaDevolvida)",
+  "event IndiceRetificado(uint256 indexed periodo, address indexed oraculo, uint16 indiceDanoOriginalBps, uint16 indiceDanoBps, uint16 confiancaBps, bytes32 hashEvidencias, bytes32 versaoModelo, bytes32 hashParecer)",
 ];
 
 export const ABI_REGISTRY = [

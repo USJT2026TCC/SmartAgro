@@ -11,6 +11,7 @@ import { rotasDeLeituras } from "./rotas/leituras.js";
 import { rotasDoOraculo } from "./rotas/oraculo.js";
 import { rotasDeImagens } from "./rotas/imagens.js";
 import { rotasDeAcompanhamento } from "./rotas/acompanhamento.js";
+import { rotasDeContestacoes } from "./rotas/contestacoes.js";
 
 /**
  * Monta a aplicacao Express.
@@ -89,6 +90,7 @@ export function criarApp({ banco, cadeia, indexador = null }) {
   api.use(rotasDoOraculo());
   api.use(rotasDeImagens());
   api.use(rotasDeAcompanhamento());
+  api.use(rotasDeContestacoes());
 
   app.use("/api", api);
 

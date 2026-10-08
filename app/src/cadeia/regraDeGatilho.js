@@ -46,7 +46,7 @@ export const MODO_PAGAMENTO = {
 };
 
 /** Rotulos das situacoes da apolice, na ordem do enum Situacao do contrato. */
-export const SITUACAO = ["AGUARDANDO_GARANTIA", "ATIVA", "LIQUIDADA", "ENCERRADA"];
+export const SITUACAO = ["AGUARDANDO_GARANTIA", "ATIVA", "LIQUIDADA", "ENCERRADA", "CANCELADA"];
 
 /**
  * Interpolacao linear entre o piso (no gatilho) e 100% (no limiar integral).

@@ -78,6 +78,38 @@ function notificacoesDoEvento(nome, args, apolice) {
         },
       ];
 
+    case "ApoliceCancelada":
+      return [
+        {
+          para: { carteira: apolice?.produtor_carteira },
+          tipo: "apolice_cancelada",
+          titulo: "Apolice cancelada",
+          mensagem: "A apolice foi cancelada antes do inicio da vigencia. Nao ha cobertura.",
+        },
+        {
+          para: { perfil: "seguradora" },
+          tipo: "apolice_cancelada",
+          titulo: "Apolice cancelada",
+          mensagem: `Uma apolice foi cancelada antes da vigencia; ${ethers.formatEther(args.garantiaDevolvida)} ETH de garantia voltaram para a seguradora.`,
+        },
+      ];
+
+    case "IndiceRetificado":
+      return [
+        {
+          para: { carteira: apolice?.produtor_carteira },
+          tipo: "indice_retificado",
+          titulo: "Contestacao aplicada na rede",
+          mensagem: `O indice de dano do periodo ${args.periodo} foi retificado de ${Number(args.indiceDanoOriginalBps) / 100}% para ${Number(args.indiceDanoBps) / 100}%, conforme o parecer do perito.`,
+        },
+        {
+          para: { perfil: "seguradora" },
+          tipo: "indice_retificado",
+          titulo: "Indice de dano retificado",
+          mensagem: `Uma contestacao foi deferida: periodo ${args.periodo}, de ${Number(args.indiceDanoOriginalBps) / 100}% para ${Number(args.indiceDanoBps) / 100}%.`,
+        },
+      ];
+
     case "GarantiaResgatada":
       return [
         {

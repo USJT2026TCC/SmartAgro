@@ -20,6 +20,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, before, describe, test } from "node:test";
+import { createRequire } from "node:module";
 
 import { ethers } from "ethers";
 
@@ -251,6 +252,124 @@ describe("indexador contra um no real", { timeout: 180_000 }, () => {
     );
 
     assert.deepEqual(depois.rows[0], antes.rows[0]);
+  });
+
+  /** Emite pela fabrica e devolve o contrato da apolice nova, ja com a ABI completa. */
+  async function emitir(sobrescritos) {
+    const [seguradora, produtor] = contas;
+    const agora = (await provedor.getBlock("latest")).timestamp;
+
+    const termos = {
+      produtor: await produtor.getAddress(),
+      registry: ethers.ZeroAddress,
+      cultura: ethers.encodeBytes32String("soja"),
+      talhao: ethers.encodeBytes32String("talhao-01"),
+      operador: 0,
+      modoPagamento: 0,
+      limiarClimatico: 30,
+      limiarClimaticoIntegral: 0,
+      limiarDanoBps: 0,
+      limiarDanoIntegralBps: 0,
+      vigenciaInicio: agora,
+      vigenciaFim: agora + 180 * 86_400,
+      valorIndenizacao: ethers.parseEther("1"),
+      hashTermos: ethers.keccak256(ethers.toUtf8Bytes(`emitida-${Math.random()}`)),
+      ...sobrescritos,
+    };
+
+    await (await fabrica.connect(seguradora).emitirApolice(termos)).wait();
+    const endereco = await fabrica.apolices((await fabrica.totalApolices()) - 1n);
+    const contrato = new ethers.Contract(endereco, artefato("ApolicePolicy").abi, provedor);
+    await (
+      await contrato.connect(seguradora).depositarGarantia({ value: termos.valorIndenizacao })
+    ).wait();
+
+    return contrato;
+  }
+
+  test("cancelamento antes da vigencia: situacao CANCELADA e partes avisadas (RF10)", async () => {
+    const [, produtor] = contas;
+    const agora = (await provedor.getBlock("latest")).timestamp;
+    const contrato = await emitir({
+      vigenciaInicio: agora + 10 * 86_400,
+      vigenciaFim: agora + 190 * 86_400,
+    });
+
+    await (await contrato.connect(produtor).cancelar()).wait();
+    await indexador.varrer();
+
+    const endereco = (await contrato.getAddress()).toLowerCase();
+    const { rows } = await banco.query("SELECT situacao FROM apolices WHERE endereco = $1", [
+      endereco,
+    ]);
+    assert.equal(rows[0].situacao, 4);
+
+    const { rows: avisos } = await banco.query(
+      "SELECT count(*)::int AS n FROM notificacoes WHERE tipo = 'apolice_cancelada' AND apolice_endereco = $1",
+      [endereco],
+    );
+    assert.equal(avisos[0].n, 2, "produtor e seguradora deveriam ser avisados");
+  });
+
+  test("contestacao deferida: o oraculo submete a retificacao e o contrato paga (RF28)", async () => {
+    // O publicador do oraculo, com a chave da conta 2 do no (frase publica de teste).
+    const require = createRequire(import.meta.url);
+    const { Publicador } = require("../../oraculo/src/publicador.js");
+    const chaveDoOraculo = ethers.HDNodeWallet.fromPhrase(
+      "test test test test test test test test test test test junk",
+      undefined,
+      "m/44'/60'/0'/0/2",
+    ).privateKey;
+    const publicador = new Publicador({ rpcUrl: RPC, chavePrivada: chaveDoOraculo, chainId: 31337 });
+
+    try {
+      const contrato = await emitir({ operador: 1, limiarClimatico: 0, limiarDanoBps: 2_000 });
+      const endereco = (await contrato.getAddress()).toLowerCase();
+      const hashLote = ethers.keccak256(ethers.toUtf8Bytes("lote-contestado"));
+
+      // O modelo estimou 12%: abaixo do limiar de 20%, nao aciona.
+      const publicado = await publicador.publicar({
+        apolice: endereco,
+        periodo: 20261020,
+        indiceClimatico: 0,
+        indiceDanoBps: 1_200,
+        confiancaBps: 8_000,
+        hashEvidencias: hashLote,
+      });
+      assert.equal(publicado.acionouPagamento, false);
+
+      // O perito deferiu 30% (o fluxo HTTP da contestacao tem testes proprios).
+      const hashParecer = ethers.keccak256(ethers.toUtf8Bytes("parecer: 30% com estresse severo"));
+      const retificado = await publicador.publicarRetificacao({
+        apolice: endereco,
+        periodo: 20261020,
+        indiceDanoBps: 3_000,
+        hashEvidencias: hashLote,
+        hashParecer,
+      });
+      assert.equal(retificado.acionouPagamento, true);
+
+      // A publicacao original continua la; a retificacao fica ao lado.
+      assert.equal((await contrato.publicacao(20261020)).indiceDanoBps, 1_200n);
+      assert.equal((await contrato.retificacao(20261020)).hashParecer, hashParecer);
+      assert.equal(await publicador.periodoJaRetificado(endereco, 20261020), true);
+
+      await indexador.varrer();
+
+      const { rows } = await banco.query("SELECT situacao FROM apolices WHERE endereco = $1", [
+        endereco,
+      ]);
+      assert.equal(rows[0].situacao, 2);
+
+      const { rows: avisos } = await banco.query(
+        `SELECT tipo FROM notificacoes WHERE apolice_endereco = $1 AND tipo IN ('indice_retificado', 'indenizacao_paga')`,
+        [endereco],
+      );
+      assert.ok(avisos.some((a) => a.tipo === "indice_retificado"));
+      assert.ok(avisos.some((a) => a.tipo === "indenizacao_paga"));
+    } finally {
+      publicador.encerrar();
+    }
   });
 
   test("com o no fora do ar, a varredura falha sem derrubar nada e retoma depois", async () => {

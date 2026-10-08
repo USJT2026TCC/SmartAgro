@@ -14,6 +14,7 @@ import {OracleRegistry} from "./OracleRegistry.sol";
  * Requisitos atendidos:
  *  RF07 - implantacao parametrizada com condicao, carteira do produtor e oraculo autorizado;
  *  RF08 - resumo criptografico dos termos gravado e legivel por consulta publica;
+ *  RF10 - cancelamento antes do inicio da vigencia, com devolucao da garantia;
  *  RF16 - confianca, versao do modelo e resumo das evidencias registrados junto ao resultado;
  *  RF18 - publicacao restrita a enderecos autorizados (delegado ao OracleRegistry);
  *  RF20 - publicacao duplicada para o mesmo periodo e rejeitada;
@@ -21,6 +22,7 @@ import {OracleRegistry} from "./OracleRegistry.sol";
  *  RF24 - a transferencia ocorre na mesma transacao do acionamento;
  *  RF25 - pagamento integral ou escalonado por faixa do indice;
  *  RF26 - acionamento duplicado impedido e falha de transferencia nao deixa estado inconsistente;
+ *  RF28 - indice de dano retificado apos contestacao, com o resumo do parecer do perito;
  *  RNF06 - nenhuma decisao depende de aleatoriedade ou de marca de tempo como entropia;
  *  RNF09 - imune a reentrancia: verificar, atualizar estado, so entao interagir;
  *  RNF10 - controle de acesso por funcao (seguradora, oraculo, produtor);
@@ -30,7 +32,7 @@ import {OracleRegistry} from "./OracleRegistry.sol";
  * O contrato NAO verifica se o indice esta correto, apenas se quem publicou tinha
  * autorizacao. A confianca na inferencia vem do registro do resumo criptografico das
  * evidencias, da versao do modelo e da possibilidade de reexecutar a analise depois
- * (secao 3.2 da documentacao de software).
+ * (secao 5.2 da documentacao de software).
  */
 contract ApolicePolicy {
     // ---------------------------------------------------------------------
@@ -56,7 +58,8 @@ contract ApolicePolicy {
         AGUARDANDO_GARANTIA, // 0 - implantada, ainda sem lastro depositado
         ATIVA, //               1 - garantida, apta a receber publicacoes
         LIQUIDADA, //           2 - indenizacao paga
-        ENCERRADA //            3 - vigencia vencida sem acionamento, garantia devolvida
+        ENCERRADA, //           3 - vigencia vencida sem acionamento, garantia devolvida
+        CANCELADA //            4 - cancelada antes do inicio da vigencia (RF10)
     }
 
     /**
@@ -96,6 +99,22 @@ contract ApolicePolicy {
         uint32 publicadoEm; // marca de tempo do bloco, apenas para auditoria
         bytes32 hashEvidencias; // resumo criptografico do lote de imagens (RF16)
         bytes32 versaoModelo; // identificador da versao do modelo (RF16, RNF19)
+    }
+
+    /**
+     * @notice Indice de dano retificado depois de uma contestacao (RF28).
+     * @dev Guardado ao lado da publicacao original, que nao e apagada: o
+     *      historico mostra o que o modelo disse e o que o perito corrigiu.
+     *      slot 0 = oraculo(160) + indiceDanoBps(16) + confiancaBps(16) + publicadoEm(32).
+     */
+    struct Retificacao {
+        address oraculo; // quem submeteu a retificacao
+        uint16 indiceDanoBps; // indice de dano retificado
+        uint16 confiancaBps; // confianca atribuida ao indice retificado
+        uint32 publicadoEm; // marca de tempo do bloco, apenas para auditoria
+        bytes32 hashEvidencias; // resumo das evidencias reavaliadas
+        bytes32 versaoModelo; // versao do modelo usada na reanalise, se houve
+        bytes32 hashParecer; // resumo criptografico do parecer do perito
     }
 
     // ---------------------------------------------------------------------
@@ -143,6 +162,12 @@ contract ApolicePolicy {
     /// @notice Periodos publicados, na ordem em que chegaram.
     uint256[] public periodos;
 
+    /// @dev Periodo de referencia => ja retificado. Uma retificacao por periodo (RF28).
+    mapping(uint256 => bool) public periodoRetificado;
+
+    /// @dev Periodo de referencia => indice retificado.
+    mapping(uint256 => Retificacao) private _retificacoes;
+
     /// @dev Guarda de reentrancia (RNF09). 1 = livre, 2 = em execucao.
     uint256 private _trava = 1;
 
@@ -176,6 +201,19 @@ contract ApolicePolicy {
 
     event GarantiaResgatada(address indexed seguradora, uint256 valor);
 
+    event ApoliceCancelada(address indexed solicitante, uint256 garantiaDevolvida);
+
+    event IndiceRetificado(
+        uint256 indexed periodo,
+        address indexed oraculo,
+        uint16 indiceDanoOriginalBps,
+        uint16 indiceDanoBps,
+        uint16 confiancaBps,
+        bytes32 hashEvidencias,
+        bytes32 versaoModelo,
+        bytes32 hashParecer
+    );
+
     // ---------------------------------------------------------------------
     // Erros
     // ---------------------------------------------------------------------
@@ -192,6 +230,9 @@ contract ApolicePolicy {
     error ReentranciaDetectada();
     error SemSaldoParaResgatar();
     error DepositoDireto();
+    error VigenciaIniciada(uint64 agora, uint64 inicio);
+    error PeriodoNaoPublicado(uint256 periodo);
+    error PeriodoJaRetificado(uint256 periodo);
 
     // ---------------------------------------------------------------------
     // Modificadores
@@ -363,6 +404,49 @@ contract ApolicePolicy {
         if (!ok) revert FalhaNaTransferencia(seguradora, saldo);
     }
 
+    /**
+     * @notice Cancela a apolice antes do inicio da vigencia (RF10).
+     *
+     * @dev Podem cancelar o produtor titular e a seguradora: os dois lados do
+     *      contrato. Depois do inicio da vigencia, nao. A condicao ja pode estar
+     *      em curso, e cancelar seria uma forma de fugir de um pagamento devido.
+     *
+     *      A garantia, se ja depositada, volta a seguradora, que a depositou. O
+     *      premio e cobrado fora da cadeia, e sua devolucao segue a regra
+     *      comercial, que o contrato nao conhece.
+     */
+    function cancelar() external naoReentrante {
+        if (msg.sender != seguradora && msg.sender != termos.produtor) {
+            revert OrigemNaoAutorizada(msg.sender);
+        }
+        if (situacao != Situacao.AGUARDANDO_GARANTIA && situacao != Situacao.ATIVA) {
+            revert SituacaoInvalida(situacao, Situacao.ATIVA);
+        }
+
+        uint64 agora = uint64(block.timestamp);
+        // Relogio, nao entropia: ver o comentario equivalente em resgatarGarantia.
+        // slither-disable-next-line timestamp
+        if (agora >= termos.vigenciaInicio) revert VigenciaIniciada(agora, termos.vigenciaInicio);
+
+        uint256 saldo = address(this).balance;
+
+        // Efeitos antes da interacao (RNF09): uma reentrada encontraria a apolice
+        // ja CANCELADA e pararia na verificacao de situacao acima.
+        situacao = Situacao.CANCELADA;
+
+        emit ApoliceCancelada(msg.sender, saldo);
+
+        // Mesma situacao de resgatarGarantia: a igualdade so decide se ha algo a
+        // devolver, e um saldo inflado a forca apenas seria devolvido junto
+        // (Slither: incorrect-equality).
+        // slither-disable-next-line incorrect-equality
+        if (saldo == 0) return;
+
+        // slither-disable-next-line low-level-calls
+        (bool ok, ) = seguradora.call{value: saldo}("");
+        if (!ok) revert FalhaNaTransferencia(seguradora, saldo);
+    }
+
     // ---------------------------------------------------------------------
     // Travessia: publicacao, avaliacao e liquidacao
     // ---------------------------------------------------------------------
@@ -397,13 +481,7 @@ contract ApolicePolicy {
         if (periodoPublicado[periodo]) revert PeriodoJaPublicado(periodo);
         if (indiceDanoBps > BPS) revert ParametroInvalido("indiceDanoBps");
         if (confiancaBps > BPS) revert ParametroInvalido("confiancaBps");
-
-        uint64 agora = uint64(block.timestamp);
-        // Relogio, nao entropia: ver o comentario equivalente em resgatarGarantia.
-        // slither-disable-next-line timestamp
-        if (agora < termos.vigenciaInicio || agora > termos.vigenciaFim) {
-            revert ForaDaVigencia(agora, termos.vigenciaInicio, termos.vigenciaFim);
-        }
+        _exigirVigencia();
 
         // ---------- Efeitos ----------
         periodoPublicado[periodo] = true;
@@ -428,6 +506,90 @@ contract ApolicePolicy {
             versaoModelo
         );
 
+        _liquidarSeAtendida(periodo, indiceClimatico, indiceDanoBps);
+    }
+
+    /**
+     * @notice Submete o indice de dano retificado depois de uma contestacao (RF28).
+     *
+     * O produtor contesta a avaliacao automatica, o perito emite parecer e o
+     * oraculo, o unico autorizado a escrever na apolice (RF18), submete o indice
+     * corrigido. A publicacao original nao e sobrescrita (RF20): a retificacao fica
+     * ao lado dela, com o resumo do parecer, e a condicao e reavaliada com o indice
+     * climatico original do periodo e o dano retificado.
+     *
+     * @param periodo Periodo ja publicado cujo indice de dano foi contestado.
+     * @param indiceDanoBps Indice de dano retificado, 0 a 10000.
+     * @param confiancaBps Confianca atribuida ao indice retificado, 0 a 10000.
+     * @param hashEvidencias Resumo das evidencias reavaliadas.
+     * @param versaoModelo Versao do modelo usada na reanalise, ou zero se nao houve.
+     * @param hashParecer Resumo criptografico do parecer do perito.
+     */
+    function publicarRetificacao(
+        uint256 periodo,
+        uint16 indiceDanoBps,
+        uint16 confiancaBps,
+        bytes32 hashEvidencias,
+        bytes32 versaoModelo,
+        bytes32 hashParecer
+    ) external naoReentrante somenteOraculoAutorizado naSituacao(Situacao.ATIVA) {
+        // ---------- Verificacoes ----------
+        if (!periodoPublicado[periodo]) revert PeriodoNaoPublicado(periodo);
+        if (periodoRetificado[periodo]) revert PeriodoJaRetificado(periodo);
+        if (indiceDanoBps > BPS) revert ParametroInvalido("indiceDanoBps");
+        if (confiancaBps > BPS) revert ParametroInvalido("confiancaBps");
+        if (hashParecer == bytes32(0)) revert ParametroInvalido("hashParecer");
+        _exigirVigencia();
+
+        // ---------- Efeitos ----------
+        Publicacao memory original = _publicacoes[periodo];
+
+        periodoRetificado[periodo] = true;
+        _retificacoes[periodo] = Retificacao({
+            oraculo: msg.sender,
+            indiceDanoBps: indiceDanoBps,
+            confiancaBps: confiancaBps,
+            publicadoEm: uint32(block.timestamp),
+            hashEvidencias: hashEvidencias,
+            versaoModelo: versaoModelo,
+            hashParecer: hashParecer
+        });
+
+        emit IndiceRetificado(
+            periodo,
+            msg.sender,
+            original.indiceDanoBps,
+            indiceDanoBps,
+            confiancaBps,
+            hashEvidencias,
+            versaoModelo,
+            hashParecer
+        );
+
+        _liquidarSeAtendida(periodo, original.indiceClimatico, indiceDanoBps);
+    }
+
+    /// @dev Publicacoes e retificacoes so valem dentro da vigencia.
+    function _exigirVigencia() private view {
+        uint64 agora = uint64(block.timestamp);
+        // Relogio, nao entropia: ver o comentario equivalente em resgatarGarantia.
+        // slither-disable-next-line timestamp
+        if (agora < termos.vigenciaInicio || agora > termos.vigenciaFim) {
+            revert ForaDaVigencia(agora, termos.vigenciaInicio, termos.vigenciaFim);
+        }
+    }
+
+    /**
+     * @dev Avalia a condicao e, se atendida, liquida. Compartilhado pela
+     *      publicacao e pela retificacao, para que as duas paguem pela mesma
+     *      regra. Chamado so por funcoes com `naoReentrante` e ja com os efeitos
+     *      gravados, mantendo a ordem verificar-efeitos-interacao.
+     */
+    function _liquidarSeAtendida(
+        uint256 periodo,
+        uint32 indiceClimatico,
+        uint16 indiceDanoBps
+    ) private {
         uint16 percentualBps = _percentualDevido(indiceClimatico, indiceDanoBps);
         bool atendida = percentualBps > 0;
 
@@ -562,6 +724,11 @@ contract ApolicePolicy {
     /// @notice Devolve o registro completo de uma publicacao (RNF18).
     function publicacao(uint256 periodo) external view returns (Publicacao memory) {
         return _publicacoes[periodo];
+    }
+
+    /// @notice Devolve a retificacao de um periodo, se houve (RF28, RNF18).
+    function retificacao(uint256 periodo) external view returns (Retificacao memory) {
+        return _retificacoes[periodo];
     }
 
     /// @notice Quantidade de periodos ja publicados.

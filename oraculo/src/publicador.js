@@ -116,16 +116,52 @@ class Publicador {
     hashEvidencias = ethers.ZeroHash,
     versaoModelo = ethers.ZeroHash,
   }) {
-    const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.carteira);
-
-    const argumentos = [
+    return this._enviar(enderecoApolice, "publicarIndices", [
       periodo,
       indiceClimatico,
       indiceDanoBps,
       confiancaBps,
       hashEvidencias,
       versaoModelo,
-    ];
+    ]);
+  }
+
+  /** Se o periodo ja recebeu retificacao nessa apolice (RF28). */
+  async periodoJaRetificado(enderecoApolice, periodo) {
+    const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.provider);
+
+    return apolice.periodoRetificado(periodo);
+  }
+
+  /**
+   * Submete o indice de dano retificado depois de uma contestacao deferida (RF28).
+   *
+   * Mesmo caminho da publicacao: ensaio sem custo, estimativa, envio e espera
+   * pelas confirmacoes. A confianca vai em 100%: o indice foi fixado por um
+   * perito, e nao estimado pelo modelo.
+   */
+  async publicarRetificacao({
+    apolice: enderecoApolice,
+    periodo,
+    indiceDanoBps,
+    confiancaBps = 10_000,
+    hashEvidencias = ethers.ZeroHash,
+    versaoModelo = ethers.ZeroHash,
+    hashParecer,
+  }) {
+    return this._enviar(enderecoApolice, "publicarRetificacao", [
+      periodo,
+      indiceDanoBps,
+      confiancaBps,
+      hashEvidencias,
+      versaoModelo,
+      hashParecer,
+    ]);
+  }
+
+  /** Ensaia, estima, envia e confirma uma escrita na apolice. */
+  async _enviar(enderecoApolice, metodo, argumentos) {
+    const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.carteira);
 
     let recibo;
     let gasEstimado;
@@ -134,12 +170,12 @@ class Publicador {
 
     try {
       // Ensaio sem custo. Se a transacao fosse reverter, o erro aparece aqui.
-      await apolice.publicarIndices.staticCall(...argumentos);
+      await apolice[metodo].staticCall(...argumentos);
 
-      gasEstimado = await apolice.publicarIndices.estimateGas(...argumentos);
+      gasEstimado = await apolice[metodo].estimateGas(...argumentos);
 
       enviadoEm = new Date().toISOString();
-      const transacao = await apolice.publicarIndices(...argumentos);
+      const transacao = await apolice[metodo](...argumentos);
 
       recibo = await transacao.wait(this.confirmacoes);
       confirmadoEm = new Date().toISOString();

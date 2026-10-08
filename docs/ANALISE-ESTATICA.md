@@ -68,9 +68,10 @@ atomicidade (`Seguranca.test.js`) continua passando, e é ele que garante isso.
 
 ### Aceitos com justificativa
 
-#### `incorrect-equality` — Médio
+#### `incorrect-equality` — Médio (2 ocorrências)
 
-`if (saldo == 0) revert SemSaldoParaResgatar();` em `resgatarGarantia`.
+`if (saldo == 0) revert SemSaldoParaResgatar();` em `resgatarGarantia`, e `if (saldo == 0) return;`
+em `cancelar`, acrescentada com o RF10 (outubro de 2026), que decide se há garantia a devolver.
 
 O detector alerta que o saldo de um contrato pode ser inflado à força — por `selfdestruct` de
 outro contrato, que envia valor sem passar pelo `receive()` — e que isso quebra comparações de
