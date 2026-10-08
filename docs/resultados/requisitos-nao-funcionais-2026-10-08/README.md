@@ -125,12 +125,13 @@ também é pago em ETH.
 |---|---|---:|---:|---|
 | Sepolia, ao preço pago (0,001 gwei) | diária | 142,4 mi | **0,35%** | atende |
 | Sepolia, ao preço pago | a cada 3 dias | 57,0 mi | 0,14% | atende |
-| Rede principal, 0,5 gwei | diária | 32,6 mi | 39,7% | não atende |
-| Rede principal, 0,5 gwei | a cada 3 dias | 11,9 mi | 14,6% | não atende |
-| Camada 2, ordem de 0,01 gwei | diária | 32,6 mi | 0,79% | atende |
+| Rede principal, 0,5 gwei | diária | 33,1 mi | 40,3% | não atende |
+| Rede principal, 0,5 gwei | a cada 3 dias | 12,4 mi | 15,2% | não atende |
+| Camada 2, ordem de 0,01 gwei | diária | 33,1 mi | 0,81% | atende |
 
 **Na rede de teste, atende com folga. Na rede principal, só para apólices grandes**: ao preço de
-0,5 gwei com publicação a cada 3 dias, a partir de cerca de 16 ETH segurados. Duas conclusões para o
+0,5 gwei com publicação a cada 3 dias, a partir de cerca de 16 ETH segurados. Na rede principal, o
+gas é o medido na rede local (fork Osaka, o da rede principal na data): emissão de 2,0 milhões. Duas conclusões para o
 TCC:
 
 1. **A emissão é a maior parcela fixa.** Cada apólice implanta um contrato inteiro: 14 milhões de

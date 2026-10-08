@@ -16,7 +16,7 @@ const MILHAO = 1_000_000;
 
 // Gas medido por operacao.
 const GAS = {
-  osaka: { emissao: 1_507_069, garantia: 47_132, publicacao: 172_141, acionamentoExtra: 59_051 },
+  osaka: { emissao: 2_001_364, garantia: 47_154, publicacao: 172_216, acionamentoExtra: 59_051 },
   glamsterdam: {
     emissao: 13_931_815,
     garantia: 135_174,

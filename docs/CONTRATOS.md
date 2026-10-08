@@ -31,11 +31,17 @@ Uma instância por contrato firmado. É a peça central do trabalho.
 
 ```
   AGUARDANDO_GARANTIA ──depositarGarantia()──► ATIVA
-                                                 │
+          │                                      │
+          │ cancelar(), antes do                 │ cancelar(), antes do início da vigência
+          │ início da vigência                   │
+          ▼                                      │
+      CANCELADA ◄────────────────────────────────┤
+  (garantia devolvida)                           │
                     ┌────────────────────────────┴───────────────────┐
                     │                                                │
         condição atendida em                          vigência vencida sem
-        publicarIndices()                             acionamento
+        publicarIndices() ou                          acionamento
+        publicarRetificacao()                                        │
                     │                                                │
                     ▼                                                ▼
                 LIQUIDADA                                        ENCERRADA
@@ -43,7 +49,8 @@ Uma instância por contrato firmado. É a peça central do trabalho.
 ```
 
 Só o estado `ATIVA` aceita publicações. Essa restrição sozinha já resolve o RF26: depois da
-liquidação, nenhuma publicação é aceita, então não existe acionamento duplicado.
+liquidação, nenhuma publicação é aceita, então não existe acionamento duplicado. `CANCELADA` é
+final: nenhuma função sai dela.
 
 ### 2.2 A condição contratada
 
@@ -97,18 +104,40 @@ Há dois casos em que o lastro volta para a seguradora:
 
 Um segundo resgate é barrado pelo saldo zerado (`SemSaldoParaResgatar`).
 
-### 2.4 Funções
+### 2.4 Cancelamento (RF10) e retificação (RF28)
+
+**`cancelar()`** — o produtor titular ou a seguradora, enquanto `block.timestamp < vigenciaInicio`.
+Devolve todo o saldo à seguradora na mesma transação e passa a apólice a `CANCELADA`. Depois do
+início da vigência, reverte com `VigenciaIniciada`: cancelar quando o clima já mostrou para que
+lado vai seria seleção adversa. O efeito vem antes da transferência, com a mesma guarda de
+reentrância do pagamento (DECISOES.md 1.15).
+
+**`publicarRetificacao(periodo, indiceDanoBps, confiancaBps, hashEvidencias, versaoModelo,
+hashParecer)`** — só o oráculo autorizado, só para um período já publicado
+(`PeriodoNaoPublicado`), uma vez por período (`PeriodoJaRetificado`). A publicação original **não
+é alterada**: a retificação fica em `retificacao(periodo)`, com o resumo do parecer do perito, e o
+evento `IndiceRetificado` traz o índice antigo e o novo. A condição é reavaliada com o índice de
+dano retificado e o índice climático **original** do período; se acionar, paga na mesma transação,
+pela mesma rotina do pagamento normal (`_liquidarSeAtendida`) (DECISOES.md 1.16).
+
+Os dois caminhos que publicam exigem a vigência em curso (`_exigirVigencia`): antes do início ou
+depois do fim, `ForaDaVigencia`.
+
+### 2.5 Funções
 
 | Função | Quem pode chamar | Situação exigida |
 |---|---|---|
 | `depositarGarantia()` | seguradora | `AGUARDANDO_GARANTIA` |
 | `publicarIndices(...)` | oráculo autorizado | `ATIVA` |
 | `resgatarGarantia()` | seguradora | `ATIVA` com vigência vencida, **ou** `LIQUIDADA` com saldo |
+| `cancelar()` | seguradora ou produtor titular | `AGUARDANDO_GARANTIA` ou `ATIVA`, antes do início da vigência |
+| `publicarRetificacao(...)` | oráculo autorizado | `ATIVA`, período publicado e ainda não retificado |
 | `verTermos()` | qualquer um | leitura |
 | `publicacao(periodo)` | qualquer um | leitura |
+| `retificacao(periodo)` / `periodoRetificado(periodo)` | qualquer um | leitura |
 | `simularPercentual(...)` | qualquer um | leitura |
 
-### 2.5 As proteções
+### 2.6 As proteções
 
 **Controle de acesso (RF18, RNF10).** `publicarIndices` consulta o `OracleRegistry` a cada
 chamada. Endereço não autorizado é revertido com `OrigemNaoAutorizada`. Um oráculo revogado
@@ -169,19 +198,24 @@ cd contratos && npx cross-env REPORT_GAS=true npx hardhat test
 
 | Contrato | Gas | % do limite do bloco |
 |---|---:|---:|
-| `ApoliceFactory` | 2.241.625 | 3,7% |
-| `ApolicePolicy` | 1.499.539 | 2,5% |
+| `ApoliceFactory` | 2.777.567 | 4,6% |
+| `ApolicePolicy` | 2.031.273 | 3,4% |
 | `OracleRegistry` | 321.819 | 0,5% |
+
+Com o RF10 e o RF28, o código da apólice cresceu e a implantação ficou cerca de um terço mais cara
+(antes: 1.499.539 a apólice e 2.241.625 a fábrica).
 
 ### Chamadas
 
 | Contrato | Função | Mínimo | Máximo | Médio |
 |---|---|---:|---:|---:|
-| `ApoliceFactory` | `emitirApolice` | 1.482.606 | 1.517.046 | 1.507.069 |
-| `ApolicePolicy` | `publicarIndices` | 172.165 | 249.094 | 219.826 |
-| `ApolicePolicy` | `depositarGarantia` | — | — | 47.132 |
+| `ApoliceFactory` | `emitirApolice` | 1.976.901 | 2.011.341 | 2.001.364 |
+| `ApolicePolicy` | `publicarIndices` | 172.216 | 249.156 | 216.821 |
+| `ApolicePolicy` | `publicarRetificacao` | 177.194 | 236.367 | 210.019 |
+| `ApolicePolicy` | `cancelar` | 39.555 | 51.714 | 43.940 |
+| `ApolicePolicy` | `depositarGarantia` | — | — | 47.154 |
 | `ApolicePolicy` | `resgatarGarantia` | 34.574 | 39.619 | 36.816 |
-| `OracleRegistry` | `autorizar` | 52.947 | 70.059 | 69.812 |
+| `OracleRegistry` | `autorizar` | 52.947 | 70.059 | 69.861 |
 | `OracleRegistry` | `revogar` | 28.678 | 31.059 | 29.278 |
 | `OracleRegistry` | `transferirSeguradora` | — | — | 28.499 |
 
@@ -212,7 +246,9 @@ Três observações que interessam ao capítulo de resultados do TCC:
 ### Na Sepolia, depois do Glamsterdam
 
 Medidos na primeira implantação pública, em 07/10/2026 (endereços em
-`contratos/implantacoes/sepolia.json`):
+`contratos/implantacoes/sepolia-2026-10-07.json`). A versão com RF10 e RF28, implantada em
+08/10, emite apólices com 13,9 a 14,2 milhões de gas e cancela com 43.055
+([resultados/sepolia-2026-10-08](resultados/sepolia-2026-10-08/README.md)):
 
 | Operação | Rede local | Sepolia | Razão |
 |---|---:|---:|---:|
@@ -258,7 +294,7 @@ contracts/          100% statements · 100% branches · 100% functions · 100% l
   OracleRegistry.sol      100 / 100 / 100 / 100
 ```
 
-94 testes. Os contratos em `mocks/` são excluídos do relatório por `.solcover.js`: existem
+115 testes. Os contratos em `mocks/` são excluídos do relatório por `.solcover.js`: existem
 apenas para encenar ataques nos testes e nunca são implantados em rede.
 
 ```bash
@@ -284,6 +320,7 @@ cd contratos && npx hardhat coverage
 | Fábrica de apólices | 7 | RF07 |
 | Segurança: reentrância e atomicidade | 8 | RNF09, RNF13 |
 | Equivalência com a regra do aplicativo | 7 | RNF04 |
+| Cancelamento e retificação, com reentrância nas duas | 21 | RF10, RF28, RNF09 |
 
 ---
 
@@ -293,6 +330,7 @@ cd contratos && npx hardhat coverage
 |---|---|
 | RF07 — implantar contrato parametrizado na contratação | `ApoliceFactory.emitirApolice` |
 | RF08 — resumo criptográfico dos termos | `ApolicePolicy.termos.hashTermos`, lido por `verTermos()` |
+| RF10 — cancelamento antes da vigência, liberando a garantia | `cancelar()` |
 | RF16 — confiança, versão do modelo e hash das evidências | `struct Publicacao`, lido por `publicacao(periodo)` |
 | RF18 — lista de endereços autorizados | `OracleRegistry` + modificador `somenteOraculoAutorizado` |
 | RF20 — rejeitar período duplicado | `mapping periodoPublicado` |
@@ -300,6 +338,7 @@ cd contratos && npx hardhat coverage
 | RF24 — transferir imediatamente após o acionamento | mesma transação de `publicarIndices` |
 | RF25 — pagamento escalonado | `ModoPagamento.ESCALONADO` + `_interpolar` |
 | RF26 — impedir acionamento duplicado, sem estado inconsistente | `naSituacao(ATIVA)` + reversão em falha de transferência |
+| RF28 — índice retificado submetido ao contrato | `publicarRetificacao()`, `retificacao(periodo)`, evento `IndiceRetificado` |
 | RNF06 — determinismo | nenhuma aleatoriedade; `block.timestamp` só para vigência e auditoria, nunca como entropia |
 | RNF07 — medir e documentar o gas de cada função | tabela da seção 4 |
 | RNF09 — imunidade a reentrância | ordem verificar/atualizar/interagir + guarda `naoReentrante` |
@@ -311,9 +350,4 @@ cd contratos && npx hardhat coverage
 | RNF18 — decisão reconstituível | `publicacao(periodo)` + eventos + registro do oráculo |
 | RNF19 — preservar a versão do modelo | campo `versaoModelo`, imutável após a publicação |
 
-### Ainda não atendidos nos contratos
-
-| Requisito | Situação |
-|---|---|
-| RF10 — cancelamento antes da vigência | Item de reserva (Quadro 18). Não participa do fluxo de apuração |
-| RF28 — contestação da avaliação | Item de reserva. Exige retificação do índice em cadeia |
+O mapa completo, de todos os módulos, está em [RASTREABILIDADE.md](RASTREABILIDADE.md).

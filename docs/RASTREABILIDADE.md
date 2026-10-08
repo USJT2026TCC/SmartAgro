@@ -100,7 +100,7 @@ Convenções: caminhos relativos à raiz do repositório; `DECISOES n` aponta pa
 | RNF | Requisito | Como é atendido | Evidência |
 |---|---|---|---|
 | RNF06 | Lógica determinística | Sem aleatoriedade; o tempo do bloco só decide a vigência, nunca entropia | Slither sem achados · [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
-| RNF07 | Gas medido; nenhuma função acima do limite do bloco | `hardhat-gas-reporter`; a operação mais cara, implantar a fábrica, usa 3,7% do limite do bloco na rede local; `emitirApolice`, 2,5% | [CONTRATOS.md §4](CONTRATOS.md) |
+| RNF07 | Gas medido; nenhuma função acima do limite do bloco | `hardhat-gas-reporter`; a operação mais cara, implantar a fábrica, usa 4,6% do limite do bloco na rede local; `emitirApolice`, 3,3% | [CONTRATOS.md §4](CONTRATOS.md) |
 | RNF08 | Custo do ciclo até 1% do prêmio | Publicação diária; agregação documentada | 0,35% na Sepolia; acima de 1% na rede principal para apólices pequenas · Medições |
 | RNF09 | Imune a reentrância | Verificação, efeitos, interação; `naoReentrante` | `contratos/test/Seguranca.test.js` (ataque falha) |
 | RNF10 | Controle de acesso por papel | Modificadores de seguradora, oráculo autorizado e produtor titular | `contratos/test/*.test.js` (caminhos de recusa) · carteiras distintas na Sepolia |
