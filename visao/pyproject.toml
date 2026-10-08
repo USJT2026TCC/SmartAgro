@@ -3,10 +3,18 @@ name = "agrosmart-visao"
 version = "0.1.0"
 description = "Modulo de visao computacional do AgroSmart: indice de dano a partir de imagens do talhao"
 requires-python = ">=3.10"
-dependencies = ["requests>=2.32", "numpy>=1.26", "pillow>=10.0"]
+dependencies = [
+  "requests>=2.32",
+  "numpy>=1.26",
+  "pillow>=10.0",
+  # API HTTP (secao 5.3 da documentacao)
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  "python-multipart>=0.0.9",
+]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.4"]
+dev = ["pytest>=8.4", "httpx>=0.27"]
 # O treino roda em GPU, fora desta maquina. Instalado so por quem vai treinar.
 treino = ["torch>=2.2", "torchvision>=0.17", "tqdm>=4.66"]
 

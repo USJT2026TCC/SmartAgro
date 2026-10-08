@@ -41,7 +41,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
 from visao.indice import CLASSES as NOMES_DAS_CLASSES
-from visao.rede import UNet, padronizar, salvar
+from visao.rede import criar, padronizar, salvar
 
 RAIZ = Path(__file__).resolve().parents[1]
 PREPARADO = RAIZ / "dados" / "preparado"
@@ -212,6 +212,12 @@ def main() -> None:
     parser.add_argument("--versao", default="visao-unet-1.0.0", help="gravada junto dos pesos")
     parser.add_argument("--sem-aumento", action="store_true", help="desliga espelhamento e giros")
     parser.add_argument(
+        "--arquitetura",
+        choices=("unet", "unet-resnet18"),
+        default="unet",
+        help="unet: treinada do zero; unet-resnet18: codificador pre-treinado na ImageNet",
+    )
+    parser.add_argument(
         "--expoente-dos-pesos",
         type=float,
         default=0.5,
@@ -246,7 +252,9 @@ def main() -> None:
     carregador_validacao = DataLoader(validacao, batch_size=opcoes.lote)
     carregador_hidrico = DataLoader(validacao_hidrica, batch_size=opcoes.lote)
 
-    modelo = UNet().to(dispositivo)
+    # Transferencia de aprendizado (secao 5.3): com unet-resnet18, o codificador
+    # parte dos pesos da ImageNet, baixados uma vez pelo torchvision.
+    modelo = criar(opcoes.arquitetura, pretreinado=opcoes.arquitetura != "unet").to(dispositivo)
     otimizador = torch.optim.AdamW(modelo.parameters(), lr=opcoes.taxa)
     pesos = pesos_das_classes(treino, opcoes.expoente_dos_pesos)
     print("peso de cada classe:", {n: round(float(v), 2) for n, v in zip(NOMES_DAS_CLASSES, pesos)})
