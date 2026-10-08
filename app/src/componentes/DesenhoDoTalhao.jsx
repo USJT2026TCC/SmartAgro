@@ -41,7 +41,10 @@ export default function DesenhoDoTalhao({ vertices, aoMudar }) {
 
     m.on("click", (e) => {
       const novo = [Number(e.latlng.lng.toFixed(6)), Number(e.latlng.lat.toFixed(6))];
-      aoMudarAtual.current([...verticesAtuais.current, novo]);
+      // Atualiza a referencia ja aqui: dois cliques antes do proximo desenho da
+      // tela partiriam da mesma lista, e o primeiro ponto se perderia.
+      verticesAtuais.current = [...verticesAtuais.current, novo];
+      aoMudarAtual.current(verticesAtuais.current);
     });
 
     camada.current = L.layerGroup().addTo(m);

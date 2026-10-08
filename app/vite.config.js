@@ -24,6 +24,20 @@ export default defineConfig({
       },
     },
   },
+  // Testes (RNF03): Vitest no mesmo pipeline do Vite, com as telas renderizadas
+  // em jsdom. A cobertura conta TODO o src, inclusive arquivos que nenhum teste
+  // carrega; sem isso, o numero mediria so o que ja foi testado.
+  test: {
+    environment: "jsdom",
+    include: ["test/**/*.test.{js,mjs,jsx}"],
+    setupFiles: ["test/preparar.js"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{js,jsx}"],
+      exclude: ["src/main.jsx", "src/cadeia/implantacoes.json"],
+      reporter: ["text-summary", "text"],
+    },
+  },
   build: {
     outDir: "dist",
     sourcemap: true,

@@ -4,7 +4,7 @@
  * O poligono usado e o do talhao-01 da demonstracao, em Sao Simao/SP.
  */
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 
 import {
   anelDoGeoJson,

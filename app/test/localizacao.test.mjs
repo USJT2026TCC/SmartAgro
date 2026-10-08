@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Leitura do GPS e da data gravados na foto, com as fotos de demonstracao.
  *
@@ -7,7 +8,7 @@
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { test } from "vitest";
 
 import { lerDaFoto } from "../src/fotos/localizacao.js";
 

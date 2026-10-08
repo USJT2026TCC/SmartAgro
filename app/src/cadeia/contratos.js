@@ -161,6 +161,8 @@ export async function lerLinhaDoTempo(endereco, provedor) {
     "CondicaoAvaliada",
     "PagamentoExecutado",
     "GarantiaResgatada",
+    "ApoliceCancelada", // RF10
+    "IndiceRetificado", // RF28
   ];
 
   const listas = await Promise.all(
