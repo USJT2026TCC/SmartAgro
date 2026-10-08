@@ -79,3 +79,27 @@ def enviar_serie(
 ) -> list[Resultado]:
     """Divide a serie em lotes do tamanho aceito e envia cada um."""
     return [enviar_lote(api, fonte, lote, chave_privada) for lote in em_lotes(leituras)]
+
+
+def enviar_cadenciado(lotes, enviar, intervalo_s: float, dormir=None, ao_enviar=None) -> list:
+    """
+    Envia um lote por vez, esperando `intervalo_s` entre eles (HU04, criterio 1).
+
+    Com intervalo zero, e o envio em rajada de sempre. Com intervalo, o simulador
+    se comporta como uma estacao em campo, que transmite de tempos em tempos —
+    e a tela do aplicativo e o oraculo veem os dados chegando aos poucos.
+    """
+    import time
+
+    dormir = dormir or time.sleep
+    resultados = []
+
+    for indice, lote in enumerate(lotes):
+        if indice > 0 and intervalo_s > 0:
+            dormir(intervalo_s)
+        resultado = enviar(lote)
+        resultados.append(resultado)
+        if ao_enviar:
+            ao_enviar(indice + 1, lote, resultado)
+
+    return resultados

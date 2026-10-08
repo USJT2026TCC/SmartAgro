@@ -129,3 +129,32 @@ def dias_secos_ao_final(
         contagem += 1
 
     return contagem
+
+
+# Cenarios pre-configurados (HU04, criterio 3). Sao janelas REAIS de 2024 das
+# estacoes A770 e A747; o nome diz o que o oraculo vai encontrar no fim delas,
+# com a media das duas estacoes e o limiar de 1 mm (indice conferido no
+# historico de backend/src/banco/dados/historico-chuva-inmet.csv).
+CENARIOS = {
+    "estiagem_severa": {
+        "ano": 2024,
+        "de": "2024-06-25",
+        "ate": "2024-08-09",
+        "indice_esperado": 39,
+        "descricao": "seca do inverno de 2024: 39 dias secos, aciona a condicao de 30",
+    },
+    "estiagem_moderada": {
+        "ano": 2024,
+        "de": "2024-05-02",
+        "ate": "2024-06-15",
+        "indice_esperado": 20,
+        "descricao": "20 dias secos: perto do gatilho, sem atingi-lo",
+    },
+    "safra_normal": {
+        "ano": 2024,
+        "de": "2024-01-01",
+        "ate": "2024-02-15",
+        "indice_esperado": 0,
+        "descricao": "estacao chuvosa: choveu no ultimo dia, indice zero",
+    },
+}

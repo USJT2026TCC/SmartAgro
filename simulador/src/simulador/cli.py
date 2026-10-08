@@ -144,6 +144,13 @@ def comando_analisar(opcoes) -> None:
 
 
 def comando_enviar(opcoes) -> None:
+    if opcoes.cenario:
+        cenario = serie.CENARIOS[opcoes.cenario]
+        opcoes.ano = cenario["ano"]
+        opcoes.de = opcoes.de or cenario["de"]
+        opcoes.ate = opcoes.ate or cenario["ate"]
+        print(f"Cenario.............: {opcoes.cenario} — {cenario['descricao']}")
+
     estacao, leituras = abrir_do_zip(_zip_do_ano(opcoes.ano), opcoes.estacao)
 
     if opcoes.de or opcoes.ate:
@@ -187,27 +194,44 @@ def comando_enviar(opcoes) -> None:
     print("Fonte dos dados.....: INMET — https://portal.inmet.gov.br/dadoshistoricos")
     print()
 
+    # Com intervalo, cada envio leva `--leituras-por-envio` horas (um dia, por
+    # padrao); sem, vai em lotes do tamanho maximo que a API aceita.
+    tamanho = opcoes.leituras_por_envio if opcoes.intervalo > 0 else serie.LEITURAS_POR_LOTE
+    lotes = serie.em_lotes(leituras, tamanho)
+    if opcoes.intervalo > 0:
+        print(f"Cadencia............: {len(lotes)} envio(s), um a cada {opcoes.intervalo}s")
+
     if opcoes.destino == "mqtt":
-        envelopes = [
-            mqtt.montar_envelope(opcoes.fonte, lote, chave) for lote in serie.em_lotes(leituras)
-        ]
-        publicados = mqtt.publicar(envelopes, broker=opcoes.broker, porta=opcoes.porta)
+        envelopes = [mqtt.montar_envelope(opcoes.fonte, lote, chave) for lote in lotes]
+        publicados = mqtt.publicar(
+            envelopes,
+            broker=opcoes.broker,
+            porta=opcoes.porta,
+            intervalo_s=opcoes.intervalo,
+            tls_ca=opcoes.tls_ca,
+        )
         print(f"{publicados} lote(s) publicados em {opcoes.broker}:{opcoes.porta}")
         return
 
-    for indice, resultado in enumerate(
-        envio.enviar_serie(opcoes.api, opcoes.fonte, leituras, chave), start=1
-    ):
+    def relatar(indice, _lote, resultado):
         if resultado.erro:
             print(f"  lote {indice}: {resultado.erro}")
-            continue
+            return
 
         escore = f"{resultado.escore:.2f}" if resultado.escore is not None else "—"
         print(
             f"  lote {indice}: {resultado.aceitas} aceitas, "
             f"{resultado.recusadas} recusadas, {resultado.duplicadas} repetidas "
-            f"— reputacao {escore}"
+            f"— reputacao {escore}",
+            flush=True,
         )
+
+    envio.enviar_cadenciado(
+        lotes,
+        lambda lote: envio.enviar_lote(opcoes.api, opcoes.fonte, lote, chave),
+        opcoes.intervalo,
+        ao_enviar=relatar,
+    )
 
 
 def comando_ponte(opcoes) -> None:
@@ -246,6 +270,27 @@ def construir_parser() -> argparse.ArgumentParser:
 
     enviar = sub.add_parser("enviar", help="envia a serie assinada para a API ou para o MQTT")
     enviar.add_argument("--estacao", required=True, help="codigo WMO, por exemplo A770")
+    enviar.add_argument(
+        "--cenario",
+        choices=("estiagem_severa", "estiagem_moderada", "safra_normal"),
+        help="janela real pre-configurada do INMET (HU04)",
+    )
+    enviar.add_argument(
+        "--intervalo",
+        type=float,
+        default=0,
+        help="segundos entre envios; 0 envia tudo de uma vez (HU04)",
+    )
+    enviar.add_argument(
+        "--leituras-por-envio",
+        type=int,
+        default=24,
+        help="horas por envio quando ha intervalo (padrao: um dia)",
+    )
+    enviar.add_argument(
+        "--tls-ca",
+        help="certificado da autoridade que assinou o broker MQTT, para conexao cifrada (RNF17)",
+    )
     enviar.add_argument("--ano", type=int, default=2024)
     enviar.add_argument("--de", help="AAAA-MM-DD")
     enviar.add_argument("--ate", help="AAAA-MM-DD")
