@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { after, before, describe, test } from "node:test";
 
 import { assinarLote } from "../src/dominio/assinaturaDeLote.js";
+import { conferirCoordenada, distanciaEmMetros } from "../src/dominio/leituras.js";
 import { carteiraDeFonteDeDemonstracao } from "../src/banco/semente.js";
 import { carteiraAleatoria, montar } from "./ajuda.js";
 
@@ -159,5 +160,53 @@ describe("ingestao de leituras", () => {
     assert.equal(r.status, 400);
 
     await ctx.banco.query("UPDATE fontes SET ativa = true WHERE id = $1", [FONTE]);
+  });
+
+  // HU04, criterio 4: cada leitura carrega data, hora, fonte e coordenada.
+  // Posicao cadastrada da A770 (semente): -47.57944444, -21.46111111.
+  test("leitura com a coordenada da estacao e aceita, e a coordenada fica gravada", async () => {
+    const r = await enviar([leitura(13, 0, { lon: -47.5794, lat: -21.4611 })]);
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    assert.equal(r.body.aceitas, 1);
+
+    const { rows } = await ctx.banco.query(
+      `SELECT ST_X(localizacao) AS lon, ST_Y(localizacao) AS lat FROM leituras
+        WHERE fonte_id = $1 AND instante = '2026-09-13T12:00:00Z'`,
+      [FONTE],
+    );
+    assert.deepEqual(rows[0], { lon: -47.5794, lat: -21.4611 });
+  });
+
+  test("leitura que diz vir de outro lugar e invalida e derruba a reputacao", async () => {
+    // Coordenada da A747, a ~56 km: um lote da A770 com os dados de outra estacao.
+    const r = await enviar([leitura(14, 0, { lon: -48.1139, lat: -21.3383 })]);
+    assert.equal(r.body.recusadas, 1);
+    assert.equal(r.body.descartes[0].motivo, "longe_da_posicao_da_fonte");
+  });
+
+  test("coordenada pela metade ou fora do globo e invalida", async () => {
+    const r = await enviar([
+      leitura(15, 0, { lon: -47.5794 }),
+      leitura(16, 0, { lon: 200, lat: 0 }),
+    ]);
+    assert.deepEqual(
+      r.body.descartes.map((d) => d.motivo),
+      ["coordenada_invalida", "coordenada_invalida"],
+    );
+  });
+
+  test("leitura implausivel E longe da fonte registra o primeiro problema, o da grandeza", async () => {
+    const r = await enviar([leitura(17, 9999, { lon: 0, lat: 0 })]);
+    assert.equal(r.body.descartes[0].motivo, "fora_de_faixa");
+  });
+
+  test("conferencia da coordenada: tolerancia de 1 km e campo opcional", () => {
+    const a770 = { lon: -47.57944444, lat: -21.46111111 };
+    assert.equal(conferirCoordenada({}, a770).valida, true);
+    assert.equal(conferirCoordenada({ lon: -47.575, lat: -21.461 }, a770).valida, true); // ~460 m
+    assert.equal(conferirCoordenada({ lon: -47.565, lat: -21.461 }, a770).valida, false); // ~1,5 km
+    assert.equal(conferirCoordenada({ lon: 0, lat: 0 }, null).valida, true); // fonte sem posicao
+    const km = distanciaEmMetros([-47.57944444, -21.46111111], [-48.11388888, -21.33833333]) / 1000;
+    assert.ok(km > 55 && km < 58, `${km} km`);
   });
 });

@@ -22,6 +22,7 @@ DESCARTE      a leitura sem medicao de chuva nao vai por padrao. A API a
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 from .inmet import Leitura
@@ -47,13 +48,7 @@ def deslocar_para(leituras: list[Leitura], fim: datetime) -> tuple[list[Leitura]
 
     deslocamento = fim - max(leitura.instante for leitura in leituras)
     deslocadas = [
-        Leitura(
-            instante=leitura.instante + deslocamento,
-            chuva_mm=leitura.chuva_mm,
-            temperatura_c=leitura.temperatura_c,
-            umidade_pct=leitura.umidade_pct,
-        )
-        for leitura in leituras
+        replace(leitura, instante=leitura.instante + deslocamento) for leitura in leituras
     ]
 
     return deslocadas, deslocamento
@@ -76,6 +71,9 @@ def para_api(leitura: Leitura) -> dict:
         corpo["temperaturaC"] = leitura.temperatura_c
     if leitura.umidade_pct is not None:
         corpo["umidadePct"] = leitura.umidade_pct
+    if leitura.longitude is not None and leitura.latitude is not None:
+        corpo["lon"] = leitura.longitude
+        corpo["lat"] = leitura.latitude
 
     return corpo
 

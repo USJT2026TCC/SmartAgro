@@ -87,6 +87,10 @@ class Leitura:
     chuva_mm: float | None
     temperatura_c: float | None
     umidade_pct: float | None
+    # Posicao da estacao que mediu (HU04, criterio 4). A API confere contra a
+    # posicao cadastrada da fonte.
+    longitude: float | None = None
+    latitude: float | None = None
 
     @property
     def completa(self) -> bool:
@@ -179,6 +183,8 @@ def ler_csv(conteudo: bytes) -> tuple[Estacao, list[Leitura]]:
                 chuva_mm=chuva if chuva is not None and chuva >= 0 else None,
                 temperatura_c=_numero(registro.get(COLUNA_TEMPERATURA, "")),
                 umidade_pct=umidade if umidade is not None and 0 <= umidade <= 100 else None,
+                longitude=estacao.longitude,
+                latitude=estacao.latitude,
             )
         )
 

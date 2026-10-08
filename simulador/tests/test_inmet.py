@@ -98,3 +98,13 @@ def test_le_tambem_o_formato_ate_2018():
     assert len(leituras) == 2
     assert leituras[1].chuva_mm == 1.4
     assert leituras[1].instante == datetime(2018, 1, 1, 1, tzinfo=timezone.utc)
+
+
+def test_cada_leitura_recebe_a_posicao_da_estacao():
+    estacao, leituras = ler_csv(CSV)
+
+    assert leituras
+    assert all(
+        leitura.longitude == estacao.longitude and leitura.latitude == estacao.latitude
+        for leitura in leituras
+    )

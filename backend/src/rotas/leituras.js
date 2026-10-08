@@ -3,7 +3,7 @@ import { Router } from "express";
 import { config } from "../config.js";
 import { naoAutenticado, pedidoInvalido } from "../erros.js";
 import { recuperarAssinante } from "../dominio/assinaturaDeLote.js";
-import { atualizarEscore, validarLeitura } from "../dominio/leituras.js";
+import { atualizarEscore, conferirCoordenada, validarLeitura } from "../dominio/leituras.js";
 import { sha256Hex } from "../seguranca/cripto.js";
 import { auditar, exigirPerfil, exigirSessao, limitarIngestao } from "../seguranca/sessoes.js";
 import { texto, uuid } from "../validacao.js";
@@ -22,7 +22,8 @@ import { texto, uuid } from "../validacao.js";
  *   3. assinatura corresponde a chave da fonte;
  *   4. marca de tempo dentro da janela (antirrepeticao);
  *   5. lote ainda nao recebido (antirrepeticao);
- *   6. plausibilidade de cada leitura.
+ *   6. plausibilidade de cada leitura, inclusive a coordenada, quando vem
+ *      (HU04, criterio 4).
  *
  * Leitura implausivel NAO derruba o lote: e gravada como invalida, com o motivo,
  * e puxa para baixo a reputacao da fonte. Descartar em silencio apagaria a
@@ -54,7 +55,10 @@ export function rotasDeLeituras() {
       throw pedidoInvalido(`Um lote aceita no maximo ${MAXIMO_DE_LEITURAS_POR_LOTE} leituras.`);
     }
 
-    const { rows: fontes } = await banco.query("SELECT * FROM fontes WHERE id = $1", [fonteId]);
+    const { rows: fontes } = await banco.query(
+      "SELECT *, ST_X(localizacao) AS lon, ST_Y(localizacao) AS lat FROM fontes WHERE id = $1",
+      [fonteId],
+    );
     const fonte = fontes[0];
 
     // Fonte inexistente e assinatura errada respondem igual. Distinguir os dois
@@ -106,7 +110,11 @@ export function rotasDeLeituras() {
           umidadePct: bruta?.umidadePct,
         };
 
-        const veredito = validarLeitura(leitura);
+        // A grandeza e conferida primeiro; a coordenada so decide quando a
+        // grandeza passou, para o motivo registrado ser o primeiro problema.
+        const posicao = conferirCoordenada(bruta, fonte.lon == null ? null : fonte);
+        const plausivel = validarLeitura(leitura);
+        const veredito = plausivel.valida && !posicao.valida ? posicao : plausivel;
         const instante = new Date(leitura.timestamp);
 
         // Sem data valida nao ha como gravar: a leitura e contada e reportada,
@@ -126,8 +134,10 @@ export function rotasDeLeituras() {
 
         const { rowCount } = await tx.query(
           `INSERT INTO leituras (fonte_id, lote_id, instante, chuva_mm, temperatura_c, umidade_pct,
-                                 valida, motivo_descarte)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                                 valida, motivo_descarte, localizacao)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
+                   CASE WHEN $9::float8 IS NULL THEN NULL
+                        ELSE ST_SetSRID(ST_MakePoint($9::float8, $10::float8), 4326) END)
            ON CONFLICT (fonte_id, instante) DO NOTHING`,
           [
             fonteId,
@@ -138,6 +148,8 @@ export function rotasDeLeituras() {
             numero(leitura.umidadePct),
             veredito.valida,
             veredito.valida ? null : `${veredito.motivo}:${veredito.campo}`,
+            posicao.coordenada?.lon ?? null,
+            posicao.coordenada?.lat ?? null,
           ],
         );
 
@@ -194,7 +206,8 @@ export function rotasDeLeituras() {
 
     const { rows } = await banco.query(
       `SELECT l.fonte_id AS fonte, l.instante, l.chuva_mm, l.temperatura_c, l.umidade_pct,
-              l.valida, l.motivo_descarte
+              l.valida, l.motivo_descarte,
+              ST_X(l.localizacao) AS lon, ST_Y(l.localizacao) AS lat
          FROM leituras l JOIN fontes f ON f.id = l.fonte_id
         WHERE f.talhao_id = $1 AND l.instante >= now() - make_interval(days => $2)
         ORDER BY l.instante DESC
