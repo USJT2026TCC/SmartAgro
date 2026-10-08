@@ -1,7 +1,7 @@
 # Decisões de projeto
 
 Registro do que foi decidido, do que foi descartado e do que deu errado durante a
-implementação dos contratos e do oráculo. Serve a dois propósitos: sustentar as respostas na
+implementação do sistema. Serve a dois propósitos: sustentar as respostas na
 defesa e evitar que alguém refaça uma escolha já examinada.
 
 ---
@@ -190,6 +190,127 @@ limiar — o teste da tela fez isso, com 1 de 7 fotos marcada à mão. A alterna
 derrubar a confiança pela fração de fotos com local manual, mandando esses lotes ao perito; ficou
 registrada como melhoria possível, para o caso de a fraude por localização se mostrar um problema
 na prática. Até lá, o controle é a informação visível ao perito e à seguradora na lista de lotes.
+
+### 1.15 Cancelamento (RF10): só antes da vigência, e a garantia volta inteira
+
+**Decidido:** `cancelar()` aceita o produtor titular ou a seguradora, só enquanto
+`block.timestamp < vigenciaInicio`, e devolve à seguradora todo o saldo do contrato. A apólice
+passa à situação `CANCELADA` (4), da qual nenhuma função sai.
+
+**Por quê só antes da vigência:** depois do início, o produtor já sabe como o clima está indo.
+Cancelar uma apólice quando a chuva voltou, e mantê-la quando não voltou, é seleção adversa — a
+seguradora pagaria pelo risco sem receber por ele.
+
+**Por quê a garantia volta à seguradora, e não ao produtor:** a garantia é dinheiro da seguradora
+reservado para a indenização. O prêmio pago pelo produtor não passa pelo contrato; a devolução dele
+é assunto do contrato comercial, fora da cadeia. Misturar os dois exigiria o contrato saber quanto
+foi pago, e por quem.
+
+**Para isso existir, a proposta ganhou a data de início** (`propostas.inicio_desejado`, migração
+003): sem vigência futura, não há janela de cancelamento. Na Sepolia, em 08/10/2026: apólice com
+início em 10 dias, cancelada pela seguradora, 0,002 ETH devolvidos em 43.055 de gas
+([resultados/sepolia-2026-10-08](resultados/sepolia-2026-10-08/README.md)).
+
+### 1.16 Contestação (RF28): a retificação fica ao lado da publicação original
+
+**Decidido:** o produtor contesta o índice de dano de um período; o perito decide fora da cadeia,
+com parecer escrito; se deferir, o oráculo publica `publicarRetificacao(periodo, indiceDanoBps, …,
+hashParecer)`. O contrato guarda a retificação **em separado**, nunca sobrescreve a publicação
+original, aceita uma só por período e reavalia a condição com o índice de dano novo e o índice
+climático **original** daquele período.
+
+**Alternativas descartadas:**
+
+- *O perito publica direto.* Daria ao perito uma chave com poder de mover dinheiro, e uma segunda
+  porta de entrada na apólice. Mantendo o oráculo como único autor de escrita, o RF18 continua
+  valendo: quem pode publicar é a lista do registro, e só ela.
+- *Sobrescrever o índice.* Apagaria a prova do que o modelo disse antes. Com os dois lado a lado, a
+  linha do tempo mostra o índice automático, o retificado e o resumo do parecer que justificou a
+  mudança.
+- *Reavaliar com um índice climático novo.* A contestação é sobre a imagem; reabrir o clima por
+  esse caminho permitiria contestar um período só para trocar os dois números.
+
+**O resumo do parecer** é o keccak-256 de um texto canônico — contestação, apólice, período,
+decisão, índice retificado e o parecer escrito —, calculado pelo backend (`textoDoParecer`). Quem
+tiver o texto recalcula o resumo e confere que é o mesmo que foi para a cadeia. O autor fica
+registrado no banco e na auditoria.
+
+**A contestação é validada contra o evento da rede**, não contra o relato do oráculo ao backend: só
+se contesta um período que tem `IndicesPublicados` registrado para aquela apólice. A primeira versão
+exigia o relato do oráculo, e uma publicação feita por script ficava incontestável.
+
+### 1.17 Histórico climático na cotação (RF06): a mesma regra do oráculo, ano a ano
+
+**Decidido:** para cada ano de 2015 a 2025, a cotação recoloca a janela de vigência pedida
+(mesmo dia e mês de início, mesma duração) e conta os dias secos **com a regra do oráculo**: chuva
+somada por estação, média entre estações, menos de 1 mm é dia seco, dia sem medição interrompe a
+contagem. Mostra em quantos anos o produto teria acionado e o pagamento médio.
+
+**Estações:** as do INMET a até 100 km do talhão, escolhidas pelo PostGIS. Hoje A770 (São Simão) e
+A747 (Pradópolis); o histórico de 5.610 dias fica versionado no backend, para a cotação não
+depender do portal do INMET estar no ar.
+
+**Ano com menos de 90% dos dias medidos não entra na conta.** Contar dia sem medição como dia
+chuvoso subestimaria a seca; como dia seco, superestimaria. Melhor dizer que não se sabe.
+
+**É um piso para produtos mistos.** Um produto que também aciona por dano tem frequência real maior
+que a do clima sozinho, e a tela diz isso.
+
+**O resultado depende muito da data de início** — e é o argumento mais forte para mostrá-lo. O
+mesmo produto de 30 dias teria acionado em 1 de 9 anos começando em outubro, e em 8 de 8 começando
+em maio, quando o inverno seco do interior paulista cai inteiro dentro da vigência.
+
+### 1.18 E-mail (RF27): despachante separado, e caixa de saída em arquivo sem servidor
+
+**Decidido:** os avisos continuam nascendo do indexador; um despachante separado envia por
+Nodemailer (tabela de tecnologias da Entrega 3) os que têm destinatário com e-mail, marca o envio só
+depois de o servidor aceitar e tenta de novo até 5 vezes. Sem `SMTP_URL`, cada mensagem vira um
+`.eml` em `backend/dados/emails/`, que abre em qualquer cliente de e-mail.
+
+**Por quê separado:** uma fila de e-mail parada não pode atrasar a indexação dos eventos, que é o
+que alimenta todas as telas.
+
+**Por quê o arquivo:** a demonstração não depende de conta em provedor de e-mail, e o que seria
+enviado fica inspecionável.
+
+### 1.19 O modelo de visão em operação continua sendo o 2.0.0
+
+A U-Net com codificador ResNet-18 pré-treinado (3.0.0) foi treinada como pede a tabela de
+tecnologias, e empata em precisão com a 2.0.0, treinada do zero: erro médio de 3,2 contra 3,3
+pontos; dano da área 4,7% contra 4,6% (real: 4,3%). Chegou ao melhor resultado na época 7, contra
+18 — a transferência de aprendizado barateou o treino, como a Entrega 3 previa.
+
+**Não entrou em operação porque a confiança dela não discrimina nada:** fica entre 39% e 50% em
+todos os 79 recortes de validação, e o limiar do perito é 70%. Com ela, todo lote iria ao perito. Na
+2.0.0, o único recorte abaixo do limiar é justamente o de maior erro. Calibrar a confiança da 3.0.0
+(uma temperatura ajustada na validação) é o passo que falta; baixar o limiar só para ela esconderia
+o problema. Detalhes em
+[resultados/visao-unet-resnet18-3.0.0](resultados/visao-unet-resnet18-3.0.0/README.md).
+
+### 1.20 Contratação (UC05): o produtor propõe, a seguradora assina a emissão
+
+O caso de uso descreve a contratação pelo produtor. Na implementação, o produtor faz a cotação e
+envia a **proposta**; a transação que implanta a apólice é assinada pela seguradora, que deposita a
+garantia logo depois.
+
+**Por quê:** a fábrica só aceita emissão da seguradora, e é isso que impede um terceiro de criar
+apólices em nome dela, com limites que ela não aprovou. O produtor continua sendo o único
+beneficiário possível — o endereço dele vai nos termos, que ele confere no aplicativo contra o
+resumo gravado no contrato (RF08). Do ponto de vista do produtor, o fluxo é o do caso de uso:
+cotar, aceitar, acompanhar.
+
+### 1.21 Seca anterior à vigência entra na contagem — limitação conhecida
+
+O índice climático é a sequência de dias secos que **termina** no dia publicado, contada para trás
+sem olhar o início da vigência. O contrato só aceita publicações dentro da vigência, mas uma
+apólice que começa no meio de uma estiagem herda os dias secos anteriores: com 25 dias sem chuva
+antes do início, a condição de 30 dias seria atingida no quinto dia de cobertura.
+
+**Não foi alterado, por decisão:** o termo contratado é "30 dias consecutivos sem chuva", e a
+seguradora assina cada emissão (1.20), vendo a data de início e o histórico da localidade (1.17).
+**A correção, se a seguradora quiser**, é o oráculo parar a contagem no início da vigência —
+`vigenciaInicio` já está nos termos que ele lê — ou o produto ter carência, como os seguros
+agrícolas costumam ter. Fica registrado para a defesa: é a pergunta natural de quem conhece seguro.
 
 ## 2. Defeitos encontrados durante a implementação
 
@@ -594,39 +715,121 @@ preço à rede.
 **Por que importa:** em rede de teste o ETH é gratuito, mas escasso — os faucets limitam a retirada
 diária. Pagar mil vezes o preço esgotaria o saldo antes do fim da demonstração.
 
+### 2.25 A rede local usava os endereços da Sepolia
+
+**Sintoma:** depois de configurar a Sepolia, a demonstração local parou: o oráculo local recebia
+`OrigemNaoAutorizada` em toda publicação.
+
+**Causa:** `implantar.js` lia `ENDERECO_ORACULO` do `contratos/.env`, e `emitir-apolice.js` lia
+`ENDERECO_PRODUTOR`. Os dois tinham sido preenchidos para a Sepolia, e passaram a valer também na
+rede local: o registro local autorizava o oráculo da Sepolia, e as apólices locais pagavam a uma
+carteira que não existe no nó local.
+
+**Correção:** na rede 31337, os dois scripts ignoram essas variáveis e usam as contas do Hardhat.
+
+**Por que importa:** configuração de uma rede vazando para a outra é silenciosa — as transações
+dão certo, só que para o endereço errado.
+
+### 2.26 Anos antigos do INMET voltavam vazios, sem erro
+
+**Sintoma:** o histórico da cotação (RF06) tinha 2019 a 2025 completos e 2015 a 2018 sem nenhum dia.
+
+**Causa:** até 2018, os arquivos do INMET chamam as colunas `DATA (YYYY-MM-DD)` e `HORA (UTC)`; a
+partir de 2019, `Data` e `Hora UTC`. O leitor procurava só os nomes novos, não achava nenhuma linha
+válida e devolvia uma série vazia — que é um resultado legítimo para um ano sem medição.
+
+**Correção:** o leitor aceita os dois cabeçalhos, e há teste com cada formato.
+
+### 2.27 O oráculo repetia cinco vezes uma recusa definitiva do contrato
+
+**Sintoma:** o registro do oráculo mostrava `unknown custom error` e cinco tentativas seguidas para
+publicar numa apólice cuja vigência ainda não tinha começado.
+
+**Causa:** duas. O ethers decodifica o erro próprio do contrato em `erro.revert`, mas a
+`shortMessage` continua dizendo "unknown custom error" — e era ela que o oráculo registrava. E toda
+falha era tratada como transitória, de rede, e voltava para a fila.
+
+**Correção:** o registro usa o nome e os argumentos do erro decodificado (`ForaDaVigencia(…)`); uma
+recusa do contrato é falha definitiva, sem nova tentativa; e o serviço pula, antes de enviar, a
+apólice fora da vigência.
+
+**Por que importa:** repetir uma transação que o contrato sempre vai recusar gasta gas a cada
+tentativa — a estimativa falha antes, mas nem sempre.
+
+### 2.28 A data de início sugerida era amanhã, à noite
+
+**Sintoma:** depois das 21 h, a cotação sugeria como início da cobertura o dia seguinte.
+
+**Causa:** a data padrão vinha de `new Date().toISOString().slice(0, 10)`, que é a data em UTC — três
+horas à frente do horário de Brasília.
+
+**Correção:** a data local, por `toLocaleDateString("sv-SE")`, que já sai no formato AAAA-MM-DD.
+No relatório da seguradora (RF29) o cuidado foi o inverso: o tempo de liquidação é calculado em UTC,
+como o oráculo define o período, com `AT TIME ZONE 'UTC'` explícito no banco.
+
+### 2.29 A linha do tempo parava de abrir uma semana depois da emissão
+
+**Sintoma:** encontrado medindo o RNF01 na Sepolia. Uma consulta de eventos sobre 50 mil blocos
+falhava com `could not coalesce error`.
+
+**Causa:** a linha do tempo (RF09) e a lista de oráculos pediam todos os eventos desde a implantação
+em uma consulta só. O nó público recusa intervalos dessa ordem — cerca de uma semana de blocos —, e
+uma vigência de 180 dias cobre 1,3 milhão.
+
+**Correção:** leitura em trechos de 10 mil blocos, quatro por vez, uma consulta por trecho para todos
+os eventos do contrato (oito vezes menos pedidos que um por tipo de evento), com nova tentativa
+quando um servidor do nó responde `pruned history unavailable`. Os testes conferem que nenhum
+evento se perde na emenda entre trechos. O indexador do backend já lia em trechos de 2 mil blocos.
+
+**Limite que fica:** o nó público gratuito descarta o histórico com mais de alguns meses (EIP-4444).
+Para uma vigência inteira, a operação precisa de um nó com histórico completo, em
+`VITE_RPC_SEPOLIA`.
+
+### 2.30 Dois defeitos de tela achados pelos testes de interface
+
+1. **Dois cliques rápidos no mapa perdiam um vértice do talhão.** O tratador de clique do Leaflet
+   partia da lista de vértices guardada na última renderização; dois cliques antes da renderização
+   seguinte partiam da mesma lista, e o segundo apagava o primeiro. Correção: a referência é
+   atualizada no próprio clique.
+2. **A linha do tempo não mostrava cancelamento nem retificação.** A lista de eventos buscados era
+   anterior ao RF10 e ao RF28. O teste foi escrito a partir dos eventos do contrato, e não da lista
+   da tela, e por isso pegou a diferença.
+
+### 2.31 A rede pré-treinada era mais precisa e inutilizável
+
+Não é defeito de código, mas foi descoberto da mesma forma: medindo o que o sistema faz com o
+número, e não só o número. A 3.0.0 tem o menor erro médio dos três modelos treinados e confiança
+sempre abaixo do limiar do perito. Avaliar um modelo só pela precisão teria colocado em operação
+um estimador que manda todo lote para revisão humana (ver 1.19).
+
 ---
 
-## 3. O que falta antes da implantação em Sepolia
+## 3. Rede de teste pública (Sepolia)
 
 | Item | Requisito | Situação |
 |---|---|---|
 | Análise estática dos contratos | RNF11 | **Feito.** Slither sem nenhum achado; ver [ANALISE-ESTATICA.md](ANALISE-ESTATICA.md) |
-| Verificação do código-fonte no Etherscan | — | **Pendente**: precisa de uma chave da API do Etherscan (COMO-RODAR.md 7.7) |
-| Medição de latência em rede pública | Capítulo 7 do manual | **Medido**: ~27 s da publicação à segunda confirmação, contra ~170 ms na rede local |
-| Implantação em Sepolia | — | **Feito** em 07/10/2026: contratos e uma apólice de teste; endereços em `contratos/implantacoes/sepolia.json` |
-| Custo em gas na Sepolia | RNF07, RNF08 | **Medido** (CONTRATOS.md §4). Pagamento pelos dois índices feito em 07/10/2026: [resultados/sepolia-2026-10-07](resultados/sepolia-2026-10-07/README.md) |
+| Implantação em Sepolia | — | **Feito** em 07/10/2026 e refeito em 08/10/2026 com o RF10 e o RF28; endereços em `contratos/implantacoes/sepolia.json` |
+| Verificação do código-fonte no Etherscan | — | **Feito** em 08/10/2026: registro, fábrica e apólices ([resultados/sepolia-2026-10-08](resultados/sepolia-2026-10-08/README.md)) |
+| Pagamento pelos dois índices | RF23, RF24 | **Feito** em 07/10/2026: [resultados/sepolia-2026-10-07](resultados/sepolia-2026-10-07/README.md) |
+| Cancelamento e contestação | RF10, RF28 | **Feito** em 08/10/2026: [resultados/sepolia-2026-10-08](resultados/sepolia-2026-10-08/README.md) |
+| Latência em rede pública | RNF21 | **Medido**: ~27 s da publicação à segunda confirmação, contra ~170 ms na rede local |
+| Custo em gas | RNF07, RNF08 | **Medido** (CONTRATOS.md §4; [requisitos não funcionais](resultados/requisitos-nao-funcionais-2026-10-08/README.md)) |
 
 ---
 
-## 4. Requisitos ainda não atendidos, por decisão
+## 4. Itens de reserva
 
-Constam como itens de reserva no Quadro 18 da documentação de software.
+O Quadro 18 da documentação de software deixa fora das três sprints oito itens, que só entrariam
+com folga. **Todos foram implementados.** O motivo de cada um ter saído da reserva:
 
-| Requisito | Por que pode esperar |
+| Item | Por que foi feito |
 |---|---|
-| RF10 — cancelamento antes da vigência | Não participa do fluxo de apuração e liquidação |
-| RF28 — contestação da avaliação automática | Exige retificação do índice em cadeia, de complexidade incompatível com o prazo |
-
-O **RF09** (linha do tempo reconstruída dos eventos) também constava como reserva, e foi
-implementado. Com os contratos já emitindo os eventos, montar a linha do tempo na tela de detalhe
-da apólice custou pouco, e entrega a parte do RNF18 que o usuário efetivamente vê: o histórico
-remontado da rede, auditável sem depender da palavra da seguradora.
-
-O RF17 (encaminhamento ao perito por baixa confiança) também constava como reserva, mas a parte
-que cabe ao oráculo — suspender a publicação do índice de dano abaixo do limiar de confiança —
-já está implementada, porque era uma condição a mais na função que monta a publicação. Com o
-backend, o fluxo de revisão pelo perito também foi implementado: a análise fica retida até o
-parecer, e a decisão tem autor e justificativa registrados.
-
-O **RF27** (notificações) saiu da reserva pelo mesmo motivo: o indexador do backend já lia os
-eventos, e transformá-los em avisos para as partes custou uma tabela e uma tela.
+| HU08 (RF21) — retomada após indisponibilidade | A fila persistente do oráculo nasceu junto do serviço: sem ela, um nó fora do ar travava o ciclo (2.3) |
+| HU12 (RF09) — linha do tempo dos eventos | Com os contratos já emitindo os eventos, montar a linha do tempo custou pouco, e entrega a parte do RNF18 que o usuário vê: o histórico remontado da rede, sem depender da palavra da seguradora |
+| HU14 (RF27) — notificações | O indexador já lia os eventos; virar aviso custou uma tabela e uma tela, e o e-mail entrou com o Nodemailer (1.18) |
+| RF10 — cancelamento antes da vigência | Uma função no contrato e a data de início na proposta (1.15) |
+| RF17 — encaminhamento ao perito | A parte do oráculo era uma condição a mais na publicação; com o backend, o parecer passou a ter autor e justificativa registrados |
+| RF25 — pagamento escalonado | Entrou com o contrato: o modo integral e o escalonado dividem a mesma avaliação, e testar só um deixaria a outra metade sem prova |
+| RF28 — contestação | O mais caro: retificação em cadeia sem apagar o original, fila do perito e publicação pelo oráculo (1.16) |
+| RF29 — relatórios da carteira | Os eventos indexados já tinham tudo; faltavam os filtros e a quebra por cultura e região |
