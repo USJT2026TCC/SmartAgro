@@ -9,7 +9,7 @@ const { config, lerImplantacao } = require("./config");
 const { ServicoOraculo } = require("./oraculo");
 const { somarDias, diaDe } = require("./consolidador");
 const { CENARIOS, gerarLeituras } = require("./fonteSimulada");
-const { FilaDePublicacoes, descreverErro } = require("./fila");
+const { ESTADOS, FilaDePublicacoes, descreverErro } = require("./fila");
 const { RegistroDePublicacoes } = require("./registro");
 
 /**
@@ -211,7 +211,7 @@ async function publicarPeriodo(servico, fonte, apolice, periodo) {
       console.log(`  aguardando ${evento.ms}ms antes de nova tentativa`);
     if (evento.tipo === "erro") {
       console.log(
-        `  [erro] tentativa ${evento.tentativa}: ${evento.erro.shortMessage || evento.erro.message}`,
+        `  [erro] tentativa ${evento.tentativa}: ${descreverErro(evento.erro)}`,
       );
     }
   });
@@ -219,7 +219,16 @@ async function publicarPeriodo(servico, fonte, apolice, periodo) {
   const detalhe = resultado.detalhes.find((d) => d.sucesso);
 
   if (!detalhe) {
-    console.log(`  ${periodo}   publicacao nao concluida; entrada mantida na fila`);
+    const { entrada } = preparo;
+
+    // Tres situacoes diferentes, e o operador precisa saber qual e.
+    if (entrada.estado === ESTADOS.CONCLUIDA) {
+      console.log(`  ${periodo}   ja publicado antes (${entrada.recibo?.txHash ?? "sem recibo"}); nada a fazer (RF20)`);
+    } else if (entrada.estado === ESTADOS.FALHA) {
+      console.log(`  ${periodo}   falha definitiva: ${entrada.ultimoErro?.mensagem ?? "motivo desconhecido"}`);
+    } else {
+      console.log(`  ${periodo}   publicacao nao concluida; entrada mantida na fila para retomada (RF21)`);
+    }
     return null;
   }
 

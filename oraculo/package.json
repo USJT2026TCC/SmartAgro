@@ -10,7 +10,8 @@
     "ciclo": "node src/index.js ciclo",
     "ouvir": "node src/index.js ouvir",
     "fila": "node src/index.js fila",
-    "formatar": "prettier --write \"src/**/*.js\" \"test/**/*.js\""
+    "formatar": "prettier --write \"src/**/*.js\" \"test/**/*.js\"",
+    "testar:integracao": "node --test --test-concurrency=1 \"integracao/*.test.js\""
   },
   "dependencies": {
     "dotenv": "^16.4.5",
