@@ -38,7 +38,9 @@ que a condição de pagamento é uma função computável sobre grandezas medida
 pagaram o produtor sem intervenção humana — uma pelos 39 dias secos medidos pelo INMET, outra
 pelos 9,98% de dano estimados nas fotos. Cada transação pode ser conferida no Etherscan:
 [docs/resultados/sepolia-2026-10-07](docs/resultados/sepolia-2026-10-07/README.md). Em 08/10, a
-versão com cancelamento e contestação foi implantada e teve o código-fonte verificado no Etherscan:
+versão com cancelamento e contestação foi implantada, com o código-fonte verificado no Etherscan:
+uma apólice foi cancelada antes da vigência, e outra, contestada pelo produtor, pagou depois que o
+perito retificou o índice de dano de 9,98% para 30% —
 [docs/resultados/sepolia-2026-10-08](docs/resultados/sepolia-2026-10-08/README.md).
 
 **Requisitos:** os 29 funcionais e os 21 não funcionais da Entrega 3, cada um ligado ao código, ao

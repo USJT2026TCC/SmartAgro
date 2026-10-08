@@ -78,7 +78,7 @@ Convenções: caminhos relativos à raiz do repositório; `DECISOES n` aponta pa
 | RF | Requisito | Implementação | Testes e evidência |
 |---|---|---|---|
 | RF27 | Notificação de acionamento, pagamento e falha de publicação | `backend/src/cadeia/indexador.js` (eventos → avisos); `backend/src/rotas/oraculo.js` (falha relatada pelo oráculo); `backend/src/notificacoes/email.js` (Nodemailer) | `backend/test/email.test.js`, `oraculo.test.js`; `backend/integracao/indexador.test.js`; `app/test/telas/produtor.test.jsx` · DECISOES 1.18 |
-| RF28 | Contestação, parecer do perito e índice retificado em cadeia | `ApolicePolicy.sol` (`publicarRetificacao`); `backend/src/rotas/contestacoes.js`; `oraculo/src/publicador.js`; `ApoliceDetalhe.jsx`, `RevisaoTecnica.jsx` | `contratos/test/CancelamentoERetificacao.test.js`; `backend/test/contestacoes.test.js`; `oraculo/integracao/oraculo.test.js`; `app/test/telas/apolice.test.jsx`, `fotos-cotacao-perito.test.jsx` · DECISOES 1.16 |
+| RF28 | Contestação, parecer do perito e índice retificado em cadeia | `ApolicePolicy.sol` (`publicarRetificacao`); `backend/src/rotas/contestacoes.js`; `oraculo/src/publicador.js`; `ApoliceDetalhe.jsx`, `RevisaoTecnica.jsx` | `contratos/test/CancelamentoERetificacao.test.js`; `backend/test/contestacoes.test.js`; `oraculo/integracao/oraculo.test.js`; `app/test/telas/apolice.test.jsx`, `fotos-cotacao-perito.test.jsx` · Sepolia 08/10 (retificação de 9,98% para 30% pagou o produtor) · DECISOES 1.16 |
 | RF29 | Relatórios com filtros por período, cultura e região | `backend/src/rotas/acompanhamento.js`; `app/src/paginas/seguradora/CarteiraDaSeguradora.jsx` | `backend/test/relatorios.test.js`; `app/test/telas/seguradora.test.jsx` |
 
 ---

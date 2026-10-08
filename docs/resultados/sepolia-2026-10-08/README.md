@@ -61,9 +61,28 @@ seria recusada com `VigenciaIniciada`.
 | Evidências | as 8 fotos de demonstração: 7 aceitas, 1 recusada pelo PostGIS (fora do talhão); resumo `0x808c787f…38c8` |
 | Análise | modelo `visao-unet-2.0.0-cpu`: 10,0% de dano, confiança 73% — liberada ao oráculo |
 | Publicação original | [`0xbaa0b342…7d8d`](https://sepolia.etherscan.io/tx/0xbaa0b342535aeeb97f04d7efe6590899a31c3a52732ba641a7958605d3967d8d) — período 20261008, dano **9,98%**, abaixo dos 20%: **não aciona** (711.594 de gas) |
-| Contestação do produtor | *pendente — exige o vínculo da carteira do produtor, assinado na MetaMask* |
-| Parecer do perito | *pendente* |
-| Retificação publicada | *pendente* |
+| Contestação do produtor | registrada pelo produtor titular, com a carteira `0xC8fd…3071` vinculada ao cadastro por assinatura na MetaMask; o backend conferiu que o período tinha `IndicesPublicados` na rede |
+| Parecer do perito | **deferida**, índice retificado de **30%**; resumo do parecer `0xd0a02175…a2d0` |
+| Retificação publicada | [`0xc9faf93f…9f06`](https://sepolia.etherscan.io/tx/0xc9faf93fd66e4420a2caf6fbd80fcc4987f556912e0c8057c139d128ffa39f06) — bloco 11.873.112, 856.184 de gas |
+
+Uma única transação do oráculo emitiu, nesta ordem:
+
+| Evento | Conteúdo |
+|---|---|
+| `IndiceRetificado` | período 20261008, índice original **998** (9,98%) → **3000** (30%), resumo das evidências e versão do modelo originais, resumo do parecer |
+| `CondicaoAvaliada` | condição **atendida**, 100% do limite |
+| `PagamentoExecutado` | **0,003 ETH** para o produtor `0xC8fd…3071` |
+
+Depois dela, lido do contrato:
+
+- situação `LIQUIDADA`, valor pago 0,003 ETH, saldo do contrato zerado;
+- `publicacao(20261008)` continua com o índice **original, 9,98%**; `retificacao(20261008)`
+  guarda os 30% e o resumo do parecer. Nada foi apagado: a linha do tempo mostra o índice do
+  modelo, o do perito e o motivo da mudança;
+- o saldo da carteira do produtor passou de 0,017 para **0,020 ETH**.
+
+O perito decidiu fora da cadeia e não tem chave nenhuma: quem escreveu na apólice foi o oráculo, o
+único endereço autorizado no registro (RF18; DECISOES.md 1.16).
 
 ## Gas da nova versão
 
@@ -72,6 +91,7 @@ seria recusada com `VigenciaIniciada`.
 | `emitirApolice` | 10,2 a 10,5 milhões | 13,9 a 14,2 milhões |
 | `depositarGarantia` | 135.152 | 135.174 |
 | Publicação sem acionar | — | 711.594 |
+| `publicarRetificacao` que paga | — | 856.184 |
 | `cancelar` | — | 43.055 |
 
 A emissão ficou cerca de 35% mais cara porque a apólice ganhou duas funções e o armazenamento das
