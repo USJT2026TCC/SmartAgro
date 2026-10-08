@@ -70,6 +70,16 @@ A migração [`001_inicial.sql`](../backend/src/banco/migracoes/001_inicial.sql)
 | Oráculo | `publicacoes_oraculo` | gas, latência e procedência de cada índice |
 | Avisos | `notificacoes` | `UNIQUE (usuario_id, tipo, tx_hash)` |
 
+As migrações seguintes acrescentaram:
+
+| Migração | O que acrescenta | Requisito |
+|---|---|---|
+| `002_origem_da_localizacao.sql` | de onde veio a coordenada de cada foto: `exif`, `dispositivo` ou `manual` | RF14 (DECISOES 1.14) |
+| `003_cancelamento_e_contestacao.sql` | `contestacoes` (motivo, parecer, índice retificado, resumo do parecer); data de início desejada na proposta; situação `CANCELADA` | RF10, RF28 |
+| `004_historico_climatico.sql` | `estacoes_inmet` (com posição, para o PostGIS achar as próximas) e `historico_chuva` (chuva diária de 2015 a 2025) | RF06 |
+| `005_email.sql` | e-mail do usuário; quando cada aviso saiu por e-mail e quantas tentativas | RF27 |
+| `006_coordenada_da_leitura.sql` | coordenada de cada leitura de campo | HU04 |
+
 As restrições dos produtos (limiares, prazos, percentuais) **espelham as do construtor do
 contrato**. Um produto que o contrato recusaria nem chega a ser gravado.
 
@@ -89,6 +99,7 @@ JSON e são tratados com `BigInt` no código: nenhum valor monetário passa por 
 | Chave de serviço para oráculo e visão, comparada em tempo constante | `exigirServico` | RNF17 |
 | Lotes de leitura assinados pela chave da fonte | `dominio/assinaturaDeLote.js` | RNF17 |
 | Trilha de auditoria de ações sensíveis | tabela `auditoria` | RNF18 |
+| HTTPS com `TLS_CERTIFICADO` e `TLS_CHAVE`; `scripts/gerar-certificados.sh` cria uma autoridade local para desenvolvimento | `index.js` | RNF17 |
 
 Em produção (`NODE_ENV=producao`), o backend **recusa subir** sem `CHAVE_DE_SERVICO` e
 `SEGREDO_DE_CIFRA` definidos. Os valores padrão de desenvolvimento nunca vão para produção por
@@ -124,8 +135,9 @@ Todas sob `/api`. Formato de erro único: `{ "erro": { "codigo", "mensagem" } }`
 
 | Método e caminho | Quem | O que faz |
 |---|---|---|
-| `GET /produtores` | seguradora | produtores e carteiras vinculadas |
-| `GET/POST/DELETE /talhoes` | leitura: todos; escrita: seguradora | polígono validado e área geodésica pelo PostGIS |
+| `GET/POST /produtores` · `PATCH /produtores/:id` | seguradora | cadastro e edição de produtores, com senha inicial e e-mail opcional (RF03) |
+| `GET /propriedades` · `PATCH /propriedades/:id` | seguradora | propriedades, com nome e município |
+| `GET/POST/DELETE /talhoes` · `PATCH /talhoes/:id` | leitura: todos; escrita: seguradora | polígono validado (`ST_IsValid`) e área geodésica pelo PostGIS; edição só sem proposta nem apólice (HU09) |
 | `GET/POST/DELETE /produtos` | leitura: todos; escrita: seguradora | produtos de seguro com as restrições do contrato |
 | `GET/POST/PATCH /fontes` | seguradora (leitura também perito) | estações e sensores, com endereço da chave e escore |
 
@@ -133,8 +145,8 @@ Todas sob `/api`. Formato de erro único: `{ "erro": { "codigo", "mensagem" } }`
 
 | Método e caminho | Quem | O que faz |
 |---|---|---|
-| `POST /cotacoes` | produtor | prêmio e limite, calculados em `BigInt` |
-| `POST /propostas` · `GET /propostas` | produtor cria; ambos listam | proposta com área declarada |
+| `POST /cotacoes` | produtor | prêmio e limite, calculados em `BigInt`, e o **histórico climático** da localidade: em quantos anos de 2015 a 2025 o produto teria acionado, pela regra do oráculo, com as estações do INMET a até 100 km (RF06; DECISOES 1.17) |
+| `POST /propostas` · `GET /propostas` | produtor cria; ambos listam | proposta com área declarada e data de início da cobertura (`inicioDaVigencia`), que abre a janela de cancelamento (RF10) |
 | `POST /propostas/:id/preparar` | seguradora | gera o texto canônico, o resumo keccak e a struct pronta para `emitirApolice` |
 | `POST /propostas/:id/emissao` | seguradora | recebe o `txHash` e **confere na cadeia**: recibo da fábrica oficial, resumo, produtor e valor |
 | `POST /propostas/:id/recusar` | seguradora | recusa com motivo |
@@ -151,6 +163,16 @@ Todas sob `/api`. Formato de erro único: `{ "erro": { "codigo", "mensagem" } }`
 | `GET /visao/imagens/:id/arquivo` | serviço de visão | o arquivo, conferido contra o sha256 registrado antes de ser entregue |
 | `POST /visao/resultados` | serviço de visão | índice de dano e confiança; abaixo de 70% vai para o perito |
 | `GET /perito/analises` · `POST /perito/analises/:id/parecer` | perito | libera ou rejeita, com parecer obrigatório |
+| `GET /lotes` | produtor, seguradora | lotes de fotos do talhão e o andamento da análise |
+
+### Contestação (RF28)
+
+| Método e caminho | Quem | O que faz |
+|---|---|---|
+| `POST /contestacoes` | produtor titular | contesta o índice de dano de um período; aceita só período com `IndicesPublicados` registrado na cadeia para aquela apólice |
+| `GET /contestacoes` | participantes | contestações e o andamento |
+| `POST /perito/contestacoes/:id/parecer` | perito | defere com o índice retificado, ou indefere; o parecer vira um texto canônico e o resumo keccak dele vai para a cadeia |
+| `GET /oraculo/retificacoes-pendentes` · `POST /oraculo/retificacoes/:id` | oráculo (chave de serviço) | deferidas à espera de publicação; relato da transação de `publicarRetificacao` |
 
 ### Oráculo (chave de serviço)
 
@@ -166,7 +188,7 @@ Todas sob `/api`. Formato de erro único: `{ "erro": { "codigo", "mensagem" } }`
 | Método e caminho | Quem | O que faz |
 |---|---|---|
 | `GET /notificacoes` · `POST /notificacoes/:id/lida` · `POST /notificacoes/lidas` | sessão | avisos gerados pelos eventos da cadeia (RF27) |
-| `GET /relatorios/carteira` | seguradora | exposição, prêmios, pagamentos, gas e latência (RF29) |
+| `GET /relatorios/carteira?de=&ate=&cultura=&regiao=` | seguradora | exposição, prêmios, pagamentos, canceladas, tempo médio de liquidação, quebra por cultura e por município, gas e latência (RF29) |
 | `GET /auditoria` | seguradora | trilha de auditoria |
 | `GET /saude` | público | banco, cadeia e indexador |
 
@@ -185,7 +207,8 @@ Corpo (`POST /api/leituras`, `Content-Type: application/json`):
   "fonte": "estacao-inmet-a770",
   "enviadoEm": "2026-09-22T12:00:00Z",
   "leituras": [
-    { "instante": "2026-09-21T00:00:00Z", "chuvaMm": 0, "temperaturaC": 31.2, "umidadePct": 38 }
+    { "instante": "2026-09-21T00:00:00Z", "chuvaMm": 0, "temperaturaC": 31.2, "umidadePct": 38,
+      "lon": -47.5794, "lat": -21.4611 }
   ]
 }
 ```
@@ -218,7 +241,9 @@ chuva das horas dentro de cada fonte antes de tirar a média entre fontes.
 
 A API confere, nesta ordem: forma do corpo → fonte ativa → assinatura da chave registrada →
 `enviadoEm` dentro de uma janela de 10 minutos → lote ainda não recebido → plausibilidade de
-cada leitura. Leitura implausível **não derruba o lote**: é gravada como inválida, com o motivo,
+cada leitura. A coordenada (`lon`, `lat`) é opcional; quando vem, precisa cair a até 1 km da
+posição cadastrada da fonte — um lote assinado por uma estação com os dados de outra vira leitura
+inválida (HU04, critério 4). Leitura implausível **não derruba o lote**: é gravada como inválida, com o motivo,
 e reduz a reputação da fonte (média móvel exponencial, α = 0,2). Descartar em silêncio apagaria
 a evidência de que o sensor falhou.
 
@@ -229,7 +254,7 @@ resumos das imagens, em ordem). O serviço de visão devolve:
 
 ```json
 POST /api/visao/resultados      X-Chave-De-Servico: ...
-{ "loteId": "...", "versaoModelo": "resnet50-agrosmart-1.0.0", "indiceDano": 0.62, "confianca": 0.81 }
+{ "loteId": "...", "versaoModelo": "visao-unet-2.0.0-cpu", "indiceDano": 0.0998, "confianca": 0.729 }
 ```
 
 `indiceDano` e `confianca` vão de 0 a 1 e são guardados em pontos-base, a mesma unidade do
@@ -254,9 +279,21 @@ a cada 4 segundos:
 - depois de cada evento, o estado da apólice é **relido do contrato**, e não deduzido do evento;
 - a emissão é registrada também por aqui. Se a seguradora fechar o navegador entre assinar a
   transação e avisar o backend, a apólice aparece mesmo assim;
-- cada evento relevante vira notificação para as partes: emissão, garantia, pagamento.
+- cada evento relevante vira notificação para as partes: emissão, garantia, pagamento,
+  cancelamento e índice retificado; a falha definitiva de publicação chega pelo relato do
+  oráculo (`POST /oraculo/falhas`).
 
-Sem contrato implantado, o indexador fica em espera e a API funciona normalmente.
+Sem contrato implantado, o indexador fica em espera e a API funciona normalmente. A chave do
+progresso inclui o endereço da fábrica: implantar contratos novos recomeça a varredura do bloco
+da implantação, sem confundir as duas.
+
+### Avisos por e-mail (RF27)
+
+Um despachante separado do indexador envia por **Nodemailer** os avisos de quem tem e-mail no
+cadastro, marca o envio só depois de o servidor aceitar e tenta de novo até 5 vezes. Com
+`SMTP_URL` (por exemplo `smtps://usuario:senha@smtp.exemplo.com`), envia de verdade; sem ela,
+cada mensagem vira um arquivo `.eml` em `backend/dados/emails/`, que abre em qualquer cliente de
+e-mail (DECISOES 1.18).
 
 ## 8. Integração com o oráculo
 
@@ -281,15 +318,24 @@ Comando: `node src/index.js servico` em `oraculo/`, com `API_URL` e `CHAVE_DE_SE
 ## 9. Testes
 
 ```
-npm run testar              91 testes · banco em memória, cadeia simulada
-npm run testar:integracao    4 testes · indexador contra um hardhat node real
+npm run testar              135 testes · banco em memória, cadeia simulada · 81% das linhas
+npm run testar:integracao     6 testes · indexador contra um hardhat node real
 ```
 
 Os testes cobrem, entre outros: senha e segundo fator; perfil errado em cada rota sensível;
 desafio de carteira reutilizado, expirado ou assinado por outra chave; polígono inválido;
 produto fora dos limites do contrato; emissão com recibo de outra fábrica, resumo diferente,
 produtor diferente ou valor diferente; lote com assinatura errada, repetido ou fora da janela;
-imagem com extensão falsa ou fora do talhão; análise rejeitada que não pode chegar ao oráculo.
+imagem com extensão falsa ou fora do talhão; análise rejeitada que não pode chegar ao oráculo;
+contestação de período sem publicação ou de apólice alheia; parecer dado duas vezes; histórico
+climático com ano incompleto; relatório filtrado; e-mail que falha e é reenviado; leitura com
+coordenada longe da fonte.
+
+Medição de desempenho (RNF01), com o backend no ar:
+
+```bash
+cd backend && node scripts/medir-consultas.js --usuarios 20 --segundos 30
+```
 
 ### Verificação ponta a ponta com dados reais (22/09/2026)
 

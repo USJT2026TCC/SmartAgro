@@ -109,6 +109,17 @@ estiagem chega a 60 dias."*
 
 **A conta do dinheiro é feita em BigInt, sobre wei.** Ver a seção 5.
 
+**O histórico da localidade (RF06).** Abaixo dos exemplos, um cartão mostra, ano a ano de 2015 a
+2025, a maior estiagem que caiu dentro da janela de vigência pedida e se o produto teria acionado,
+com os dados das estações do INMET a até 100 km do talhão. Ano com dados incompletos aparece como
+"sem dados suficientes", e não como ano sem seca. Para produto que também aciona por dano, a tela
+avisa que a frequência climática é um piso (DECISOES.md 1.17).
+
+**A data de início da cobertura** é escolhida aqui, e mudá-la refaz a cotação: a mesma condição
+aciona em 1 de 9 anos começando em outubro e em 8 de 8 começando em maio. Com início no futuro, a
+apólice pode ser cancelada até lá (RF10). A data sugerida é a de hoje no horário local, e não em
+UTC (DECISOES.md 2.28).
+
 ### Produtor · Fotos da lavoura — RF14, RF16, HU11
 
 O produtor fotografa o talhão, e as fotos seguem para o módulo de visão, que estima quanto da
@@ -160,8 +171,10 @@ como nova.
 ### Seguradora · Carteira — RF29, UC15
 
 Indicadores do relatório do backend: apólices emitidas, exposição atual (soma das garantias
-retidas), prêmios, indenizações pagas, taxa de acionamento, e o custo em gas e a latência das
-publicações do oráculo (RF29, RNF07). Mostra também a saúde do backend e do indexador. A seguradora vê exatamente o mesmo
+retidas), prêmios, indenizações pagas, taxa de acionamento, canceladas, **tempo médio de
+liquidação** (do fim do dia acionador ao bloco do pagamento, comparado aos 72 h do RNF21), e o
+custo em gas e a latência das publicações do oráculo (RF29, RNF07). Filtros por período de
+emissão, cultura e região (município), com a quebra por cultura e por região. Mostra também a saúde do backend e do indexador. A seguradora vê exatamente o mesmo
 que o produtor e a fiscalização veriam.
 
 ### Seguradora · Propostas — RF07, UC05
@@ -183,7 +196,13 @@ qualquer outro endereço teria a transação revertida com `NaoEhSeguradora`.
 
 ### Seguradora · Talhões e produtos — RF03, RF05, UC02, UC03
 
-Polígono em GeoJSON, validado pelo PostGIS (`ST_IsValid`) e com **área calculada sobre o
+Cadastro e edição de produtores (com senha inicial e e-mail para os avisos), das propriedades e
+dos talhões. Um talhão só pode ser editado enquanto não tem proposta nem apólice: depois disso, o
+polígono é parte do contrato.
+
+**O polígono é desenhado no mapa** — clique a clique sobre o OpenStreetMap, com o Leaflet — ou
+**importado de um arquivo GeoJSON** (Polygon, Feature ou FeatureCollection), os dois caminhos do
+critério 1 da HU09. Polígono em GeoJSON, validado pelo PostGIS (`ST_IsValid`) e com **área calculada sobre o
 elipsoide** a partir dele, não digitada: área informada à mão é área
 que diverge do que foi delimitado, e o limite da apólice sai dessa conta. Polígono com
 autointerseção é recusado (critério de aceite 3 da HU09).
@@ -222,7 +241,18 @@ A tela escuta os eventos ao vivo. Durante a demonstração, o oráculo publica e
 linha do tempo cresce sozinha, sem recarregar.
 
 O RF09 constava como item de reserva (HU12). Com os eventos já emitidos pelos contratos, montar a
-linha do tempo custou pouco e entrega a parte do RNF18 que é visível ao usuário.
+linha do tempo custou pouco e entrega a parte do RNF18 que é visível ao usuário. Os eventos são
+lidos em trechos de 10 mil blocos: em uma consulta só, o nó público recusava o intervalo uma
+semana depois da emissão (DECISOES.md 2.29).
+
+**Cancelar (RF10).** Antes do início da vigência, o produtor titular ou a seguradora veem o botão
+**Cancelar apólice**, que pede confirmação e assina `cancelar()` com a carteira; a garantia volta à
+seguradora na mesma transação. Depois do início, o botão some, porque o contrato recusaria.
+
+**Contestar (RF28).** Ao lado de cada índice de dano publicado, o produtor titular pode
+**Contestar**, explicando o motivo. A contestação vai ao perito; enquanto não há parecer, o período
+mostra "contestação aguardando o perito". Deferida, o oráculo publica a retificação, e a tela passa
+a mostrar o índice retificado **ao lado do original**, que continua lá, com o resumo do parecer.
 
 ### Perito · Revisão técnica
 
@@ -231,10 +261,14 @@ abaixo do limiar, o backend a retém e ela aparece aqui. O perito escreve um par
 **liberar** (o índice segue ao oráculo, que não reaplica o limiar) ou **rejeitar** (o índice de
 dano fica retido; o climático segue normalmente). A decisão fica gravada com autor e parecer.
 
+A mesma tela tem a fila de **contestações** (RF28): o perito lê o motivo do produtor, escreve o
+parecer e **defere**, informando o índice retificado em percentual, ou **indefere**.
+
 ### Avisos — RF27
 
 Notificações geradas pelo indexador a partir dos eventos da cadeia (emissão, garantia,
-pagamento) e pelo oráculo quando uma publicação falha de vez. Cada aviso traz a transação que o
+pagamento, cancelamento, retificação) e pelo oráculo quando uma publicação falha de vez. Quem tem
+e-mail no cadastro também recebe por e-mail (RF27). Cada aviso traz a transação que o
 originou. O cabeçalho mostra o número de não lidos.
 
 ### Minha conta — RF01
@@ -323,3 +357,43 @@ Depois da integração com o backend, o percurso foi refeito (22/09/2026) com lo
 proposta e emissão passando pela API, leituras assinadas entrando pela ingestão e o oráculo em
 modo `servico`. A tela da apólice mostrou a conferência dos termos batendo com o contrato e a
 procedência de cada índice. Detalhes em [BACKEND.md §9](BACKEND.md).
+
+## 7. Testes e verificações
+
+```bash
+cd app && npm run testar        # 72 testes
+cd app && npm run cobertura     # 83% das linhas, 77% dos ramos (RNF03)
+```
+
+Vitest, com as telas renderizadas em jsdom pela Testing Library. O aplicativo roda **inteiro** —
+rotas, sessão, carteira, telas —, e só as duas fronteiras são substituídas
+(`test/telas/ambiente.jsx`): a API, por um `fetch` que responde a partir de uma tabela, e a
+carteira, por um provedor EIP-1193 falso em `window.ethereum`. As leituras da cadeia são simuladas
+por arquivo de teste.
+
+| Arquivo | O que cobre |
+|---|---|
+| `telas/autenticacao.test.jsx` | entrada, segundo fator, perfil errado em rota de outro perfil, sessão expirada, saída (RF01, RF04, HU13) |
+| `telas/produtor.test.jsx` | apólices, vínculo da carteira por assinatura, troca de rede, segundo fator, avisos |
+| `telas/seguradora.test.jsx` | carteira com filtros, propostas e emissão, cadastro, desenho do talhão, produtos, oráculos, fontes |
+| `telas/apolice.test.jsx` | termos conferidos e adulterados, linha do tempo, cancelamento, contestação, retificação |
+| `telas/fotos-cotacao-perito.test.jsx` | fotos com GPS, sem GPS e fora do talhão; cotação com histórico; pareceres do perito |
+| `geografia.test.mjs`, `localizacao.test.mjs` | ponto no polígono, GeoJSON, leitura do EXIF |
+| `eventosEmTrechos.test.mjs` | leitura de eventos em trechos, sem perder evento na emenda |
+
+Os testes de tela acharam dois defeitos que o uso manual não tinha mostrado (DECISOES.md 2.30).
+
+Duas verificações rodam fora dos testes, contra a rede de verdade:
+
+```bash
+cd app && node scripts/medir-leituras.mjs --rede sepolia --blocos 100000
+cd app && node scripts/verificar-navegadores.mjs --rede sepolia --apolice <endereco>
+```
+
+A primeira mede as leituras da cadeia com as funções do aplicativo (RNF01); a segunda gera o
+pacote de produção e percorre o caminho da seguradora no Chrome e no Edge instalados, com uma
+carteira injetada (RNF05). Resultados em
+[resultados/requisitos-nao-funcionais-2026-10-08](resultados/requisitos-nao-funcionais-2026-10-08/README.md).
+
+Versões: React 18, react-router 7, Vite 8, ethers 6. O react-router 6 tinha duas falhas moderadas
+que iam para o pacote publicado; com a atualização, `npm audit` não aponta nenhuma.

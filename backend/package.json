@@ -12,7 +12,8 @@
     "migrar": "node src/banco/migrar.js",
     "formatar": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"integracao/**/*.js\" \"scripts/**/*.js\"",
     "testar:integracao": "node --test --test-concurrency=1 \"integracao/*.test.js\"",
-    "enviar-leituras": "node scripts/enviar-leituras.js"
+    "enviar-leituras": "node scripts/enviar-leituras.js",
+    "cobertura": "c8 --all --src src --include \"src/**\" --reporter text-summary npm run testar"
   },
   "engines": {
     "node": ">=20"
@@ -31,6 +32,7 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
+    "c8": "^12.0.0",
     "prettier": "^3.9.8",
     "supertest": "^7.2.2"
   }

@@ -313,6 +313,12 @@ cd visao && .venv/Scripts/python -m pytest
 
 66 testes, sem rede e sem GPU (os de `test_rede.py` são pulados onde o PyTorch não está instalado). Cobertura de 93% das linhas (`pytest --cov`), acima dos 70% do RNF03.
 
+Estilo (RNF03), com o `ruff` configurado no `pyproject.toml` (o notebook do Colab fica de fora):
+
+```bash
+cd visao && .venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .
+```
+
 | Arquivo | Testes | O que cobre |
 |---|---:|---|
 | `test_indice.py` | 16 | Denominador, ponderação, doença fora da conta, confiança por amostragem |
