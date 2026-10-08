@@ -80,26 +80,29 @@ def salvar(imagem: Image.Image, caminho: Path, posicao: tuple | None, instante: 
 def main() -> None:
     with (PREPARADO / "indice.csv").open(encoding="utf-8") as arquivo:
         linhas = [
-            l for l in csv.DictReader(arquivo)
-            if l["divisao"] == "validacao" and float(l["lavoura"]) >= 0.5
+            linha
+            for linha in csv.DictReader(arquivo)
+            if linha["divisao"] == "validacao" and float(linha["lavoura"]) >= 0.5
         ]
 
     if not linhas:
         raise SystemExit("Rode treino/preparar_dados.py antes.")
 
     # As de mais estresse primeiro: na demonstracao, o indice precisa aparecer.
-    linhas.sort(key=lambda l: float(l["dano"]), reverse=True)
+    linhas.sort(key=lambda linha: float(linha["dano"]), reverse=True)
 
     DESTINO.mkdir(parents=True, exist_ok=True)
     for antigo in DESTINO.glob("*.jpg"):
         antigo.unlink()
 
     def abrir(linha):
-        return Image.open(PREPARADO / "images" / linha["imagem"]).convert("RGB").resize(
-            (LADO, LADO), Image.NEAREST
+        return (
+            Image.open(PREPARADO / "images" / linha["imagem"])
+            .convert("RGB")
+            .resize((LADO, LADO), Image.NEAREST)
         )
 
-    for numero, (linha, posicao) in enumerate(zip(linhas, DENTRO), start=1):
+    for numero, (linha, posicao) in enumerate(zip(linhas, DENTRO, strict=False), start=1):
         salvar(abrir(linha), DESTINO / f"demo-{numero:02d}-com-gps.jpg", posicao, QUANDO)
 
     salvar(abrir(linhas[len(DENTRO)]), DESTINO / "demo-07-fora-do-talhao.jpg", FORA, QUANDO)

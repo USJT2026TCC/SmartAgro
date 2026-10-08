@@ -79,15 +79,30 @@ const publicacao = (sobrescritos = {}) => ({
 });
 
 let proximoIndice = 0;
-const evento = (nome, argumentos) => ({ nome, bloco: 10, indiceNoBloco: proximoIndice++, txHash: TX, em: agora, argumentos });
+const evento = (nome, argumentos) => ({
+  nome,
+  bloco: 10,
+  indiceNoBloco: proximoIndice++,
+  txHash: TX,
+  em: agora,
+  argumentos,
+});
 
 beforeEach(() => {
   cadeia.apolice = apolice();
   cadeia.publicacoes = [publicacao()];
   cadeia.linha = [
-    evento("ApoliceImplantada", { valorIndenizacao: ethers.parseEther("1"), talhao: ethers.encodeBytes32String("talhao-01") }),
+    evento("ApoliceImplantada", {
+      valorIndenizacao: ethers.parseEther("1"),
+      talhao: ethers.encodeBytes32String("talhao-01"),
+    }),
     evento("GarantiaDepositada", { valor: ethers.parseEther("1") }),
-    evento("IndicesPublicados", { periodo: 20261007n, indiceClimatico: 3, indiceDanoBps: 1200, confiancaBps: 8000 }),
+    evento("IndicesPublicados", {
+      periodo: 20261007n,
+      indiceClimatico: 3,
+      indiceDanoBps: 1200,
+      confiancaBps: 8000,
+    }),
     evento("CondicaoAvaliada", { atendida: false, percentualBps: 0 }),
   ];
   cadeia.chamadas.length = 0;
@@ -102,7 +117,17 @@ afterEach(() => {
 const rotasDaApolice = (extra = {}) => ({
   "GET /apolices/:endereco": {
     conferenciaDosTermos: { descricao: DESCRICAO },
-    publicacoes: [{ periodo: 20261007, procedencia: { fontesUsadas: ["estacao-inmet-a770", "estacao-inmet-a747"], fontesDescartadas: [] }, gas_usado: "956252", latencia_ms: 26713 }],
+    publicacoes: [
+      {
+        periodo: 20261007,
+        procedencia: {
+          fontesUsadas: ["estacao-inmet-a770", "estacao-inmet-a747"],
+          fontesDescartadas: [],
+        },
+        gas_usado: "956252",
+        latencia_ms: 26713,
+      },
+    ],
   },
   "GET /contestacoes": { contestacoes: [] },
   ...extra,
@@ -126,7 +151,12 @@ describe("detalhe da apolice", () => {
   test("termos adulterados no servidor sao denunciados (RF08)", async () => {
     await abrir(`/apolice/${ENDERECO}`, {
       perfil: "produtor",
-      rotas: rotasDaApolice({ "GET /apolices/:endereco": { conferenciaDosTermos: { descricao: `${DESCRICAO} (alterado)` }, publicacoes: [] } }),
+      rotas: rotasDaApolice({
+        "GET /apolices/:endereco": {
+          conferenciaDosTermos: { descricao: `${DESCRICAO} (alterado)` },
+          publicacoes: [],
+        },
+      }),
     });
     expect(await achar(/NAO corresponde ao resumo gravado no contrato/)).toBeTruthy();
   });
@@ -143,7 +173,9 @@ describe("detalhe da apolice", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enviar contestacao" }));
 
     expect(await achar(/Contestacao registrada/)).toBeTruthy();
-    expect(chamadas.find((c) => c.caminho === "/contestacoes" && c.metodo === "POST").corpo).toEqual({
+    expect(
+      chamadas.find((c) => c.caminho === "/contestacoes" && c.metodo === "POST").corpo,
+    ).toEqual({
       apolice: ENDERECO,
       periodo: 20261007,
       motivo: "A metade norte secou inteira.",
@@ -151,12 +183,33 @@ describe("detalhe da apolice", () => {
   });
 
   test("indice retificado aparece ao lado do original, e a contestacao aberta tambem", async () => {
-    cadeia.publicacoes = [publicacao({ retificacao: { indiceDanoBps: 3000, confiancaBps: 10000, publicadoEm: agora, hashParecer: `0x${"cc".repeat(32)}` } }), publicacao({ periodo: 20261008 })];
-    cadeia.linha.push(evento("IndiceRetificado", { periodo: 20261007n, indiceDanoOriginalBps: 1200, indiceDanoBps: 3000, hashParecer: `0x${"cc".repeat(32)}` }));
+    cadeia.publicacoes = [
+      publicacao({
+        retificacao: {
+          indiceDanoBps: 3000,
+          confiancaBps: 10000,
+          publicadoEm: agora,
+          hashParecer: `0x${"cc".repeat(32)}`,
+        },
+      }),
+      publicacao({ periodo: 20261008 }),
+    ];
+    cadeia.linha.push(
+      evento("IndiceRetificado", {
+        periodo: 20261007n,
+        indiceDanoOriginalBps: 1200,
+        indiceDanoBps: 3000,
+        hashParecer: `0x${"cc".repeat(32)}`,
+      }),
+    );
 
     await abrir(`/apolice/${ENDERECO}`, {
       perfil: "produtor",
-      rotas: rotasDaApolice({ "GET /contestacoes": { contestacoes: [{ apolice_endereco: ENDERECO, periodo: 20261008, situacao: "aberta" }] } }),
+      rotas: rotasDaApolice({
+        "GET /contestacoes": {
+          contestacoes: [{ apolice_endereco: ENDERECO, periodo: 20261008, situacao: "aberta" }],
+        },
+      }),
     });
 
     expect(await achar("retificado pelo perito")).toBeTruthy();
@@ -165,7 +218,10 @@ describe("detalhe da apolice", () => {
   });
 
   test("antes da vigencia, o produtor titular cancela pela carteira (RF10)", async () => {
-    cadeia.apolice = apolice({}, { vigenciaInicio: agora + 10 * 86_400, vigenciaFim: agora + 190 * 86_400 });
+    cadeia.apolice = apolice(
+      {},
+      { vigenciaInicio: agora + 10 * 86_400, vigenciaFim: agora + 190 * 86_400 },
+    );
     carteiraFalsa(CONTA_DO_PRODUTOR);
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
@@ -180,7 +236,10 @@ describe("detalhe da apolice", () => {
   });
 
   test("cancelar pede confirmacao, e desistir nao envia nada", async () => {
-    cadeia.apolice = apolice({}, { vigenciaInicio: agora + 10 * 86_400, vigenciaFim: agora + 190 * 86_400 });
+    cadeia.apolice = apolice(
+      {},
+      { vigenciaInicio: agora + 10 * 86_400, vigenciaFim: agora + 190 * 86_400 },
+    );
     carteiraFalsa(CONTA_DO_PRODUTOR);
     vi.spyOn(window, "confirm").mockReturnValue(false);
 
@@ -206,7 +265,12 @@ describe("detalhe da apolice", () => {
 
   test("liquidada no modo escalonado: a seguradora resgata a sobra", async () => {
     cadeia.apolice = apolice(
-      { situacao: 2, valorPago: ethers.parseEther("0.75"), garantiaRetida: ethers.parseEther("0.25"), periodoAcionador: 20261007 },
+      {
+        situacao: 2,
+        valorPago: ethers.parseEther("0.75"),
+        garantiaRetida: ethers.parseEther("0.25"),
+        periodoAcionador: 20261007,
+      },
       { modoPagamento: 1, limiarClimaticoIntegral: 60 },
     );
     cadeia.linha.push(evento("PagamentoExecutado", { valor: ethers.parseEther("0.75") }));

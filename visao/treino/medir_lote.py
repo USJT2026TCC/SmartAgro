@@ -60,11 +60,17 @@ def main() -> None:
 
     corpo = resposta.json()
     print(f"Estimador..........: {estimador.versao}")
-    print(f"Lote...............: {opcoes.fotos} fotos ({megabytes:.1f} MB, {len(disponiveis)} distintas)")
+    print(
+        f"Lote...............: {opcoes.fotos} fotos ({megabytes:.1f} MB, "
+        f"{len(disponiveis)} distintas)"
+    )
     print(f"Tempo por lote.....: {', '.join(f'{t:.1f} s' for t in tempos)}")
     print(f"Pior caso..........: {max(tempos):.1f} s (limite do RNF02: 600 s)")
     print(f"Por foto...........: {max(tempos) / opcoes.fotos:.2f} s")
-    print(f"Indice de dano.....: {corpo.get('indiceDanoBps')} bps, confianca {corpo.get('confiancaBps')} bps")
+    print(
+        f"Indice de dano.....: {corpo.get('indiceDanoBps')} bps, "
+        f"confianca {corpo.get('confiancaBps')} bps"
+    )
 
 
 if __name__ == "__main__":

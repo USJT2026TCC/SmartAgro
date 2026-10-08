@@ -37,7 +37,10 @@ const DIA = 86_400;
 
 function artefato(nome) {
   return JSON.parse(
-    fs.readFileSync(path.join(CONTRATOS, "artifacts", "contracts", `${nome}.sol`, `${nome}.json`), "utf8"),
+    fs.readFileSync(
+      path.join(CONTRATOS, "artifacts", "contracts", `${nome}.sol`, `${nome}.json`),
+      "utf8",
+    ),
   );
 }
 
@@ -102,7 +105,11 @@ test.describe("oraculo contra um no real", { timeout: 240_000 }, () => {
 
   test.before(async () => {
     if (!fs.existsSync(path.join(CONTRATOS, "artifacts", "contracts"))) {
-      const r = spawnSync("npx", ["hardhat", "compile"], { cwd: CONTRATOS, shell: true, stdio: "inherit" });
+      const r = spawnSync("npx", ["hardhat", "compile"], {
+        cwd: CONTRATOS,
+        shell: true,
+        stdio: "inherit",
+      });
       assert.equal(r.status, 0, "falha ao compilar os contratos");
     }
 
@@ -186,7 +193,13 @@ test.describe("oraculo contra um no real", { timeout: 240_000 }, () => {
 
   test("publicar um periodo de safra normal nao aciona", () => {
     const { codigo, saida } = oraculo(
-      "publicar", "--apolice", apoliceClimatica, "--periodo", "20261001", "--cenario", "safra_normal",
+      "publicar",
+      "--apolice",
+      apoliceClimatica,
+      "--periodo",
+      "20261001",
+      "--cenario",
+      "safra_normal",
     );
     assert.equal(codigo, 0, saida);
     assert.match(saida, /20261001/);
@@ -195,7 +208,13 @@ test.describe("oraculo contra um no real", { timeout: 240_000 }, () => {
 
   test("publicar o mesmo periodo de novo e recusado pelo contrato (RF20)", () => {
     const { saida } = oraculo(
-      "publicar", "--apolice", apoliceClimatica, "--periodo", "20261001", "--cenario", "safra_normal",
+      "publicar",
+      "--apolice",
+      apoliceClimatica,
+      "--periodo",
+      "20261001",
+      "--cenario",
+      "safra_normal",
     );
     // A fila ja sabe que o periodo foi concluido; nem chega a gastar uma chamada.
     assert.match(saida, /ja publicado antes \(0x[0-9a-f]{64}\)/);
@@ -203,8 +222,16 @@ test.describe("oraculo contra um no real", { timeout: 240_000 }, () => {
 
   test("ciclo de estiagem severa, com leituras defeituosas, aciona e paga", () => {
     const { codigo, saida } = oraculo(
-      "ciclo", "--apolice", apoliceClimatica, "--cenario", "estiagem_severa",
-      "--periodo", "20261020", "--periodos", "8", "--com-falhas",
+      "ciclo",
+      "--apolice",
+      apoliceClimatica,
+      "--cenario",
+      "estiagem_severa",
+      "--periodo",
+      "20261020",
+      "--periodos",
+      "8",
+      "--com-falhas",
     );
     assert.equal(codigo, 0, saida);
     assert.match(saida, /SIM/);
@@ -231,14 +258,21 @@ test.describe("oraculo contra um no real", { timeout: 240_000 }, () => {
 
   test("publicador: vigencia, retificacao (RF28) e escuta de eventos", async () => {
     const { Publicador } = require("../src/publicador");
-    const publicador = new Publicador({ rpcUrl: RPC, chavePrivada: chaveDaConta(2), chainId: 31337 });
+    const publicador = new Publicador({
+      rpcUrl: RPC,
+      chavePrivada: chaveDaConta(2),
+      chainId: 31337,
+    });
 
     try {
       assert.equal(await publicador.estaAutorizado(await registry.getAddress()), true);
       assert.ok((await publicador.saldo()) > 0n);
 
       const agora = (await provedor.getBlock("latest")).timestamp;
-      const futura = await emitir({ vigenciaInicio: agora + 10 * DIA, vigenciaFim: agora + 190 * DIA });
+      const futura = await emitir({
+        vigenciaInicio: agora + 10 * DIA,
+        vigenciaFim: agora + 190 * DIA,
+      });
       assert.equal(await publicador.dentroDaVigencia(futura), false);
       assert.equal(await publicador.dentroDaVigencia(apoliceClimatica), true);
 

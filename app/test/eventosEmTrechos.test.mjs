@@ -4,7 +4,11 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { BLOCOS_POR_CONSULTA, TENTATIVAS_POR_TRECHO, eventosEmTrechos } from "../src/cadeia/contratos.js";
+import {
+  BLOCOS_POR_CONSULTA,
+  TENTATIVAS_POR_TRECHO,
+  eventosEmTrechos,
+} from "../src/cadeia/contratos.js";
 
 /** Contrato falso que, como o no publico, recusa intervalos acima do limite. */
 function contratoFalso({ eventosNosBlocos, limite = BLOCOS_POR_CONSULTA }) {
@@ -22,7 +26,9 @@ function contratoFalso({ eventosNosBlocos, limite = BLOCOS_POR_CONSULTA }) {
       picoDeSimultaneos = Math.max(picoDeSimultaneos, simultaneos);
       await new Promise((r) => setTimeout(r, 1));
       simultaneos -= 1;
-      return eventosNosBlocos.filter((b) => b >= de && b <= ate).map((b) => ({ blockNumber: b, filtro }));
+      return eventosNosBlocos
+        .filter((b) => b >= de && b <= ate)
+        .map((b) => ({ blockNumber: b, filtro }));
     },
   };
 }
@@ -51,7 +57,8 @@ describe("eventosEmTrechos", () => {
     const ordenados = [...contrato.pedidos].sort((a, b) => a[0] - b[0]);
     expect(ordenados[0][0]).toBe(100);
     expect(ordenados.at(-1)[1]).toBe(35_000);
-    for (let i = 1; i < ordenados.length; i++) expect(ordenados[i][0]).toBe(ordenados[i - 1][1] + 1);
+    for (let i = 1; i < ordenados.length; i++)
+      expect(ordenados[i][0]).toBe(ordenados[i - 1][1] + 1);
   });
 
   test("no maximo quatro pedidos ao mesmo tempo, para nao estourar o limite de taxa do no", async () => {
@@ -89,7 +96,9 @@ describe("eventosEmTrechos", () => {
       },
     };
 
-    await expect(eventosEmTrechos(contrato, "*", 0, provedor(10), { espera: 0 })).rejects.toThrow(/pruned/);
+    await expect(eventosEmTrechos(contrato, "*", 0, provedor(10), { espera: 0 })).rejects.toThrow(
+      /pruned/,
+    );
     expect(pedidos).toBe(TENTATIVAS_POR_TRECHO);
   });
 });

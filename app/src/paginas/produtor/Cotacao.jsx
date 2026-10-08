@@ -45,7 +45,10 @@ function HistoricoClimatico({ historico, premioBps }) {
         comecando nesta data, teria acionado em <strong>{historico.acionamentos}</strong>. O
         pagamento medio teria sido de <strong>{emPercentual(historico.pagamentoMedioBps)}</strong>{" "}
         do limite por ano
-        {premioBps !== undefined ? <>; o premio cobrado e {emPercentual(premioBps)} do limite</> : null}.
+        {premioBps !== undefined ? (
+          <>; o premio cobrado e {emPercentual(premioBps)} do limite</>
+        ) : null}
+        .
       </Aviso>
 
       {historico.observacao ? <p className="silencioso">{historico.observacao}</p> : null}
@@ -78,8 +81,9 @@ function HistoricoClimatico({ historico, premioBps }) {
       </div>
 
       <p className="silencioso">
-        Estacoes do INMET a ate 100 km do talhao: {historico.estacoes.join(", ")}. Regra do
-        oraculo: {historico.regra}. {avaliados.length < historico.anos.length
+        Estacoes do INMET a ate 100 km do talhao: {historico.estacoes.join(", ")}. Regra do oraculo:{" "}
+        {historico.regra}.{" "}
+        {avaliados.length < historico.anos.length
           ? "Anos com menos de 90% dos dias medidos ficam fora da conta. "
           : ""}
         E uma frequencia historica, nao uma probabilidade atuarial. Fonte: INMET,
@@ -359,7 +363,9 @@ export default function Cotacao() {
         </div>
       </div>
 
-      {cotacao?.historico ? <HistoricoClimatico historico={cotacao.historico} premioBps={produto?.taxaPremioBps} /> : null}
+      {cotacao?.historico ? (
+        <HistoricoClimatico historico={cotacao.historico} premioBps={produto?.taxaPremioBps} />
+      ) : null}
 
       {termos && produto ? (
         <div className="cartao">

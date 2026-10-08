@@ -102,7 +102,9 @@ export function anelDoGeoJson(texto) {
         : g;
 
   if (geometria?.type !== "Polygon" || !Array.isArray(geometria.coordinates?.[0])) {
-    throw new Error("O arquivo precisa conter um Polygon (direto, em Feature ou em FeatureCollection).");
+    throw new Error(
+      "O arquivo precisa conter um Polygon (direto, em Feature ou em FeatureCollection).",
+    );
   }
 
   const anel = geometria.coordinates[0].map(([lon, lat]) => [Number(lon), Number(lat)]);

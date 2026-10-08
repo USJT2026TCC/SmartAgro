@@ -55,7 +55,9 @@ describe("historico climatico (RF06)", () => {
 
   test("estiagem que comecou antes da vigencia conta, porque o oraculo publicaria assim", () => {
     // Seco desde 1/jun; a vigencia comeca em 20/jun e dura 10 dias.
-    const serie = serieConsolidada(linhasDe("A", "2024-05-01", "2024-07-31", (d) => (d < "2024-06-01" ? 5 : 0)));
+    const serie = serieConsolidada(
+      linhasDe("A", "2024-05-01", "2024-07-31", (d) => (d < "2024-06-01" ? 5 : 0)),
+    );
 
     const { maiorIndice } = avaliarJanela(serie, Date.parse("2024-06-20T00:00:00Z"), 10);
     assert.equal(maiorIndice, 29); // 1/jun a 29/jun
@@ -107,7 +109,12 @@ describe("historico climatico (RF06)", () => {
       d.startsWith("2020-07") || d.startsWith("2020-08") ? null : 0,
     );
 
-    const h = historicoDaCondicao({ linhas, inicio: "2026-06-15", vigenciaDias: 120, termos: ESTIAGEM });
+    const h = historicoDaCondicao({
+      linhas,
+      inicio: "2026-06-15",
+      vigenciaDias: 120,
+      termos: ESTIAGEM,
+    });
 
     assert.equal(h.anos.find((a) => a.ano === 2020).avaliado, false);
     assert.equal(h.anosAvaliados, 1);
@@ -125,7 +132,12 @@ describe("historico climatico (RF06)", () => {
   });
 
   test("sem estacao proxima, diz que nao ha historico", () => {
-    const h = historicoDaCondicao({ linhas: [], inicio: "2026-06-15", vigenciaDias: 120, termos: ESTIAGEM });
+    const h = historicoDaCondicao({
+      linhas: [],
+      inicio: "2026-06-15",
+      vigenciaDias: 120,
+      termos: ESTIAGEM,
+    });
     assert.equal(h.aplicavel, false);
   });
 
@@ -133,6 +145,11 @@ describe("historico climatico (RF06)", () => {
     const linhas = lerCsvDoHistorico(
       "estacao,data,chuva_mm,horas_validas\r\nA770,2024-07-01,0.0,24\r\nA770,2024-07-02,3.2,23\r\n",
     );
-    assert.deepEqual(linhas[1], { estacao: "A770", data: "2024-07-02", chuva_mm: "3.2", horas_validas: "23" });
+    assert.deepEqual(linhas[1], {
+      estacao: "A770",
+      data: "2024-07-02",
+      chuva_mm: "3.2",
+      horas_validas: "23",
+    });
   });
 });

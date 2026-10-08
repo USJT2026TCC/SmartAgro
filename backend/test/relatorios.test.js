@@ -45,8 +45,7 @@ describe("relatorio da carteira (RF29)", () => {
 
   after(() => ctx.fechar());
 
-  const relatorio = (q = "") =>
-    ctx.api().get(`/api/relatorios/carteira${q}`).set(com(seguradora));
+  const relatorio = (q = "") => ctx.api().get(`/api/relatorios/carteira${q}`).set(com(seguradora));
 
   test("sem filtro: toda a carteira, com canceladas e tempo de liquidacao", async () => {
     const r = await relatorio();

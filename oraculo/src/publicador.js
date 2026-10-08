@@ -135,9 +135,15 @@ class Publicador {
    */
   async dentroDaVigencia(enderecoApolice) {
     const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.provider);
-    const [termos, bloco] = await Promise.all([apolice.verTermos(), this.provider.getBlock("latest")]);
+    const [termos, bloco] = await Promise.all([
+      apolice.verTermos(),
+      this.provider.getBlock("latest"),
+    ]);
 
-    return bloco.timestamp >= Number(termos.vigenciaInicio) && bloco.timestamp <= Number(termos.vigenciaFim);
+    return (
+      bloco.timestamp >= Number(termos.vigenciaInicio) &&
+      bloco.timestamp <= Number(termos.vigenciaFim)
+    );
   }
 
   /** Se o periodo ja recebeu retificacao nessa apolice (RF28). */

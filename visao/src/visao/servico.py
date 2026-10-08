@@ -13,8 +13,8 @@ produziu o numero que pagou uma indenizacao (RNF18, RNF19).
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from . import baseline
 from .clienteBackend import ClienteBackend, Lote, ResumoDivergente

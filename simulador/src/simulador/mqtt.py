@@ -32,8 +32,8 @@ import json
 from dataclasses import dataclass
 
 from .assinatura import assinar, corpo_em_bytes
-from .inmet import Leitura
 from .envio import montar_lote
+from .inmet import Leitura
 
 TOPICO_BASE = "agrosmart/leituras"
 
@@ -56,7 +56,7 @@ class Envelope:
         )
 
     @staticmethod
-    def de_json(texto: str | bytes) -> "Envelope":
+    def de_json(texto: str | bytes) -> Envelope:
         dados = json.loads(texto)
 
         return Envelope(
@@ -102,9 +102,7 @@ def publicar(
         for indice, envelope in enumerate(envelopes):
             if indice > 0 and intervalo_s > 0:
                 time.sleep(intervalo_s)
-            info = cliente.publish(
-                f"{topico_base}/{envelope.fonte}", envelope.para_json(), qos=1
-            )
+            info = cliente.publish(f"{topico_base}/{envelope.fonte}", envelope.para_json(), qos=1)
             info.wait_for_publish(timeout=30)
     finally:
         cliente.loop_stop()

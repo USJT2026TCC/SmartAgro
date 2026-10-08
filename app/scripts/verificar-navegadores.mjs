@@ -33,7 +33,8 @@ const { values: opcoes } = parseArgs({
     porta: { type: "string", default: "4173" },
   },
 });
-if (!opcoes.apolice) throw new Error("Informe --apolice 0x... (uma apolice da rede, com publicacao)");
+if (!opcoes.apolice)
+  throw new Error("Informe --apolice 0x... (uma apolice da rede, com publicacao)");
 
 const CHAIN_IDS = { sepolia: 11155111, localhost: 31337 };
 const CONTA = "0x95eA48b7BF91446CF12C156aC2FDeA75Af03fD70";
@@ -48,7 +49,11 @@ const NAVEGADORES = [
 process.env.VITE_REDE = opcoes.rede;
 const saida = join(tmpdir(), `agrosmart-rnf05-${opcoes.rede}`);
 await build({ logLevel: "warn", build: { outDir: saida, emptyOutDir: true } });
-const servidor = await preview({ build: { outDir: saida }, preview: { port: Number(opcoes.porta), strictPort: true }, logLevel: "warn" });
+const servidor = await preview({
+  build: { outDir: saida },
+  preview: { port: Number(opcoes.porta), strictPort: true },
+  logLevel: "warn",
+});
 const BASE = `http://localhost:${opcoes.porta}`;
 
 function carteiraInjetada({ conta, chainId }) {
@@ -84,8 +89,14 @@ try {
       pagina.on("pageerror", (e) => erros.push(e.message));
       pagina.on("console", (m) => m.type() === "error" && erros.push(m.text()));
       // O console diz so "404"; a resposta diz de que endereco.
-      pagina.on("response", (r) => r.status() >= 400 && erros.push(`${r.status()} ${new URL(r.url()).pathname}`));
-      await pagina.addInitScript(carteiraInjetada, { conta: CONTA, chainId: CHAIN_IDS[opcoes.rede] });
+      pagina.on(
+        "response",
+        (r) => r.status() >= 400 && erros.push(`${r.status()} ${new URL(r.url()).pathname}`),
+      );
+      await pagina.addInitScript(carteiraInjetada, {
+        conta: CONTA,
+        chainId: CHAIN_IDS[opcoes.rede],
+      });
 
       const medir = async (etapa, acao) => {
         console.log(`${nome}: ${etapa}...`);
@@ -110,7 +121,10 @@ try {
 
       await medir("detalhe da apolice lido da rede", async () => {
         await pagina.goto(`${BASE}/apolice/${opcoes.apolice}`);
-        await pagina.getByText("Oraculo publicou os indices do periodo").first().waitFor({ timeout: 30_000 });
+        await pagina
+          .getByText("Oraculo publicou os indices do periodo")
+          .first()
+          .waitFor({ timeout: 30_000 });
       });
 
       const pedidos = await pagina.evaluate(() => window.__pedidosDaCarteira);

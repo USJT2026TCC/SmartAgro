@@ -60,7 +60,14 @@ describe("contestacao (RF28)", () => {
     await b.query(
       `INSERT INTO eventos_cadeia (contrato, nome, bloco, indice_log, tx_hash, argumentos)
        VALUES ($1, 'IndicesPublicados', 10, 0, '0xpub', $2)`,
-      [APOLICE, JSON.stringify({ periodo: String(PERIODO), indiceDanoBps: "1200", hashEvidencias: HASH_LOTE })],
+      [
+        APOLICE,
+        JSON.stringify({
+          periodo: String(PERIODO),
+          indiceDanoBps: "1200",
+          hashEvidencias: HASH_LOTE,
+        }),
+      ],
     );
     return rows[0].id;
   });
@@ -100,7 +107,9 @@ describe("contestacao (RF28)", () => {
   });
 
   test("apolice de outro produtor responde como inexistente", async () => {
-    await ctx.banco.query("UPDATE apolices SET produtor_carteira = '0x0000000000000000000000000000000000000001'");
+    await ctx.banco.query(
+      "UPDATE apolices SET produtor_carteira = '0x0000000000000000000000000000000000000001'",
+    );
     assert.equal((await contestar()).status, 404);
   });
 
@@ -154,14 +163,22 @@ describe("contestacao (RF28)", () => {
 
     // O oraculo relata a transacao; a contestacao sai da fila.
     const tx = `0x${"cd".repeat(32)}`;
-    const relato = await ctx.api().post(`/api/oraculo/retificacoes/${id}`).set(CHAVE).send({ txHash: tx });
+    const relato = await ctx
+      .api()
+      .post(`/api/oraculo/retificacoes/${id}`)
+      .set(CHAVE)
+      .send({ txHash: tx });
     assert.equal(relato.status, 200);
 
     const depois = await ctx.api().get("/api/oraculo/retificacoes-pendentes").set(CHAVE);
     assert.equal(depois.body.retificacoes.length, 0);
 
     // Relatar de novo e conflito, nao uma segunda publicacao.
-    const repetido = await ctx.api().post(`/api/oraculo/retificacoes/${id}`).set(CHAVE).send({ txHash: tx });
+    const repetido = await ctx
+      .api()
+      .post(`/api/oraculo/retificacoes/${id}`)
+      .set(CHAVE)
+      .send({ txHash: tx });
     assert.equal(repetido.status, 409);
   });
 

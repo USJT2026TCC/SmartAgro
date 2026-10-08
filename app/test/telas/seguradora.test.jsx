@@ -100,10 +100,15 @@ const PROPOSTA = {
 
 describe("propostas e emissao (RF07, UC05)", () => {
   test("sem carteira, a emissao fica bloqueada e o motivo aparece", async () => {
-    await abrir("/seguradora/propostas", { perfil: "seguradora", rotas: { "GET /propostas": { propostas: [PROPOSTA] } } });
+    await abrir("/seguradora/propostas", {
+      perfil: "seguradora",
+      rotas: { "GET /propostas": { propostas: [PROPOSTA] } },
+    });
 
     expect(await achar("Carteira nao conectada.")).toBeTruthy();
-    expect((await screen.findByRole("button", { name: "Emitir apolice na rede" })).disabled).toBe(true);
+    expect((await screen.findByRole("button", { name: "Emitir apolice na rede" })).disabled).toBe(
+      true,
+    );
   });
 
   test("emite: o servidor prepara, a carteira assina, o servidor confere", async () => {
@@ -112,8 +117,14 @@ describe("propostas e emissao (RF07, UC05)", () => {
       perfil: "seguradora",
       rotas: {
         "GET /propostas": { propostas: [PROPOSTA] },
-        "POST /propostas/:id/preparar": { termos: { produtor: "0x1" }, hashTermos: `0x${"ab".repeat(32)}`, descricaoDosTermos: "x" },
-        "POST /propostas/:id/emissao": { apolice: { endereco: "0x00000000000000000000000000000000000a9011" } },
+        "POST /propostas/:id/preparar": {
+          termos: { produtor: "0x1" },
+          hashTermos: `0x${"ab".repeat(32)}`,
+          descricaoDosTermos: "x",
+        },
+        "POST /propostas/:id/emissao": {
+          apolice: { endereco: "0x00000000000000000000000000000000000a9011" },
+        },
       },
     });
 
@@ -134,19 +145,29 @@ describe("propostas e emissao (RF07, UC05)", () => {
       hashTermos: `0x${"ab".repeat(32)}`,
       apolice: { endereco: "0x00000000000000000000000000000000000a9011", txEmissao: TX },
     };
-    await abrir("/seguradora/propostas", { perfil: "seguradora", rotas: { "GET /propostas": { propostas: [emitida] } } });
+    await abrir("/seguradora/propostas", {
+      perfil: "seguradora",
+      rotas: { "GET /propostas": { propostas: [emitida] } },
+    });
 
     const botao = await screen.findByRole("button", { name: /Depositar/ });
     await waitFor(() => expect(botao.disabled).toBe(false));
     fireEvent.click(botao);
 
     expect(await achar(/A apolice esta ativa/)).toBeTruthy();
-    expect(cadeia.chamadas[0]).toEqual(["depositarGarantia", emitida.apolice.endereco, 1080000000000000000n]);
+    expect(cadeia.chamadas[0]).toEqual([
+      "depositarGarantia",
+      emitida.apolice.endereco,
+      1080000000000000000n,
+    ]);
   });
 
   test("carteira que nao e a seguradora da fabrica e avisada (RNF10)", async () => {
     carteiraFalsa("0x90F79bf6EB2c4f870365E785982E1f101E93b906");
-    await abrir("/seguradora/propostas", { perfil: "seguradora", rotas: { "GET /propostas": { propostas: [] } } });
+    await abrir("/seguradora/propostas", {
+      perfil: "seguradora",
+      rotas: { "GET /propostas": { propostas: [] } },
+    });
 
     expect(await achar("Esta carteira nao e a seguradora da fabrica.")).toBeTruthy();
     expect(await achar("Nenhuma proposta recebida.")).toBeTruthy();
@@ -155,11 +176,16 @@ describe("propostas e emissao (RF07, UC05)", () => {
   test("recusar chama o servidor", async () => {
     const { chamadas } = await abrir("/seguradora/propostas", {
       perfil: "seguradora",
-      rotas: { "GET /propostas": { propostas: [PROPOSTA] }, "POST /propostas/:id/recusar": { ok: true } },
+      rotas: {
+        "GET /propostas": { propostas: [PROPOSTA] },
+        "POST /propostas/:id/recusar": { ok: true },
+      },
     });
 
     fireEvent.click(await screen.findByRole("button", { name: "Recusar" }));
-    await waitFor(() => expect(chamadas.some((c) => c.caminho === "/propostas/p1/recusar")).toBe(true));
+    await waitFor(() =>
+      expect(chamadas.some((c) => c.caminho === "/propostas/p1/recusar")).toBe(true),
+    );
   });
 });
 
@@ -196,7 +222,16 @@ describe("fontes de dados (RF11, RF13)", () => {
       rotas: {
         "GET /fontes": {
           fontes: [
-            { id: "estacao-inmet-a770", tipo: "estacao", endereco: "0xBcd4042DE499D14e55001CcbB24a551F3b954096", talhao: "talhao-01", escore: "0.42", observacoes: 3312, ultima_leitura_em: "2026-10-07T00:00:00Z", ativa: true },
+            {
+              id: "estacao-inmet-a770",
+              tipo: "estacao",
+              endereco: "0xBcd4042DE499D14e55001CcbB24a551F3b954096",
+              talhao: "talhao-01",
+              escore: "0.42",
+              observacoes: 3312,
+              ultima_leitura_em: "2026-10-07T00:00:00Z",
+              ativa: true,
+            },
           ],
         },
         "GET /talhoes": { talhoes: [{ id: "t1", identificador: "talhao-01" }] },
@@ -207,7 +242,9 @@ describe("fontes de dados (RF11, RF13)", () => {
 
     expect(await achar("fora do indice")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
-    await waitFor(() => expect(chamadas.some((c) => c.metodo === "PATCH" && c.corpo.ativa === false)).toBe(true));
+    await waitFor(() =>
+      expect(chamadas.some((c) => c.metodo === "PATCH" && c.corpo.ativa === false)).toBe(true),
+    );
 
     fireEvent.change(screen.getByLabelText("Identificador"), { target: { value: "sensor-02" } });
     fireEvent.click(screen.getByRole("button", { name: "Registrar" }));
@@ -218,11 +255,35 @@ describe("fontes de dados (RF11, RF13)", () => {
 const RELATORIO = {
   filtros: {},
   opcoesDeFiltro: { culturas: ["milho", "soja"], regioes: ["Sao Simao/SP"] },
-  carteira: { apolices: 2, ativas: 1, aguardando_garantia: 0, liquidadas: 1, encerradas: 0, canceladas: 0, limite_total_wei: "2000000000000000000", pago_total_wei: "1000000000000000000", taxaDeAcionamento: 0.5 },
-  porCultura: [{ cultura: "soja", apolices: 2, liquidadas: 1, pago_total_wei: "1000000000000000000" }],
-  porRegiao: [{ regiao: "Sao Simao/SP", apolices: 2, liquidadas: 1, pago_total_wei: "1000000000000000000" }],
+  carteira: {
+    apolices: 2,
+    ativas: 1,
+    aguardando_garantia: 0,
+    liquidadas: 1,
+    encerradas: 0,
+    canceladas: 0,
+    limite_total_wei: "2000000000000000000",
+    pago_total_wei: "1000000000000000000",
+    taxaDeAcionamento: 0.5,
+  },
+  porCultura: [
+    { cultura: "soja", apolices: 2, liquidadas: 1, pago_total_wei: "1000000000000000000" },
+  ],
+  porRegiao: [
+    { regiao: "Sao Simao/SP", apolices: 2, liquidadas: 1, pago_total_wei: "1000000000000000000" },
+  ],
   liquidacao: { pagamentos: 1, media_horas: 6, maximo_horas: 6 },
-  publicacoes: { total: 3, com_acionamento: 1, gas_minimo: "172000", gas_maximo: "231000", gas_medio: "190000", gas_medio_sem_acionar: "172000", gas_medio_acionando: "231000", latencia_media_ms: 170, latencia_p95_ms: 200 },
+  publicacoes: {
+    total: 3,
+    com_acionamento: 1,
+    gas_minimo: "172000",
+    gas_maximo: "231000",
+    gas_medio: "190000",
+    gas_medio_sem_acionar: "172000",
+    gas_medio_acionando: "231000",
+    latencia_media_ms: 170,
+    latencia_p95_ms: 200,
+  },
   fontes: { total: 3, ativas: 3, abaixo_do_limiar: 0 },
   propostasPendentes: 1,
 };
@@ -234,9 +295,23 @@ describe("carteira e relatorio (RF29)", () => {
       rotas: {
         "GET /relatorios/carteira": RELATORIO,
         "GET /apolices": {
-          apolices: [{ endereco: "0xa1", talhao: "talhao-01", cultura: "soja", produtor: { nome: "Joao", carteira: "0x1" }, emitidaEm: "2026-10-01T00:00:00Z", valorIndenizacaoWei: "1", valorPagoWei: "0", situacao: 1 }],
+          apolices: [
+            {
+              endereco: "0xa1",
+              talhao: "talhao-01",
+              cultura: "soja",
+              produtor: { nome: "Joao", carteira: "0x1" },
+              emitidaEm: "2026-10-01T00:00:00Z",
+              valorIndenizacaoWei: "1",
+              valorPagoWei: "0",
+              situacao: 1,
+            },
+          ],
         },
-        "GET /saude": { banco: { motor: "pglite" }, indexador: { ativo: true, ultimoErro: { mensagem: "no fora do ar" } } },
+        "GET /saude": {
+          banco: { motor: "pglite" },
+          indexador: { ativo: true, ultimoErro: { mensagem: "no fora do ar" } },
+        },
       },
     });
 
@@ -246,7 +321,11 @@ describe("carteira e relatorio (RF29)", () => {
 
     fireEvent.change(screen.getByLabelText("Cultura"), { target: { value: "soja" } });
     await waitFor(() =>
-      expect(chamadas.some((c) => c.caminho === "/relatorios/carteira" && c.consulta.get("cultura") === "soja")).toBe(true),
+      expect(
+        chamadas.some(
+          (c) => c.caminho === "/relatorios/carteira" && c.consulta.get("cultura") === "soja",
+        ),
+      ).toBe(true),
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "Limpar filtros" }));
@@ -259,7 +338,18 @@ describe("talhoes, produtores e produtos (RF03, RF05, HU09)", () => {
     identificador: "talhao-01",
     cultura: "soja",
     areaHa: "459.05",
-    poligono: { type: "Polygon", coordinates: [[[-47.59, -21.45], [-47.57, -21.45], [-47.57, -21.47], [-47.59, -21.47], [-47.59, -21.45]]] },
+    poligono: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [-47.59, -21.45],
+          [-47.57, -21.45],
+          [-47.57, -21.47],
+          [-47.59, -21.47],
+          [-47.59, -21.45],
+        ],
+      ],
+    },
     propriedade: { id: "pp1", nome: "Fazenda Santa Clara", municipio: "Sao Simao/SP" },
     produtor: { id: "u1", nome: "Joao Ribeiro" },
     fontesAtivas: 1,
@@ -270,10 +360,38 @@ describe("talhoes, produtores e produtos (RF03, RF05, HU09)", () => {
     return {
       "GET /talhoes": { talhoes: [TALHAO] },
       "GET /produtos": {
-        produtos: [{ id: "pr1", nome: "Estiagem — soja", cultura: "soja", operador: 0, modoPagamento: 0, limiarClimatico: 30, limiarDanoBps: 0, valorPorHectareEth: "0.006", taxaPremioBps: 450, vigenciaDias: 180, ativo: true }],
+        produtos: [
+          {
+            id: "pr1",
+            nome: "Estiagem — soja",
+            cultura: "soja",
+            operador: 0,
+            modoPagamento: 0,
+            limiarClimatico: 30,
+            limiarDanoBps: 0,
+            valorPorHectareEth: "0.006",
+            taxaPremioBps: 450,
+            vigenciaDias: 180,
+            ativo: true,
+          },
+        ],
       },
-      "GET /produtores": { produtores: [{ id: "u1", identificador: "produtor", nome: "Joao Ribeiro", documento: "123" }] },
-      "GET /propriedades": { propriedades: [{ id: "pp1", nome: "Fazenda Santa Clara", municipio: "Sao Simao/SP", produtor_nome: "Joao Ribeiro", talhoes: 1 }] },
+      "GET /produtores": {
+        produtores: [
+          { id: "u1", identificador: "produtor", nome: "Joao Ribeiro", documento: "123" },
+        ],
+      },
+      "GET /propriedades": {
+        propriedades: [
+          {
+            id: "pp1",
+            nome: "Fazenda Santa Clara",
+            municipio: "Sao Simao/SP",
+            produtor_nome: "Joao Ribeiro",
+            talhoes: 1,
+          },
+        ],
+      },
       ...extra,
     };
   }
@@ -281,49 +399,80 @@ describe("talhoes, produtores e produtos (RF03, RF05, HU09)", () => {
   test("cadastra produtor e edita a propriedade", async () => {
     const { chamadas } = await abrir("/seguradora/talhoes", {
       perfil: "seguradora",
-      rotas: rotasBase({ "POST /produtores": { produtor: { nome: "Maria" } }, "PATCH /propriedades/:id": { propriedade: {} } }),
+      rotas: rotasBase({
+        "POST /produtores": { produtor: { nome: "Maria" } },
+        "PATCH /propriedades/:id": { propriedade: {} },
+      }),
     });
 
-    fireEvent.change(await screen.findByLabelText("Identificador de acesso"), { target: { value: "maria" } });
-    fireEvent.change(screen.getByLabelText("Nome", { selector: "#novo-nome" }), { target: { value: "Maria" } });
-    fireEvent.change(screen.getByLabelText("Senha inicial"), { target: { value: "senha-longa-123" } });
+    fireEvent.change(await screen.findByLabelText("Identificador de acesso"), {
+      target: { value: "maria" },
+    });
+    fireEvent.change(screen.getByLabelText("Nome", { selector: "#novo-nome" }), {
+      target: { value: "Maria" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha inicial"), {
+      target: { value: "senha-longa-123" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Cadastrar produtor" }));
     expect(await achar(/Produtor Maria cadastrado/)).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Municipio de Fazenda Santa Clara"), { target: { value: "Cravinhos/SP" } });
+    fireEvent.change(screen.getByLabelText("Municipio de Fazenda Santa Clara"), {
+      target: { value: "Cravinhos/SP" },
+    });
     const linha = screen.getByLabelText("Municipio de Fazenda Santa Clara").closest("tr");
     fireEvent.click(within(linha).getByRole("button", { name: "Salvar" }));
-    await waitFor(() => expect(chamadas.some((c) => c.metodo === "PATCH" && c.corpo.municipio === "Cravinhos/SP")).toBe(true));
+    await waitFor(() =>
+      expect(
+        chamadas.some((c) => c.metodo === "PATCH" && c.corpo.municipio === "Cravinhos/SP"),
+      ).toBe(true),
+    );
   });
 
   test("cadastra talhao pelo poligono digitado e mostra a area do PostGIS", async () => {
     const { chamadas } = await abrir("/seguradora/talhoes", {
       perfil: "seguradora",
-      rotas: rotasBase({ "POST /talhoes": { talhao: { identificador: "talhao-09", areaHa: "377.63" } } }),
+      rotas: rotasBase({
+        "POST /talhoes": { talhao: { identificador: "talhao-09", areaHa: "377.63" } },
+      }),
     });
 
-    fireEvent.change(await screen.findByPlaceholderText("talhao-03"), { target: { value: "talhao-09" } });
+    fireEvent.change(await screen.findByPlaceholderText("talhao-03"), {
+      target: { value: "talhao-09" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Salvar talhao" }));
 
     expect(await achar(/Area medida pelo PostGIS: 377.63 ha/)).toBeTruthy();
-    expect(chamadas.find((c) => c.caminho === "/talhoes" && c.metodo === "POST").corpo.poligono.length).toBe(4);
+    expect(
+      chamadas.find((c) => c.caminho === "/talhoes" && c.metodo === "POST").corpo.poligono.length,
+    ).toBe(4);
   });
 
   test("desenha o talhao clicando no mapa (HU09, criterio 1)", async () => {
     await abrir("/seguradora/talhoes", { perfil: "seguradora", rotas: rotasBase() });
 
     fireEvent.click((await screen.findAllByRole("button", { name: "Limpar" }))[0]);
-    for (const [lat, lng] of [[-21.45, -47.59], [-21.45, -47.57], [-21.47, -47.57]]) {
+    for (const [lat, lng] of [
+      [-21.45, -47.59],
+      [-21.45, -47.57],
+      [-21.47, -47.57],
+    ]) {
       mapa.aoClicar({ latlng: { lat, lng } });
     }
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Vertices (lon, lat)").value).toBe("[[-47.59,-21.45],[-47.57,-21.45],[-47.57,-21.47]]"),
+      expect(screen.getByLabelText("Vertices (lon, lat)").value).toBe(
+        "[[-47.59,-21.45],[-47.57,-21.45],[-47.57,-21.47]]",
+      ),
     );
     expect(await achar("3 vertice(s). Clique no mapa para marcar.")).toBeTruthy();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Desfazer ponto" })[0]);
-    await waitFor(() => expect(screen.getByLabelText("Vertices (lon, lat)").value).toBe("[[-47.59,-21.45],[-47.57,-21.45]]"));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Vertices (lon, lat)").value).toBe(
+        "[[-47.59,-21.45],[-47.57,-21.45]]",
+      ),
+    );
   });
 
   test("importa o poligono de um arquivo GeoJSON", async () => {
@@ -332,15 +481,21 @@ describe("talhoes, produtores e produtos (RF03, RF05, HU09)", () => {
     const geojson = JSON.stringify({ type: "Feature", geometry: TALHAO.poligono });
     const arquivo = new File([geojson], "talhao.geojson", { type: "application/geo+json" });
     arquivo.text = async () => geojson; // o File do jsdom nao tem text()
-    fireEvent.change(await screen.findByLabelText("Importar GeoJSON"), { target: { files: [arquivo] } });
+    fireEvent.change(await screen.findByLabelText("Importar GeoJSON"), {
+      target: { files: [arquivo] },
+    });
 
-    await waitFor(() => expect(screen.getByLabelText("Vertices (lon, lat)").value).toContain("-47.59"));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Vertices (lon, lat)").value).toContain("-47.59"),
+    );
   });
 
   test("poligono que nao e JSON e recusado antes de ir ao servidor", async () => {
     await abrir("/seguradora/talhoes", { perfil: "seguradora", rotas: rotasBase() });
 
-    fireEvent.change(await screen.findByLabelText("Vertices (lon, lat)"), { target: { value: "[[1,2]," } });
+    fireEvent.change(await screen.findByLabelText("Vertices (lon, lat)"), {
+      target: { value: "[[1,2]," },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Salvar talhao" }));
     expect(await achar(/O poligono precisa ser JSON valido/)).toBeTruthy();
   });
@@ -348,11 +503,16 @@ describe("talhoes, produtores e produtos (RF03, RF05, HU09)", () => {
   test("edita um talhao sem proposta e remove outro", async () => {
     const { chamadas } = await abrir("/seguradora/talhoes", {
       perfil: "seguradora",
-      rotas: rotasBase({ "PATCH /talhoes/:id": { talhao: { identificador: "talhao-01", areaHa: "100" } }, "DELETE /talhoes/:id": { status: 204, corpo: null } }),
+      rotas: rotasBase({
+        "PATCH /talhoes/:id": { talhao: { identificador: "talhao-01", areaHa: "100" } },
+        "DELETE /talhoes/:id": { status: 204, corpo: null },
+      }),
     });
 
     fireEvent.click(await screen.findByRole("button", { name: "Editar" }));
-    fireEvent.change(screen.getByLabelText("Cultura", { selector: "#cultura-edicao" }), { target: { value: "milho" } });
+    fireEvent.change(screen.getByLabelText("Cultura", { selector: "#cultura-edicao" }), {
+      target: { value: "milho" },
+    });
     fireEvent.click(screen.getAllByRole("button", { name: "Salvar talhao" }).at(-1));
     expect(await achar(/Talhao talhao-01 atualizado/)).toBeTruthy();
     expect(chamadas.find((c) => c.metodo === "PATCH").corpo.cultura).toBe("milho");
@@ -369,9 +529,13 @@ describe("talhoes, produtores e produtos (RF03, RF05, HU09)", () => {
 
     await screen.findByText("Configurar produto indexado");
     const formulario = screen.getByText("Configurar produto indexado").closest("form");
-    fireEvent.change(within(formulario).getAllByRole("textbox")[0], { target: { value: "Seca escalonada" } });
+    fireEvent.change(within(formulario).getAllByRole("textbox")[0], {
+      target: { value: "Seca escalonada" },
+    });
     fireEvent.submit(formulario);
 
-    await waitFor(() => expect(chamadas.some((c) => c.metodo === "POST" && c.caminho === "/produtos")).toBe(true));
+    await waitFor(() =>
+      expect(chamadas.some((c) => c.metodo === "POST" && c.caminho === "/produtos")).toBe(true),
+    );
   });
 });

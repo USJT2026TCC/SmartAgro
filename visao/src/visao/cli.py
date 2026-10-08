@@ -127,7 +127,9 @@ def comando_api(opcoes) -> None:
     print(f"Endereco...: http://{opcoes.host}:{opcoes.porta}  (documentacao em /docs)")
     print()
 
-    uvicorn.run(criar_api(estimador, modelo.CAMINHO_DOS_PESOS or None), host=opcoes.host, port=opcoes.porta)
+    uvicorn.run(
+        criar_api(estimador, modelo.CAMINHO_DOS_PESOS or None), host=opcoes.host, port=opcoes.porta
+    )
 
 
 def construir_parser() -> argparse.ArgumentParser:

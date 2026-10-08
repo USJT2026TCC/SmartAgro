@@ -49,7 +49,8 @@ export function serieConsolidada(linhas, { horasMinimas = HORAS_MINIMAS } = {}) 
   for (const l of linhas) {
     if (Number(l.horas_validas) < horasMinimas) continue;
 
-    const data = typeof l.data === "string" ? l.data.slice(0, 10) : l.data.toISOString().slice(0, 10);
+    const data =
+      typeof l.data === "string" ? l.data.slice(0, 10) : l.data.toISOString().slice(0, 10);
     const dia = porDia.get(data) ?? { soma: 0, estacoes: 0 };
     dia.soma += Number(l.chuva_mm);
     dia.estacoes += 1;
@@ -92,7 +93,10 @@ export function avaliarJanela(serie, inicioMs, dias, { limiarChuvaMm = LIMIAR_CH
 }
 
 /** Percentual devido pela regra do contrato (ApolicePolicy._percentualDevido), so a parte climatica. */
-export function percentualClimatico(indice, { limiarClimatico, limiarClimaticoIntegral, modoPagamento }) {
+export function percentualClimatico(
+  indice,
+  { limiarClimatico, limiarClimaticoIntegral, modoPagamento },
+) {
   if (indice < limiarClimatico) return 0;
   if (Number(modoPagamento) === 0) return BPS;
   if (indice >= limiarClimaticoIntegral) return BPS;
@@ -126,7 +130,10 @@ export function historicoDaCondicao({ linhas, inicio, vigenciaDias, termos }) {
 
   const serie = serieConsolidada(linhas);
   if (serie.size === 0) {
-    return { aplicavel: false, motivo: "Nao ha historico de chuva de estacoes proximas a este talhao." };
+    return {
+      aplicavel: false,
+      motivo: "Nao ha historico de chuva de estacoes proximas a este talhao.",
+    };
   }
 
   const datas = [...serie.keys()].sort();

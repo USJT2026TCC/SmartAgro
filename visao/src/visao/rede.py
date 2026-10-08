@@ -227,7 +227,9 @@ def carregar(caminho) -> tuple[nn.Module, str]:
         )
 
     # Sempre sem pre-treino: os numeros vem todos do arquivo de pesos.
-    modelo = criar(pacote.get("arquitetura", "unet"), pretreinado=False, base=pacote.get("base") or 32)
+    modelo = criar(
+        pacote.get("arquitetura", "unet"), pretreinado=False, base=pacote.get("base") or 32
+    )
     modelo.load_state_dict(pacote["estado"])
     modelo.entrada = int(pacote.get("entrada", ENTRADA_DO_TREINO))
     modelo.eval()

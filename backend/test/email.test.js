@@ -54,7 +54,9 @@ describe("e-mail das notificacoes (RF27)", () => {
   }
 
   test("os usuarios de demonstracao tem e-mail no dominio reservado .test", async () => {
-    const { rows } = await ctx.banco.query("SELECT email FROM usuarios WHERE identificador = 'produtor'");
+    const { rows } = await ctx.banco.query(
+      "SELECT email FROM usuarios WHERE identificador = 'produtor'",
+    );
     assert.equal(rows[0].email, "produtor@agrosmart.test");
   });
 
@@ -73,11 +75,15 @@ describe("e-mail das notificacoes (RF27)", () => {
   });
 
   test("com o servidor fora do ar, o aviso fica pendente e e tentado de novo", async () => {
-    const despachante = criarDespachanteDeEmail(ctx.banco, { transporte: transporteFalso({ falhar: true }) });
+    const despachante = criarDespachanteDeEmail(ctx.banco, {
+      transporte: transporteFalso({ falhar: true }),
+    });
 
     assert.deepEqual(await despachante.despachar(), { enviados: 0, falhas: 1 });
 
-    const { rows } = await ctx.banco.query("SELECT email_enviado_em, email_tentativas FROM notificacoes");
+    const { rows } = await ctx.banco.query(
+      "SELECT email_enviado_em, email_tentativas FROM notificacoes",
+    );
     assert.equal(rows[0].email_enviado_em, null);
     assert.equal(rows[0].email_tentativas, 1);
 
@@ -98,7 +104,9 @@ describe("e-mail das notificacoes (RF27)", () => {
     const despachante = criarDespachanteDeEmail(ctx.banco, { transporte: transporteFalso() });
 
     assert.deepEqual(await despachante.despachar(), { enviados: 0, falhas: 0 });
-    await ctx.banco.query("UPDATE usuarios SET email = 'produtor@agrosmart.test' WHERE id = $1", [produtorId]);
+    await ctx.banco.query("UPDATE usuarios SET email = 'produtor@agrosmart.test' WHERE id = $1", [
+      produtorId,
+    ]);
   });
 
   test("sem SMTP, a mensagem vira um arquivo .eml na caixa de saida local", async () => {
@@ -108,8 +116,16 @@ describe("e-mail das notificacoes (RF27)", () => {
     assert.equal(tipo, "caixa-de-saida");
     await transporte.sendMail(
       montarMensagem(
-        { email: "produtor@agrosmart.test", titulo: "Teste", mensagem: "Corpo do aviso.", tx_hash: TX },
-        { remetente: "AgroSmart <avisos@agrosmart.test>", explorador: "https://sepolia.etherscan.io" },
+        {
+          email: "produtor@agrosmart.test",
+          titulo: "Teste",
+          mensagem: "Corpo do aviso.",
+          tx_hash: TX,
+        },
+        {
+          remetente: "AgroSmart <avisos@agrosmart.test>",
+          explorador: "https://sepolia.etherscan.io",
+        },
       ),
     );
 

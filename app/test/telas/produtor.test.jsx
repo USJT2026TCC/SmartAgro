@@ -6,7 +6,9 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { CONTA_DO_PRODUTOR, USUARIOS, abrir, achar, carteiraFalsa } from "./ambiente";
 
-vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn(async () => "data:image/png;base64,AAAA") } }));
+vi.mock("qrcode", () => ({
+  default: { toDataURL: vi.fn(async () => "data:image/png;base64,AAAA") },
+}));
 
 afterEach(() => {
   // Desmonta antes de remover a carteira: a tela tira os ouvintes ao sair.
@@ -24,13 +26,34 @@ describe("minhas apolices", () => {
       rotas: {
         "GET /propostas": {
           propostas: [
-            { id: "p1", situacao: "preparada", talhao: { identificador: "talhao-01" }, produto: { nome: "Estiagem — soja" }, valorIndenizacaoWei: "1000000000000000000" },
-            { id: "p2", situacao: "emitida", talhao: { identificador: "talhao-01" }, produto: { nome: "x" }, valorIndenizacaoWei: "1" },
+            {
+              id: "p1",
+              situacao: "preparada",
+              talhao: { identificador: "talhao-01" },
+              produto: { nome: "Estiagem — soja" },
+              valorIndenizacaoWei: "1000000000000000000",
+            },
+            {
+              id: "p2",
+              situacao: "emitida",
+              talhao: { identificador: "talhao-01" },
+              produto: { nome: "x" },
+              valorIndenizacaoWei: "1",
+            },
           ],
         },
         "GET /apolices": {
           apolices: [
-            { endereco: APOLICE, talhao: "talhao-01", cultura: "soja", situacao: 2, valorIndenizacaoWei: "10000000000000000", valorPagoWei: "10000000000000000", emitidaEm: "2026-10-07T00:00:00Z", produtor: { carteira: CONTA_DO_PRODUTOR } },
+            {
+              endereco: APOLICE,
+              talhao: "talhao-01",
+              cultura: "soja",
+              situacao: 2,
+              valorIndenizacaoWei: "10000000000000000",
+              valorPagoWei: "10000000000000000",
+              emitidaEm: "2026-10-07T00:00:00Z",
+              produtor: { carteira: CONTA_DO_PRODUTOR },
+            },
           ],
         },
       },
@@ -38,7 +61,9 @@ describe("minhas apolices", () => {
 
     expect(await achar("aguardando assinatura")).toBeTruthy();
     expect(await achar(/Recebeu 0,01 ETH/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Detalhes" }).getAttribute("href")).toBe(`/apolice/${APOLICE}`);
+    expect(screen.getByRole("link", { name: "Detalhes" }).getAttribute("href")).toBe(
+      `/apolice/${APOLICE}`,
+    );
   });
 
   test("sem carteira vinculada, avisa e aponta a tela de vinculo", async () => {
@@ -68,13 +93,18 @@ describe("minha carteira (RF02, HU07)", () => {
     const { chamadas } = await abrir("/produtor/carteira", {
       perfil: "produtor",
       rotas: {
-        "POST /carteira/desafio": { desafioId: "d1", mensagem: "AgroSmart: vincular carteira\nnonce 42" },
+        "POST /carteira/desafio": {
+          desafioId: "d1",
+          mensagem: "AgroSmart: vincular carteira\nnonce 42",
+        },
         "POST /carteira/vincular": { ok: true },
       },
     });
 
     expect(await achar("A carteira conectada e outra.")).toBeTruthy();
-    fireEvent.click(await screen.findByRole("button", { name: "Assinar e vincular esta carteira" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Assinar e vincular esta carteira" }),
+    );
 
     expect(await achar(/Titularidade comprovada/)).toBeTruthy();
     const vinculo = chamadas.find((c) => c.caminho === "/carteira/vincular");
@@ -92,7 +122,9 @@ describe("minha carteira (RF02, HU07)", () => {
 
     expect(await achar("Esta e a carteira vinculada ao seu cadastro.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Desvincular" }));
-    await waitFor(() => expect(chamadas.some((c) => c.metodo === "DELETE" && c.caminho === "/carteira")).toBe(true));
+    await waitFor(() =>
+      expect(chamadas.some((c) => c.metodo === "DELETE" && c.caminho === "/carteira")).toBe(true),
+    );
   });
 
   test("carteira em outra rede oferece a troca", async () => {
@@ -102,7 +134,9 @@ describe("minha carteira (RF02, HU07)", () => {
     // O cabecalho tambem oferece a troca; o da pagina e o ultimo.
     const botoes = await screen.findAllByRole("button", { name: /Trocar para/ });
     fireEvent.click(botoes.at(-1));
-    await waitFor(() => expect(ethereum.pedidos.some((p) => p.method === "wallet_switchEthereumChain")).toBe(true));
+    await waitFor(() =>
+      expect(ethereum.pedidos.some((p) => p.method === "wallet_switchEthereumChain")).toBe(true),
+    );
   });
 });
 
@@ -123,7 +157,9 @@ describe("minha conta: segundo fator (RF01)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmar e ativar" }));
 
     expect(await achar(/Segundo fator ativado/)).toBeTruthy();
-    expect(chamadas.find((c) => c.caminho === "/autenticacao/totp/ativar").corpo.codigo).toBe("123456");
+    expect(chamadas.find((c) => c.caminho === "/autenticacao/totp/ativar").corpo.codigo).toBe(
+      "123456",
+    );
   });
 
   test("desativar exige o codigo atual, e o erro do servidor aparece", async () => {
@@ -131,7 +167,10 @@ describe("minha conta: segundo fator (RF01)", () => {
       perfil: "seguradora",
       rotas: {
         "GET /autenticacao/eu": { usuario: { ...USUARIOS.seguradora, segundoFatorAtivo: true } },
-        "POST /autenticacao/totp/desativar": { status: 400, corpo: { erro: { mensagem: "Codigo invalido." } } },
+        "POST /autenticacao/totp/desativar": {
+          status: 400,
+          corpo: { erro: { mensagem: "Codigo invalido." } },
+        },
       },
     });
 
@@ -145,24 +184,46 @@ describe("avisos (RF27)", () => {
   test("lista, marca uma e marca todas como lidas", async () => {
     const lista = {
       notificacoes: [
-        { id: 1, titulo: "Indenizacao paga", mensagem: "0,01 ETH transferidos.", criada_em: "2026-10-07T12:00:00Z", apolice_endereco: APOLICE, tx_hash: `0x${"ab".repeat(32)}`, lida_em: null },
-        { id: 2, titulo: "Cobertura ativa", mensagem: "Garantia depositada.", criada_em: "2026-10-06T12:00:00Z", lida_em: "2026-10-06T13:00:00Z" },
+        {
+          id: 1,
+          titulo: "Indenizacao paga",
+          mensagem: "0,01 ETH transferidos.",
+          criada_em: "2026-10-07T12:00:00Z",
+          apolice_endereco: APOLICE,
+          tx_hash: `0x${"ab".repeat(32)}`,
+          lida_em: null,
+        },
+        {
+          id: 2,
+          titulo: "Cobertura ativa",
+          mensagem: "Garantia depositada.",
+          criada_em: "2026-10-06T12:00:00Z",
+          lida_em: "2026-10-06T13:00:00Z",
+        },
       ],
       naoLidas: 1,
     };
     const { chamadas } = await abrir("/notificacoes", {
       perfil: "produtor",
-      rotas: { "GET /notificacoes": lista, "POST /notificacoes/:id/lida": { ok: true }, "POST /notificacoes/lidas": { ok: true } },
+      rotas: {
+        "GET /notificacoes": lista,
+        "POST /notificacoes/:id/lida": { ok: true },
+        "POST /notificacoes/lidas": { ok: true },
+      },
     });
 
     expect(await achar("Indenizacao paga")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Ver apolice" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Marcar como lida" }));
-    await waitFor(() => expect(chamadas.some((c) => c.caminho === "/notificacoes/1/lida")).toBe(true));
+    await waitFor(() =>
+      expect(chamadas.some((c) => c.caminho === "/notificacoes/1/lida")).toBe(true),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Marcar todas como lidas" }));
-    await waitFor(() => expect(chamadas.some((c) => c.caminho === "/notificacoes/lidas")).toBe(true));
+    await waitFor(() =>
+      expect(chamadas.some((c) => c.caminho === "/notificacoes/lidas")).toBe(true),
+    );
   });
 
   test("sem avisos, diz isso", async () => {

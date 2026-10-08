@@ -17,7 +17,12 @@ const MILHAO = 1_000_000;
 // Gas medido por operacao.
 const GAS = {
   osaka: { emissao: 1_507_069, garantia: 47_132, publicacao: 172_141, acionamentoExtra: 59_051 },
-  glamsterdam: { emissao: 13_931_815, garantia: 135_174, publicacao: 711_594, acionamentoExtra: 244_740 },
+  glamsterdam: {
+    emissao: 13_931_815,
+    garantia: 135_174,
+    publicacao: 711_594,
+    acionamentoExtra: 244_740,
+  },
 };
 
 // Produto "Estiagem escalonada — soja" da semente, num talhao de 180 ha: o
@@ -47,10 +52,22 @@ const CENARIOS = [
   { nome: "Rede de camada 2 (ordem de grandeza)", fork: "osaka", gwei: 0.01 },
 ];
 
-console.log(`Produto: ${PRODUTO.hectares} ha x ${PRODUTO.ethPorHectare} ETH/ha = ${valorSegurado.toFixed(2)} ETH segurados`);
-console.log(`Premio : ${PRODUTO.taxaPremioBps / 100}% = ${premio.toFixed(4)} ETH; 1% do premio = ${(premio / 100).toFixed(6)} ETH`);
+console.log(
+  `Produto: ${PRODUTO.hectares} ha x ${PRODUTO.ethPorHectare} ETH/ha = ${valorSegurado.toFixed(2)} ETH segurados`,
+);
+console.log(
+  `Premio : ${PRODUTO.taxaPremioBps / 100}% = ${premio.toFixed(4)} ETH; 1% do premio = ${(premio / 100).toFixed(6)} ETH`,
+);
 console.log("");
-console.log("Cenario".padEnd(40), "Cadencia".padEnd(9), "Gas do ciclo".padStart(13), "Custo (ETH)".padStart(12), "% do premio".padStart(12), " RNF08", "  Segurado minimo");
+console.log(
+  "Cenario".padEnd(40),
+  "Cadencia".padEnd(9),
+  "Gas do ciclo".padStart(13),
+  "Custo (ETH)".padStart(12),
+  "% do premio".padStart(12),
+  " RNF08",
+  "  Segurado minimo",
+);
 
 for (const c of CENARIOS) {
   for (const cadencia of CADENCIAS) {

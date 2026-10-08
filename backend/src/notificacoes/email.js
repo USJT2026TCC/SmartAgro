@@ -24,12 +24,19 @@ import { config } from "../config.js";
 /** Tentativas antes de desistir de uma mensagem (o aviso no aplicativo continua). */
 export const MAXIMO_DE_TENTATIVAS = 5;
 
-export function criarTransporte({ smtpUrl = config.smtpUrl, dirCaixaDeSaida = config.dirEmails } = {}) {
+export function criarTransporte({
+  smtpUrl = config.smtpUrl,
+  dirCaixaDeSaida = config.dirEmails,
+} = {}) {
   if (smtpUrl) {
     return { tipo: "smtp", transporte: nodemailer.createTransport(smtpUrl) };
   }
 
-  const transporte = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: "unix" });
+  const transporte = nodemailer.createTransport({
+    streamTransport: true,
+    buffer: true,
+    newline: "unix",
+  });
 
   return {
     tipo: "caixa-de-saida",
@@ -46,7 +53,10 @@ export function criarTransporte({ smtpUrl = config.smtpUrl, dirCaixaDeSaida = co
 }
 
 /** Corpo do e-mail a partir da notificacao, com o link para conferir na rede. */
-export function montarMensagem(n, { remetente = config.remetenteEmail, explorador = config.exploradorDeBlocos } = {}) {
+export function montarMensagem(
+  n,
+  { remetente = config.remetenteEmail, explorador = config.exploradorDeBlocos } = {},
+) {
   const linhas = [n.mensagem, ""];
 
   if (n.apolice_endereco) linhas.push(`Apolice: ${n.apolice_endereco}`);
@@ -107,7 +117,9 @@ export function criarDespachanteDeEmail(banco, opcoes = {}) {
       for (const n of rows) {
         try {
           await transporte.sendMail(montarMensagem(n));
-          await banco.query("UPDATE notificacoes SET email_enviado_em = now() WHERE id = $1", [n.id]);
+          await banco.query("UPDATE notificacoes SET email_enviado_em = now() WHERE id = $1", [
+            n.id,
+          ]);
           enviados += 1;
         } catch {
           await banco.query(

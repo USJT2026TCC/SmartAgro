@@ -32,7 +32,8 @@ async function entrar(identificador) {
     body: JSON.stringify({ identificador, senha: "agrosmart" }),
   });
   const corpo = await r.json();
-  if (!corpo.token) throw new Error(`Nao foi possivel entrar como ${identificador}: ${JSON.stringify(corpo)}`);
+  if (!corpo.token)
+    throw new Error(`Nao foi possivel entrar como ${identificador}: ${JSON.stringify(corpo)}`);
   return corpo.token;
 }
 
@@ -40,7 +41,11 @@ async function medir(rota, token, tempos) {
   const inicio = performance.now();
   const r = await fetch(`${API}${rota}`, { headers: { Authorization: `Bearer ${token}` } });
   await r.arrayBuffer();
-  tempos.push({ rota: rota.startsWith("/apolices/") ? "/apolices/:endereco" : rota, ms: performance.now() - inicio, ok: r.ok });
+  tempos.push({
+    rota: rota.startsWith("/apolices/") ? "/apolices/:endereco" : rota,
+    ms: performance.now() - inicio,
+    ok: r.ok,
+  });
 }
 
 function percentil(ordenados, p) {
@@ -63,16 +68,30 @@ async function main() {
       const token = i % 2 ? tokens.produtor : tokens.seguradora;
       while (Date.now() < fim) {
         await medir("/apolices", token, tempos);
-        await medir(`/apolices/${apolices[i % apolices.length].endereco}`, tokens.seguradora, tempos);
+        await medir(
+          `/apolices/${apolices[i % apolices.length].endereco}`,
+          tokens.seguradora,
+          tempos,
+        );
       }
     }),
   );
 
   console.log(`Backend.......: ${API}`);
-  console.log(`Carga.........: ${USUARIOS} usuarios simultaneos por ${DURACAO_MS / 1000} s, sem pausa entre pedidos`);
+  console.log(
+    `Carga.........: ${USUARIOS} usuarios simultaneos por ${DURACAO_MS / 1000} s, sem pausa entre pedidos`,
+  );
   console.log(`Apolices......: ${apolices.length} no banco`);
   console.log("");
-  console.log("Rota".padEnd(22), "Pedidos".padStart(8), "Erros".padStart(6), "p50".padStart(8), "p95".padStart(8), "p99".padStart(8), "max".padStart(8));
+  console.log(
+    "Rota".padEnd(22),
+    "Pedidos".padStart(8),
+    "Erros".padStart(6),
+    "p50".padStart(8),
+    "p95".padStart(8),
+    "p99".padStart(8),
+    "max".padStart(8),
+  );
 
   const grupos = [...new Set(tempos.map((t) => t.rota)), "todas"];
   for (const rota of grupos) {

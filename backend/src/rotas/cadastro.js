@@ -99,14 +99,18 @@ export function rotasDeCadastro() {
    */
   r.post("/produtores", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
     const { banco } = req.app.locals;
-    const identificador = texto(req.body?.identificador, "identificador", { max: 60 }).toLowerCase();
+    const identificador = texto(req.body?.identificador, "identificador", {
+      max: 60,
+    }).toLowerCase();
     const nome = texto(req.body?.nome, "nome", { max: 120 });
     const documento = texto(req.body?.documento, "documento", { max: 20, obrigatorio: false });
     const senhaInicial = texto(req.body?.senhaInicial, "senhaInicial", { max: 200 });
     const email = emailOpcional(req.body?.email);
 
     if (!/^[a-z0-9._-]{3,60}$/.test(identificador)) {
-      throw pedidoInvalido("O identificador aceita letras minusculas, numeros, ponto, hifen e sublinhado.");
+      throw pedidoInvalido(
+        "O identificador aceita letras minusculas, numeros, ponto, hifen e sublinhado.",
+      );
     }
     if (senhaInicial.length < 10) {
       throw pedidoInvalido("A senha inicial precisa ter ao menos 10 caracteres.");
@@ -125,7 +129,10 @@ export function rotasDeCadastro() {
       [identificador, nome, documento, await gerarHashDeSenha(senhaInicial), email],
     );
 
-    await auditar(banco, req, "produtor_cadastrado", { recurso: rows[0].id, detalhes: { identificador } });
+    await auditar(banco, req, "produtor_cadastrado", {
+      recurso: rows[0].id,
+      detalhes: { identificador },
+    });
     res.status(201).json({ produtor: rows[0] });
   });
 
@@ -290,7 +297,8 @@ export function rotasDeCadastro() {
   r.patch("/talhoes/:id", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
     const { banco } = req.app.locals;
     const id = uuid(req.params.id, "id");
-    const cultura = texto(req.body?.cultura, "cultura", { max: 40, obrigatorio: false })?.toLowerCase() ?? null;
+    const cultura =
+      texto(req.body?.cultura, "cultura", { max: 40, obrigatorio: false })?.toLowerCase() ?? null;
     const geojson = req.body?.poligono ? paraPoligonoGeoJson(req.body.poligono) : null;
 
     const { rows: usos } = await banco.query(

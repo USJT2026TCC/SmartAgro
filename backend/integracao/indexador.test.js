@@ -320,7 +320,11 @@ describe("indexador contra um no real", { timeout: 180_000 }, () => {
       undefined,
       "m/44'/60'/0'/0/2",
     ).privateKey;
-    const publicador = new Publicador({ rpcUrl: RPC, chavePrivada: chaveDoOraculo, chainId: 31337 });
+    const publicador = new Publicador({
+      rpcUrl: RPC,
+      chavePrivada: chaveDoOraculo,
+      chainId: 31337,
+    });
 
     try {
       const contrato = await emitir({ operador: 1, limiarClimatico: 0, limiarDanoBps: 2_000 });

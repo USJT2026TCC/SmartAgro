@@ -76,6 +76,6 @@ def gerar(
     with saida.open("w", newline="", encoding="utf-8") as arquivo:
         escritor = csv.DictWriter(arquivo, fieldnames=COLUNAS)
         escritor.writeheader()
-        escritor.writerows(sorted(linhas, key=lambda l: (l["estacao"], l["data"])))
+        escritor.writerows(sorted(linhas, key=lambda linha: (linha["estacao"], linha["data"])))
 
     return len(linhas)

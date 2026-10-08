@@ -83,9 +83,9 @@ class BaseDeRecortes(Dataset):
 
         with (raiz / "indice.csv").open(encoding="utf-8") as arquivo:
             self.linhas = [
-                l
-                for l in csv.DictReader(arquivo)
-                if l["divisao"] == divisao and float(l["lavoura"]) >= cobertura_minima
+                linha
+                for linha in csv.DictReader(arquivo)
+                if linha["divisao"] == divisao and float(linha["lavoura"]) >= cobertura_minima
             ]
 
         if not self.linhas:
@@ -100,7 +100,9 @@ class BaseDeRecortes(Dataset):
         imagem = Image.open(self.raiz / "images" / linha["imagem"]).convert("RGB")
         mascara = Image.open(self.raiz / "masks" / linha["mascara"])
 
-        x = padronizar(torch.from_numpy(np.asarray(imagem, dtype=np.float32) / 255.0).permute(2, 0, 1))
+        x = padronizar(
+            torch.from_numpy(np.asarray(imagem, dtype=np.float32) / 255.0).permute(2, 0, 1)
+        )
 
         # A mascara ja vem na ordem do AgroSmart: a traducao e feita uma vez so,
         # em preparar_dados.py.
@@ -185,9 +187,10 @@ def avaliar(modelo, carregador, dispositivo) -> dict:
             uniao[classe] += (p | v).sum()
 
         for i in range(previsto.size(0)):
-            contar = lambda m: {  # noqa: E731
-                nome: int((m[i] == c).sum()) for c, nome in enumerate(NOMES)
-            }
+
+            def contar(m, i=i):
+                return {nome: int((m[i] == c).sum()) for c, nome in enumerate(NOMES)}
+
             erros_do_indice.append(
                 abs(indice_de_dano(contar(previsto)) - indice_de_dano(contar(y)))
             )
@@ -195,7 +198,7 @@ def avaliar(modelo, carregador, dispositivo) -> dict:
     iou = (intersecao / uniao.clamp(min=1)).tolist()
 
     return {
-        "iou_por_classe": {nome: round(v, 4) for nome, v in zip(NOMES, iou)},
+        "iou_por_classe": {nome: round(v, 4) for nome, v in zip(NOMES, iou, strict=True)},
         "iou_media": round(sum(iou) / len(iou), 4),
         "erro_medio_do_indice": round(sum(erros_do_indice) / len(erros_do_indice), 4),
     }
@@ -257,7 +260,10 @@ def main() -> None:
     modelo = criar(opcoes.arquitetura, pretreinado=opcoes.arquitetura != "unet").to(dispositivo)
     otimizador = torch.optim.AdamW(modelo.parameters(), lr=opcoes.taxa)
     pesos = pesos_das_classes(treino, opcoes.expoente_dos_pesos)
-    print("peso de cada classe:", {n: round(float(v), 2) for n, v in zip(NOMES_DAS_CLASSES, pesos)})
+    print(
+        "peso de cada classe:",
+        {n: round(float(v), 2) for n, v in zip(NOMES_DAS_CLASSES, pesos, strict=True)},
+    )
     perda = nn.CrossEntropyLoss(weight=pesos.to(dispositivo))
 
     # Taxa de aprendizado que decresce ao longo do treino. Na primeira rodada, com
@@ -268,7 +274,7 @@ def main() -> None:
     opcoes.saida.parent.mkdir(parents=True, exist_ok=True)
 
     # Erro de quem responde sempre 0%: o dano medio de referencia da validacao.
-    danos = [float(l["dano"]) for l in validacao_hidrica.linhas]
+    danos = [float(linha["dano"]) for linha in validacao_hidrica.linhas]
     trivial = sum(danos) / len(danos)
     print(f"referencia trivial: responder sempre 0% erraria {trivial:.1%} na validacao")
 

@@ -15,7 +15,8 @@ function filtrosDoRelatorio(q) {
     }
     return String(valor);
   };
-  const textoOpcional = (valor) => (valor === undefined || valor === "" ? null : String(valor).slice(0, 120));
+  const textoOpcional = (valor) =>
+    valor === undefined || valor === "" ? null : String(valor).slice(0, 120);
 
   return {
     de: data(q.de, "de"),

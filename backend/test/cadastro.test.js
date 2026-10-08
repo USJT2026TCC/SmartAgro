@@ -240,11 +240,12 @@ describe("cadastro", () => {
   });
   describe("produtores e propriedades (RF03)", () => {
     test("a seguradora cadastra um produtor, que consegue entrar com a senha inicial", async () => {
-      const r = await ctx
-        .api()
-        .post("/api/produtores")
-        .set(com(seguradora))
-        .send({ identificador: "maria.silva", nome: "Maria Silva", documento: "123", senhaInicial: "senha-inicial-123" });
+      const r = await ctx.api().post("/api/produtores").set(com(seguradora)).send({
+        identificador: "maria.silva",
+        nome: "Maria Silva",
+        documento: "123",
+        senhaInicial: "senha-inicial-123",
+      });
       assert.equal(r.status, 201, JSON.stringify(r.body));
       assert.equal(r.body.produtor.identificador, "maria.silva");
       assert.equal(r.body.produtor.hash_senha, undefined, "o hash nunca sai da API");
@@ -259,7 +260,11 @@ describe("cadastro", () => {
 
     test("identificador repetido, invalido ou senha curta sao recusados", async () => {
       const enviar = (corpo) =>
-        ctx.api().post("/api/produtores").set(com(seguradora)).send({ nome: "X", senhaInicial: "senha-longa-123", ...corpo });
+        ctx
+          .api()
+          .post("/api/produtores")
+          .set(com(seguradora))
+          .send({ nome: "X", senhaInicial: "senha-longa-123", ...corpo });
 
       assert.equal((await enviar({ identificador: "produtor" })).status, 409);
       assert.equal((await enviar({ identificador: "Com Espaco" })).status, 400);
@@ -305,11 +310,15 @@ describe("cadastro", () => {
 
       const metade = [
         [-47.81, -21.17],
-        [-47.80, -21.17],
-        [-47.80, -21.19],
+        [-47.8, -21.17],
+        [-47.8, -21.19],
         [-47.81, -21.19],
       ];
-      const r = await ctx.api().patch(`/api/talhoes/${id}`).set(com(seguradora)).send({ poligono: metade, cultura: "Milho" });
+      const r = await ctx
+        .api()
+        .patch(`/api/talhoes/${id}`)
+        .set(com(seguradora))
+        .send({ poligono: metade, cultura: "Milho" });
 
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.talhao.cultura, "milho");
@@ -318,7 +327,9 @@ describe("cadastro", () => {
     });
 
     test("talhao com proposta ou apolice nao pode mudar", async () => {
-      const { rows } = await ctx.banco.query("SELECT id FROM talhoes WHERE identificador = 'talhao-01'");
+      const { rows } = await ctx.banco.query(
+        "SELECT id FROM talhoes WHERE identificador = 'talhao-01'",
+      );
       await ctx.banco.query(
         `INSERT INTO apolices (endereco, talhao_id, produtor_carteira, seguradora_carteira, talhao_bytes32,
                                hash_termos, valor_indenizacao_wei, tx_emissao, bloco_emissao)
@@ -326,7 +337,11 @@ describe("cadastro", () => {
         [rows[0].id],
       );
 
-      const r = await ctx.api().patch(`/api/talhoes/${rows[0].id}`).set(com(seguradora)).send({ cultura: "milho" });
+      const r = await ctx
+        .api()
+        .patch(`/api/talhoes/${rows[0].id}`)
+        .set(com(seguradora))
+        .send({ cultura: "milho" });
       assert.equal(r.status, 409);
     });
 

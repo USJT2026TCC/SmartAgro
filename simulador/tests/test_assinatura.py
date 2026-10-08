@@ -40,9 +40,7 @@ def test_assinatura_e_recuperada_para_o_endereco_da_fonte():
     corpo = corpo_em_bytes(LOTE)
     assinatura = assinar(corpo, CHAVE)
 
-    recuperado = Account.recover_message(
-        encode_defunct(text=mensagem(corpo)), signature=assinatura
-    )
+    recuperado = Account.recover_message(encode_defunct(text=mensagem(corpo)), signature=assinatura)
 
     assert recuperado == ENDERECO
     assert assinatura.startswith("0x")

@@ -52,8 +52,10 @@ def lote(identificador, imagens):
 
 ESTIMADOR = Estimador(
     versao="teste-1.0.0",
-    classificar=lambda conteudo: ({"solo": 0, "saudavel": 50, "estresse_leve": 0,
-                                   "estresse_severo": 50}, 0.9),
+    classificar=lambda conteudo: (
+        {"solo": 0, "saudavel": 50, "estresse_leve": 0, "estresse_severo": 50},
+        0.9,
+    ),
 )
 
 
@@ -72,9 +74,7 @@ def test_lote_analisado_vira_corpo_no_formato_do_backend():
 
 def test_evidencia_adulterada_derruba_a_confianca_e_fica_registrada():
     imagens = [imagem("i1"), imagem("i2"), imagem("i3")]
-    backend = BackendFalso(
-        [lote("l1", imagens)], {i.id: png() for i in imagens}, falhas={"i2"}
-    )
+    backend = BackendFalso([lote("l1", imagens)], {i.id: png() for i in imagens}, falhas={"i2"})
 
     analise = analisar_lote(backend, lote("l1", imagens), ESTIMADOR)
 

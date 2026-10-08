@@ -210,9 +210,7 @@ async function publicarPeriodo(servico, fonte, apolice, periodo) {
     if (evento.tipo === "espera")
       console.log(`  aguardando ${evento.ms}ms antes de nova tentativa`);
     if (evento.tipo === "erro") {
-      console.log(
-        `  [erro] tentativa ${evento.tentativa}: ${descreverErro(evento.erro)}`,
-      );
+      console.log(`  [erro] tentativa ${evento.tentativa}: ${descreverErro(evento.erro)}`);
     }
   });
 
@@ -223,11 +221,17 @@ async function publicarPeriodo(servico, fonte, apolice, periodo) {
 
     // Tres situacoes diferentes, e o operador precisa saber qual e.
     if (entrada.estado === ESTADOS.CONCLUIDA) {
-      console.log(`  ${periodo}   ja publicado antes (${entrada.recibo?.txHash ?? "sem recibo"}); nada a fazer (RF20)`);
+      console.log(
+        `  ${periodo}   ja publicado antes (${entrada.recibo?.txHash ?? "sem recibo"}); nada a fazer (RF20)`,
+      );
     } else if (entrada.estado === ESTADOS.FALHA) {
-      console.log(`  ${periodo}   falha definitiva: ${entrada.ultimoErro?.mensagem ?? "motivo desconhecido"}`);
+      console.log(
+        `  ${periodo}   falha definitiva: ${entrada.ultimoErro?.mensagem ?? "motivo desconhecido"}`,
+      );
     } else {
-      console.log(`  ${periodo}   publicacao nao concluida; entrada mantida na fila para retomada (RF21)`);
+      console.log(
+        `  ${periodo}   publicacao nao concluida; entrada mantida na fila para retomada (RF21)`,
+      );
     }
     return null;
   }

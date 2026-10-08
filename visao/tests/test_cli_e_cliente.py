@@ -80,7 +80,13 @@ def test_analisar_com_pesos_usa_o_modelo_e_a_versao_gravada_neles(pesos_pequenos
 def test_pesos_de_outra_lista_de_classes_sao_recusados_com_aviso(tmp_path, monkeypatch, capsys):
     caminho = tmp_path / "doenca.pt"
     torch.save(
-        {"arquitetura": "unet", "base": 4, "classes": ["solo", "ferrugem"], "estado": {}, "versao": "x"},
+        {
+            "arquitetura": "unet",
+            "base": 4,
+            "classes": ["solo", "ferrugem"],
+            "estado": {},
+            "versao": "x",
+        },
         caminho,
     )
     monkeypatch.setattr(modelo, "CAMINHO_DOS_PESOS", str(caminho))
@@ -115,7 +121,9 @@ def test_api_sobe_o_fastapi_com_o_estimador(sem_pesos, monkeypatch, capsys):
     import uvicorn
 
     subiu = {}
-    monkeypatch.setattr(uvicorn, "run", lambda app, host, port: subiu.update(app=app, host=host, port=port))
+    monkeypatch.setattr(
+        uvicorn, "run", lambda app, host, port: subiu.update(app=app, host=host, port=port)
+    )
 
     assert cli.main(["api", "--porta", "8123"]) == 0
     assert subiu["port"] == 8123
@@ -170,7 +178,9 @@ def test_cliente_recusa_arquivo_que_nao_bate_com_o_resumo(monkeypatch):
     conteudo = b"bytes da imagem"
     monkeypatch.setattr(cliente.sessao, "get", lambda url, timeout: Resposta(content=conteudo))
 
-    certa = Imagem(id="i1", sha256=hashlib.sha256(conteudo).hexdigest(), tipo="", lon=0, lat=0, capturada_em="")
+    certa = Imagem(
+        id="i1", sha256=hashlib.sha256(conteudo).hexdigest(), tipo="", lon=0, lat=0, capturada_em=""
+    )
     assert cliente.baixar(certa) == conteudo
 
     adulterada = Imagem(id="i2", sha256="0" * 64, tipo="", lon=0, lat=0, capturada_em="")
@@ -182,7 +192,9 @@ def test_cliente_envia_o_resultado(monkeypatch):
     cliente = ClienteBackend("http://backend/api", "k")
     enviado = {}
     monkeypatch.setattr(
-        cliente.sessao, "post", lambda url, json, timeout: enviado.update(url=url, corpo=json) or Resposta({"ok": True})
+        cliente.sessao,
+        "post",
+        lambda url, json, timeout: enviado.update(url=url, corpo=json) or Resposta({"ok": True}),
     )
 
     assert cliente.enviar_resultado({"loteId": "l1"}) == {"ok": True}

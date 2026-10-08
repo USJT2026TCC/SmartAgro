@@ -22,7 +22,9 @@ from simulador.envio import Resultado
 CHAVE = "0x" + "11" * 32
 
 
-def csv_da_estacao(codigo: str, nome: str, lat: str, lon: str, ano: int, chuva_no_dia: dict[int, float]) -> bytes:
+def csv_da_estacao(
+    codigo: str, nome: str, lat: str, lon: str, ano: int, chuva_no_dia: dict[int, float]
+) -> bytes:
     """30 dias de julho, de hora em hora; chuva so nos dias informados (as 12h)."""
     linhas = [
         "REGIAO:;SE",
@@ -39,7 +41,9 @@ def csv_da_estacao(codigo: str, nome: str, lat: str, lon: str, ano: int, chuva_n
     for dia in range(1, 31):
         for hora in range(24):
             chuva = chuva_no_dia.get(dia, 0) if hora == 12 else 0
-            linhas.append(f"{ano}/07/{dia:02d};{hora:02d}00 UTC;{str(chuva).replace('.', ',')};20,0;70;")
+            linhas.append(
+                f"{ano}/07/{dia:02d};{hora:02d}00 UTC;{str(chuva).replace('.', ',')};20,0;70;"
+            )
     return ("\r\n".join(linhas) + "\r\n").encode("latin-1")
 
 
@@ -54,7 +58,9 @@ def dados(tmp_path, monkeypatch):
             )
             z.writestr(
                 f"{ano}/INMET_SE_SP_A747_PRADOPOLIS_01-01-{ano}_A_31-12-{ano}.CSV",
-                csv_da_estacao("A747", "PRADOPOLIS", "-21,33833333", "-48,11388888", ano, {10: 3.5}),
+                csv_da_estacao(
+                    "A747", "PRADOPOLIS", "-21,33833333", "-48,11388888", ano, {10: 3.5}
+                ),
             )
     monkeypatch.setattr(cli, "DIR_DADOS", tmp_path)
     monkeypatch.setenv("CHAVE_ESTACAO_INMET_A770", CHAVE)
@@ -74,7 +80,7 @@ def test_baixar_usa_o_zip_que_ja_esta_em_disco(dados, capsys):
 
 def test_estacoes_ordena_pela_distancia_do_talhao(dados, capsys):
     saida = rodar(capsys, "estacoes", "--ano", "2024", "--perto=-21.46,-47.58")
-    linhas = [l for l in saida.splitlines() if l.strip()]
+    linhas = [linha for linha in saida.splitlines() if linha.strip()]
     assert linhas[0].startswith("A770")
     assert linhas[1].startswith("A747")
     assert "km" in linhas[1]
@@ -108,8 +114,21 @@ def test_enviar_pela_api_relata_cada_lote(dados, capsys, monkeypatch):
 
     saida = rodar(
         capsys,
-        "enviar", "--estacao", "A770", "--ano", "2024", "--de", "2024-07-01", "--ate", "2024-07-30",
-        "--fonte", "estacao-inmet-a770", "--api", "https://api.exemplo/api", "--tls-ca", "ca.crt",
+        "enviar",
+        "--estacao",
+        "A770",
+        "--ano",
+        "2024",
+        "--de",
+        "2024-07-01",
+        "--ate",
+        "2024-07-30",
+        "--fonte",
+        "estacao-inmet-a770",
+        "--api",
+        "https://api.exemplo/api",
+        "--tls-ca",
+        "ca.crt",
     )
 
     assert "Dias secos no fim...: 25" in saida
@@ -120,13 +139,26 @@ def test_enviar_pela_api_relata_cada_lote(dados, capsys, monkeypatch):
 
 def test_enviar_com_intervalo_manda_um_dia_por_vez(dados, capsys, monkeypatch):
     lotes = []
-    monkeypatch.setattr(envio, "enviar_lote", lambda *a, **k: lotes.append(len(a[2])) or Resultado(24, 0, 0, None))
+    monkeypatch.setattr(
+        envio, "enviar_lote", lambda *a, **k: lotes.append(len(a[2])) or Resultado(24, 0, 0, None)
+    )
     monkeypatch.setattr("time.sleep", lambda s: None)
 
     saida = rodar(
         capsys,
-        "enviar", "--estacao", "A770", "--ano", "2024", "--de", "2024-07-01", "--ate", "2024-07-03",
-        "--fonte", "estacao-inmet-a770", "--intervalo", "5",
+        "enviar",
+        "--estacao",
+        "A770",
+        "--ano",
+        "2024",
+        "--de",
+        "2024-07-01",
+        "--ate",
+        "2024-07-03",
+        "--fonte",
+        "estacao-inmet-a770",
+        "--intervalo",
+        "5",
     )
 
     assert "3 envio(s), um a cada 5.0s" in saida
@@ -134,11 +166,21 @@ def test_enviar_com_intervalo_manda_um_dia_por_vez(dados, capsys, monkeypatch):
 
 
 def test_envio_recusado_aparece_com_o_motivo(dados, capsys, monkeypatch):
-    monkeypatch.setattr(envio, "enviar_lote", lambda *a, **k: Resultado(0, 0, 0, None, erro="HTTP 401: assinatura"))
+    monkeypatch.setattr(
+        envio, "enviar_lote", lambda *a, **k: Resultado(0, 0, 0, None, erro="HTTP 401: assinatura")
+    )
 
     saida = rodar(
         capsys,
-        "enviar", "--estacao", "A770", "--ano", "2024", "--fonte", "estacao-inmet-a770", "--ate", "2024-07-02",
+        "enviar",
+        "--estacao",
+        "A770",
+        "--ano",
+        "2024",
+        "--fonte",
+        "estacao-inmet-a770",
+        "--ate",
+        "2024-07-02",
     )
     assert "HTTP 401: assinatura" in saida
 
@@ -148,7 +190,14 @@ def test_enviar_ate_hoje_desloca_as_datas_e_avisa(dados, capsys, monkeypatch):
 
     saida = rodar(
         capsys,
-        "enviar", "--estacao", "A770", "--ano", "2024", "--fonte", "estacao-inmet-a770", "--ate-hoje",
+        "enviar",
+        "--estacao",
+        "A770",
+        "--ano",
+        "2024",
+        "--fonte",
+        "estacao-inmet-a770",
+        "--ate-hoje",
     )
     assert "datas deslocadas" in saida
 
@@ -165,8 +214,21 @@ def test_enviar_pelo_mqtt_monta_envelopes_assinados(dados, capsys, monkeypatch):
 
     saida = rodar(
         capsys,
-        "enviar", "--estacao", "A770", "--ano", "2024", "--fonte", "estacao-inmet-a770",
-        "--destino", "mqtt", "--broker", "broker.local", "--porta", "8883", "--tls-ca", "ca.crt",
+        "enviar",
+        "--estacao",
+        "A770",
+        "--ano",
+        "2024",
+        "--fonte",
+        "estacao-inmet-a770",
+        "--destino",
+        "mqtt",
+        "--broker",
+        "broker.local",
+        "--porta",
+        "8883",
+        "--tls-ca",
+        "ca.crt",
     )
 
     assert "lote(s) publicados em broker.local:8883" in saida
@@ -186,12 +248,23 @@ def test_historico_extrai_a_chuva_diaria_de_varios_anos(dados, capsys, tmp_path)
     saida_csv = tmp_path / "saida" / "historico.csv"
 
     saida = rodar(
-        capsys, "historico", "--estacoes", "A770,A747", "--de", "2023", "--ate", "2024", "--saida", str(saida_csv),
+        capsys,
+        "historico",
+        "--estacoes",
+        "A770,A747",
+        "--de",
+        "2023",
+        "--ate",
+        "2024",
+        "--saida",
+        str(saida_csv),
     )
 
     linhas = list(csv.DictReader(io.StringIO(saida_csv.read_text(encoding="utf-8"))))
     assert "120 dias gravados" in saida  # 30 dias x 2 estacoes x 2 anos
-    dia_5 = next(l for l in linhas if l["estacao"] == "A770" and l["data"] == "2024-07-05")
+    dia_5 = next(
+        linha for linha in linhas if linha["estacao"] == "A770" and linha["data"] == "2024-07-05"
+    )
     assert float(dia_5["chuva_mm"]) == 12.0
     assert int(dia_5["horas_validas"]) == 24
     assert (dados / "2024.zip").exists(), "o ZIP que ja existia nao e apagado"

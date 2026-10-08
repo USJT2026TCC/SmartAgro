@@ -29,9 +29,7 @@ export default function DesenhoDoTalhao({ vertices, aoMudar }) {
 
   // Cria o mapa uma vez.
   useEffect(() => {
-    const centro = vertices.length
-      ? [vertices[0][1], vertices[0][0]]
-      : [-21.46, -47.58]; // Sao Simao/SP, regiao do talhao de demonstracao
+    const centro = vertices.length ? [vertices[0][1], vertices[0][0]] : [-21.46, -47.58]; // Sao Simao/SP, regiao do talhao de demonstracao
 
     const m = L.map(recipiente.current, { center: centro, zoom: 14 });
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -76,7 +74,10 @@ export default function DesenhoDoTalhao({ vertices, aoMudar }) {
   /** Centraliza no poligono, quando vem de um arquivo. */
   function enquadrar() {
     if (mapa.current && vertices.length >= 2) {
-      mapa.current.fitBounds(vertices.map(([lon, lat]) => [lat, lon]), { padding: [20, 20] });
+      mapa.current.fitBounds(
+        vertices.map(([lon, lat]) => [lat, lon]),
+        { padding: [20, 20] },
+      );
     }
   }
 
@@ -84,7 +85,9 @@ export default function DesenhoDoTalhao({ vertices, aoMudar }) {
     <div className="desenho-do-talhao">
       <div ref={recipiente} className="desenho-do-talhao__mapa" />
       <div className="linha-de-botoes">
-        <span className="silencioso">{vertices.length} vertice(s). Clique no mapa para marcar.</span>
+        <span className="silencioso">
+          {vertices.length} vertice(s). Clique no mapa para marcar.
+        </span>
         <button
           type="button"
           className="secundario pequeno"
@@ -101,7 +104,12 @@ export default function DesenhoDoTalhao({ vertices, aoMudar }) {
         >
           Limpar
         </button>
-        <button type="button" className="secundario pequeno" onClick={enquadrar} disabled={vertices.length < 2}>
+        <button
+          type="button"
+          className="secundario pequeno"
+          onClick={enquadrar}
+          disabled={vertices.length < 2}
+        >
           Enquadrar
         </button>
       </div>

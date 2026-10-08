@@ -45,8 +45,10 @@ def assinar(corpo: bytes, chave_privada: str) -> str:
     """Assinatura EIP-191 do corpo, no formato 0x... que vai no cabecalho."""
     assinada = Account.sign_message(encode_defunct(text=mensagem(corpo)), chave_privada)
 
-    return assinada.signature.hex() if assinada.signature.hex().startswith("0x") else (
-        "0x" + assinada.signature.hex()
+    return (
+        assinada.signature.hex()
+        if assinada.signature.hex().startswith("0x")
+        else ("0x" + assinada.signature.hex())
     )
 
 

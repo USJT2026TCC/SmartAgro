@@ -22,7 +22,10 @@ import { createServer } from "vite";
 const { values: opcoes } = parseArgs({
   options: {
     rede: { type: "string", default: "sepolia" },
-    rpc: { type: "string", default: process.env.RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com" },
+    rpc: {
+      type: "string",
+      default: process.env.RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
+    },
     repeticoes: { type: "string", default: "5" },
     blocos: { type: "string", default: "0" },
   },
@@ -31,7 +34,11 @@ const { values: opcoes } = parseArgs({
 // O modulo de rede le VITE_REDE ao ser carregado, como no navegador.
 process.env.VITE_REDE = opcoes.rede;
 
-const vite = await createServer({ server: { middlewareMode: true }, appType: "custom", logLevel: "error" });
+const vite = await createServer({
+  server: { middlewareMode: true },
+  appType: "custom",
+  logLevel: "error",
+});
 
 try {
   const cadeia = await vite.ssrLoadModule("/src/cadeia/contratos.js");
@@ -63,7 +70,12 @@ try {
       tempos.push(performance.now() - inicio);
     }
     const fmt = (v) => `${(v / 1000).toFixed(2)} s`.padStart(9);
-    console.log(nome.padEnd(32), fmt(tempos.reduce((a, b) => a + b) / tempos.length), fmt(Math.min(...tempos)), fmt(Math.max(...tempos)));
+    console.log(
+      nome.padEnd(32),
+      fmt(tempos.reduce((a, b) => a + b) / tempos.length),
+      fmt(Math.min(...tempos)),
+      fmt(Math.max(...tempos)),
+    );
   }
 
   // A tela abre as tres primeiras ao mesmo tempo.
@@ -74,7 +86,9 @@ try {
     cadeia.lerLinhaDoTempo(endereco, provedor),
   ]);
   console.log("");
-  console.log(`Tela de detalhe completa (as tres em paralelo): ${((performance.now() - inicio) / 1000).toFixed(2)} s`);
+  console.log(
+    `Tela de detalhe completa (as tres em paralelo): ${((performance.now() - inicio) / 1000).toFixed(2)} s`,
+  );
 
   if (Number(opcoes.blocos) > 0) {
     const contrato = cadeia.contratoApolice(endereco, provedor);

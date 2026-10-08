@@ -25,7 +25,8 @@ async function iniciar() {
   if (aplicadas.length > 0) console.log(`Migracoes aplicadas: ${aplicadas.join(", ")}`);
 
   const diasDeHistorico = await carregarHistoricoClimatico(banco);
-  if (diasDeHistorico > 0) console.log(`Historico de chuva do INMET carregado: ${diasDeHistorico} dias.`);
+  if (diasDeHistorico > 0)
+    console.log(`Historico de chuva do INMET carregado: ${diasDeHistorico} dias.`);
 
   if (!config.emProducao && (await semear(banco))) {
     console.log(
@@ -41,7 +42,9 @@ async function iniciar() {
 
   const comTls = Boolean(config.tlsCertificado && config.tlsChave);
   const aoOuvir = () => {
-    console.log(`AgroSmart backend em ${comTls ? "https" : "http"}://localhost:${config.porta}/api`);
+    console.log(
+      `AgroSmart backend em ${comTls ? "https" : "http"}://localhost:${config.porta}/api`,
+    );
     console.log(`Banco: ${banco.motor}${config.urlDoBanco ? "" : ` (${config.dirBanco})`}`);
     console.log(
       cadeia.disponivel()

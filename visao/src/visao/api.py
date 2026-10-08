@@ -94,7 +94,9 @@ def criar_api(estimador: Estimador, caminho_dos_pesos=None) -> FastAPI:
             resumos.append(hashlib.sha256(conteudo).hexdigest())
 
         if not contagens:
-            raise HTTPException(422, {"mensagem": "Nenhuma imagem analisavel.", "problemas": problemas})
+            raise HTTPException(
+                422, {"mensagem": "Nenhuma imagem analisavel.", "problemas": problemas}
+            )
 
         analise = consolidar(contagens, sum(confiancas) / len(confiancas))
         if problemas:

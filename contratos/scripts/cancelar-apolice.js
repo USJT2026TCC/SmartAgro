@@ -24,7 +24,9 @@ async function main() {
   console.log(`Rede......: ${network.name}`);
   console.log(`Apolice...: ${endereco}`);
   console.log(`Situacao..: ${SITUACOES[Number(await apolice.situacao())]}`);
-  console.log(`Vigencia..: a partir de ${new Date(Number(termos.vigenciaInicio) * 1000).toISOString()}`);
+  console.log(
+    `Vigencia..: a partir de ${new Date(Number(termos.vigenciaInicio) * 1000).toISOString()}`,
+  );
 
   const saldoAntes = await ethers.provider.getBalance(seguradora.address);
   const recibo = await (await apolice.connect(seguradora).cancelar()).wait();

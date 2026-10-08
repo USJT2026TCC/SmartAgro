@@ -209,4 +209,7 @@ class FilaDePublicacoes {
 
 module.exports = {
   descreverErro,
-  ehRecusaDoContrato, FilaDePublicacoes, ESTADOS };
+  ehRecusaDoContrato,
+  FilaDePublicacoes,
+  ESTADOS,
+};

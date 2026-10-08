@@ -90,7 +90,6 @@ test("o talhao cabe na area de desenho, com margem", () => {
 
 // ------------------------------------------------- importacao de GeoJSON (HU09)
 
-
 const ANEL = [
   [-47.59, -21.45],
   [-47.57, -21.45],
@@ -102,7 +101,10 @@ const FECHADO = [...ANEL, ANEL[0]];
 test("le o anel de um Polygon, de uma Feature e de uma FeatureCollection", () => {
   const poligono = { type: "Polygon", coordinates: [FECHADO] };
   const feature = { type: "Feature", properties: {}, geometry: poligono };
-  const colecao = { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point", coordinates: [0, 0] } }, feature] };
+  const colecao = {
+    type: "FeatureCollection",
+    features: [{ type: "Feature", geometry: { type: "Point", coordinates: [0, 0] } }, feature],
+  };
 
   for (const g of [poligono, feature, colecao, JSON.stringify(colecao)]) {
     assert.deepEqual(anelDoGeoJson(g), ANEL);

@@ -206,7 +206,10 @@ test("erro de rede continua pendente para a retomada do RF21", () => {
   const { entrada } = fila.enfileirar({ apolice: "0xabc", periodo: 20261008, payload: {} });
 
   fila.marcarPublicando(entrada);
-  fila.marcarErro(entrada, Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }));
+  fila.marcarErro(
+    entrada,
+    Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }),
+  );
 
   assert.equal(entrada.estado, ESTADOS.PENDENTE);
   assert.equal(entrada.ultimoErro.recusaDoContrato, false);

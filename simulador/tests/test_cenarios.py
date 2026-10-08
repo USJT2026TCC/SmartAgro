@@ -28,7 +28,7 @@ def test_cada_cenario_termina_com_a_estiagem_declarada_na_estacao_a770(nome):
     _, leituras = abrir_do_zip(ZIP_2024, "A770")
     de = datetime.fromisoformat(cenario["de"]).replace(tzinfo=timezone.utc)
     ate = datetime.fromisoformat(cenario["ate"]).replace(hour=23, tzinfo=timezone.utc)
-    janela = [l for l in serie.recortar(leituras, de, ate) if l.completa]
+    janela = [leitura for leitura in serie.recortar(leituras, de, ate) if leitura.completa]
 
     secos = serie.dias_secos_ao_final(janela)
     if cenario["indice_esperado"] >= 30:
@@ -61,9 +61,10 @@ def test_sem_intervalo_e_rajada():
 
 def test_envio_sempre_confere_o_certificado_do_servidor(monkeypatch):
     """RNF17: com https, o certificado e conferido; nao ha como desligar."""
+    from datetime import datetime, timezone
+
     from simulador import envio
     from simulador.inmet import Leitura
-    from datetime import datetime, timezone
 
     chamadas = []
 

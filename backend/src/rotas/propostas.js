@@ -147,15 +147,20 @@ function dataDeInicio(valor, { limitarAoPrazo = true } = {}) {
 
   const texto = String(valor);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || Number.isNaN(Date.parse(`${texto}T00:00:00Z`))) {
-    throw pedidoInvalido('A data de inicio deve estar no formato AAAA-MM-DD.');
+    throw pedidoInvalido("A data de inicio deve estar no formato AAAA-MM-DD.");
   }
 
   if (!limitarAoPrazo) return texto;
 
-  const dias = (Date.parse(`${texto}T00:00:00Z`) - Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`)) / 86_400_000;
+  const dias =
+    (Date.parse(`${texto}T00:00:00Z`) -
+      Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`)) /
+    86_400_000;
   // -1: a data local do produtor pode estar um dia atras do UTC (Brasil e UTC-3).
   if (dias < -1 || dias > MAXIMO_DE_DIAS_ATE_O_INICIO) {
-    throw pedidoInvalido(`A cobertura deve comecar entre hoje e daqui a ${MAXIMO_DE_DIAS_ATE_O_INICIO} dias.`);
+    throw pedidoInvalido(
+      `A cobertura deve comecar entre hoje e daqui a ${MAXIMO_DE_DIAS_ATE_O_INICIO} dias.`,
+    );
   }
 
   return texto;

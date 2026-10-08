@@ -452,11 +452,7 @@ export default function ApoliceDetalhe() {
             A cobertura so comeca em {emData(t.vigenciaInicio)}. Ate la, o produtor ou a seguradora
             podem cancelar; a garantia depositada volta para a seguradora (RF10).
           </p>
-          <button
-            className="secundario"
-            onClick={cancelar}
-            disabled={operando || !signatario}
-          >
+          <button className="secundario" onClick={cancelar} disabled={operando || !signatario}>
             {operando ? "Aguardando a carteira…" : "Cancelar apolice"}
           </button>
         </div>

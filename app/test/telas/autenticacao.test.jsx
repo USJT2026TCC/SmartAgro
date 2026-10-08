@@ -45,7 +45,9 @@ describe("autenticacao e perfis", () => {
       rotas: {
         "POST /autenticacao/entrar": {
           status: 401,
-          corpo: { erro: { codigo: "nao_autenticado", mensagem: "Identificador ou senha invalidos." } },
+          corpo: {
+            erro: { codigo: "nao_autenticado", mensagem: "Identificador ou senha invalidos." },
+          },
         },
       },
     });
@@ -73,7 +75,11 @@ describe("autenticacao e perfis", () => {
     fireEvent.submit(campo.closest("form"));
 
     await waitFor(() =>
-      expect(chamadas.some((c) => c.caminho === "/autenticacao/segundo-fator" && c.corpo.codigo === "123456")).toBe(true),
+      expect(
+        chamadas.some(
+          (c) => c.caminho === "/autenticacao/segundo-fator" && c.corpo.codigo === "123456",
+        ),
+      ).toBe(true),
     );
     expect(sessionStorage.getItem("agrosmart:token")).toBe("completo");
   });
@@ -85,7 +91,10 @@ describe("autenticacao e perfis", () => {
   });
 
   test("perfil errado vai para 'sem acesso' (RF04)", async () => {
-    await abrir("/seguradora/propostas", { perfil: "produtor", rotas: { "GET /apolices": { apolices: [] } } });
+    await abrir("/seguradora/propostas", {
+      perfil: "produtor",
+      rotas: { "GET /apolices": { apolices: [] } },
+    });
     expect(await achar("Sem acesso")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Voltar ao inicio" }));
@@ -100,7 +109,9 @@ describe("autenticacao e perfis", () => {
   test("sessao expirada no servidor volta ao login (HU13, criterio 3)", async () => {
     await abrir("/notificacoes", {
       perfil: "perito",
-      rotas: { "GET /notificacoes": { status: 401, corpo: { erro: { mensagem: "Sessao expirada." } } } },
+      rotas: {
+        "GET /notificacoes": { status: 401, corpo: { erro: { mensagem: "Sessao expirada." } } },
+      },
     });
 
     expect(await screen.findByLabelText("Identificador", {}, { timeout: 3000 })).toBeTruthy();
@@ -110,7 +121,10 @@ describe("autenticacao e perfis", () => {
   test("sair encerra a sessao no servidor e localmente", async () => {
     const { chamadas } = await abrir("/perito", {
       perfil: "perito",
-      rotas: { "GET /perito/analises": { analises: [] }, "GET /contestacoes": { contestacoes: [] } },
+      rotas: {
+        "GET /perito/analises": { analises: [] },
+        "GET /contestacoes": { contestacoes: [] },
+      },
     });
 
     fireEvent.click(await screen.findByRole("button", { name: "Sair" }));

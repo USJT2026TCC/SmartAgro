@@ -119,7 +119,7 @@ def comando_analisar(opcoes) -> None:
 
     print(f"{estacao.codigo} {estacao.nome}/{estacao.uf} ({estacao.latitude}, {estacao.longitude})")
     print(f"leituras horarias..: {len(leituras)}")
-    print(f"com medicao de chuva: {sum(1 for l in leituras if l.completa)}")
+    print(f"com medicao de chuva: {sum(1 for leitura in leituras if leitura.completa)}")
     print(f"dias com 20h ou mais: {len(completos)} de {len(dias)}")
     print(f"chuva no periodo....: {sum(d['chuva_mm'] for d in dias.values()):.1f} mm")
 
@@ -181,7 +181,9 @@ def comando_enviar(opcoes) -> None:
     print(f"Estacao {estacao.codigo} {estacao.nome}/{estacao.uf} — fonte '{opcoes.fonte}'")
     print(f"Endereco que assina.: {endereco_de(chave)}")
     print(f"Leituras............: {len(leituras)} de {total_bruto} na janela")
-    print(f"Periodo enviado.....: {leituras[0].instante:%Y-%m-%d} a {leituras[-1].instante:%Y-%m-%d}")
+    print(
+        f"Periodo enviado.....: {leituras[0].instante:%Y-%m-%d} a {leituras[-1].instante:%Y-%m-%d}"
+    )
 
     if deslocamento:
         print(

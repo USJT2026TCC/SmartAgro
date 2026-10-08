@@ -30,7 +30,14 @@ export const DECISOES = ["deferida", "indeferida"];
  * Texto canonico do parecer. O resumo gravado na cadeia e calculado sobre ele,
  * e qualquer pessoa com o texto consegue recalcula-lo e conferir.
  */
-export function textoDoParecer({ contestacaoId, apolice, periodo: p, decisao, indiceRetificadoBps, parecer }) {
+export function textoDoParecer({
+  contestacaoId,
+  apolice,
+  periodo: p,
+  decisao,
+  indiceRetificadoBps,
+  parecer,
+}) {
   return [
     "AgroSmart - parecer de contestacao",
     `contestacao:${contestacaoId}`,
@@ -104,7 +111,9 @@ export function rotasDeContestacoes() {
     );
 
     if (!rows[0]) {
-      throw conflito("Este periodo ja foi contestado. O contrato aceita uma retificacao por periodo.");
+      throw conflito(
+        "Este periodo ja foi contestado. O contrato aceita uma retificacao por periodo.",
+      );
     }
 
     await auditar(banco, req, "contestacao_aberta", {

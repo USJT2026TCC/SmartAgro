@@ -193,7 +193,9 @@ export default function TalhoesEProdutos() {
         metodo: "PATCH",
         corpo: { cultura: editandoTalhao.cultura, poligono: JSON.parse(editandoTalhao.poligono) },
       });
-      setAviso(`Talhao ${salvo.identificador} atualizado. Area: ${Number(salvo.areaHa).toFixed(2)} ha.`);
+      setAviso(
+        `Talhao ${salvo.identificador} atualizado. Area: ${Number(salvo.areaHa).toFixed(2)} ha.`,
+      );
       setEditandoTalhao(null);
       await carregar();
     } catch (falha) {
@@ -271,7 +273,9 @@ export default function TalhoesEProdutos() {
               <input
                 id="novo-identificador"
                 value={novoProdutor.identificador}
-                onChange={(e) => setNovoProdutor({ ...novoProdutor, identificador: e.target.value })}
+                onChange={(e) =>
+                  setNovoProdutor({ ...novoProdutor, identificador: e.target.value })
+                }
                 placeholder="maria.silva"
               />
             </Campo>
@@ -692,14 +696,16 @@ export default function TalhoesEProdutos() {
             <div className="cartao">
               <h3>Editar {editandoTalhao.identificador}</h3>
               <p className="silencioso">
-                So e possivel enquanto o talhao nao tem proposta nem apolice: depois, a area cotada e
-                o poligono que recusa fotos de fora fazem parte do que foi contratado.
+                So e possivel enquanto o talhao nao tem proposta nem apolice: depois, a area cotada
+                e o poligono que recusa fotos de fora fazem parte do que foi contratado.
               </p>
               <Campo rotulo="Cultura" htmlFor="cultura-edicao">
                 <select
                   id="cultura-edicao"
                   value={editandoTalhao.cultura}
-                  onChange={(e) => setEditandoTalhao({ ...editandoTalhao, cultura: e.target.value })}
+                  onChange={(e) =>
+                    setEditandoTalhao({ ...editandoTalhao, cultura: e.target.value })
+                  }
                 >
                   <option value="soja">soja</option>
                   <option value="milho">milho</option>
@@ -709,7 +715,9 @@ export default function TalhoesEProdutos() {
               </Campo>
               <DesenhoDoTalhao
                 vertices={verticesDoTexto(editandoTalhao.poligono)}
-                aoMudar={(v) => setEditandoTalhao({ ...editandoTalhao, poligono: JSON.stringify(v) })}
+                aoMudar={(v) =>
+                  setEditandoTalhao({ ...editandoTalhao, poligono: JSON.stringify(v) })
+                }
               />
               <div className="linha-de-botoes">
                 <button onClick={salvarTalhaoEditado}>Salvar talhao</button>

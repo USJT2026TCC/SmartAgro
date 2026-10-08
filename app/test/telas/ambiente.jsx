@@ -66,7 +66,9 @@ export function backendFalso(rotas = {}) {
   const chamadas = [];
 
   globalThis.fetch = vi.fn(async (url, opcoes = {}) => {
-    const [caminho, consulta = ""] = String(url).replace(/^\/api/, "").split("?");
+    const [caminho, consulta = ""] = String(url)
+      .replace(/^\/api/, "")
+      .split("?");
     const metodo = opcoes.method ?? "GET";
     const corpo =
       typeof opcoes.body === "string" ? JSON.parse(opcoes.body) : (opcoes.body ?? undefined);
@@ -78,10 +80,13 @@ export function backendFalso(rotas = {}) {
       return m === metodo && casa(p, caminho);
     });
 
-    let resposta = chave ? rotas[chave] : { status: 404, corpo: { erro: { mensagem: `sem rota ${metodo} ${caminho}` } } };
+    let resposta = chave
+      ? rotas[chave]
+      : { status: 404, corpo: { erro: { mensagem: `sem rota ${metodo} ${caminho}` } } };
     if (typeof resposta === "function") resposta = await resposta(pedido);
 
-    const temStatus = resposta && typeof resposta === "object" && "status" in resposta && "corpo" in resposta;
+    const temStatus =
+      resposta && typeof resposta === "object" && "status" in resposta && "corpo" in resposta;
     const status = temStatus ? resposta.status : 200;
     const dados = temStatus ? resposta.corpo : resposta;
 
@@ -155,4 +160,5 @@ export async function abrir(caminho, { perfil = null, rotas = {} } = {}) {
 }
 
 /** Espera um texto aparecer (aceita expressao regular). */
-export const achar = (texto) => screen.findAllByText(texto, {}, { timeout: 3000 }).then((l) => l[0]);
+export const achar = (texto) =>
+  screen.findAllByText(texto, {}, { timeout: 3000 }).then((l) => l[0]);
