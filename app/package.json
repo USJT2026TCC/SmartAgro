@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "formatar": "prettier --write \"src/**/*.{js,jsx,css}\" \"scripts/*.mjs\"",
     "testar": "vitest run",
-    "cobertura": "vitest run --coverage"
+    "cobertura": "vitest run --coverage",
+    "dev:sepolia": "npm run enderecos && vite --mode sepolia"
   },
   "dependencies": {
     "ethers": "^6.13.4",
