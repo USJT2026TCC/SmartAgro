@@ -28,6 +28,10 @@ export default function Cotacao() {
   const [talhaoId, setTalhaoId] = useState("");
   const [produtoId, setProdutoId] = useState("");
   const [areaSegurada, setAreaSegurada] = useState("");
+  // Hoje, por padrao. Uma data futura (o plantio, por exemplo) abre a janela em
+  // que o contrato aceita o cancelamento (RF10).
+  const hoje = new Date().toISOString().slice(0, 10);
+  const [inicioDaVigencia, setInicioDaVigencia] = useState(hoje);
   const [cotacao, setCotacao] = useState(null);
   const [enviada, setEnviada] = useState(null);
   const [erro, setErro] = useState(null);
@@ -112,7 +116,7 @@ export default function Cotacao() {
     try {
       const { proposta } = await api("/propostas", {
         metodo: "POST",
-        corpo: { talhaoId, produtoId, areaHa: areaSegurada },
+        corpo: { talhaoId, produtoId, areaHa: areaSegurada, inicioDaVigencia },
       });
       setEnviada(proposta);
     } catch (falha) {
@@ -213,6 +217,20 @@ export default function Cotacao() {
               max={talhao?.areaHa ?? undefined}
               value={areaSegurada}
               onChange={(e) => setAreaSegurada(e.target.value)}
+            />
+          </Campo>
+
+          <Campo
+            rotulo="Inicio da cobertura"
+            htmlFor="inicio"
+            ajuda="Hoje ou ate 120 dias a frente. Antes do inicio, a apolice pode ser cancelada e a garantia volta para a seguradora."
+          >
+            <input
+              id="inicio"
+              type="date"
+              min={hoje}
+              value={inicioDaVigencia}
+              onChange={(e) => setInicioDaVigencia(e.target.value)}
             />
           </Campo>
 

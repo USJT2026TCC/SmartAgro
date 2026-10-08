@@ -50,6 +50,8 @@ const TITULOS = {
   CondicaoAvaliada: "Contrato avaliou a condicao contratada",
   PagamentoExecutado: "Indenizacao transferida ao produtor",
   GarantiaResgatada: "Garantia devolvida a seguradora",
+  ApoliceCancelada: "Apolice cancelada antes da vigencia",
+  IndiceRetificado: "Indice de dano retificado apos contestacao",
 };
 
 /** Descricao de cada evento, com os argumentos que importam. */
@@ -76,6 +78,16 @@ function descreverEvento(evento) {
       return `${emEth(a.valor)} transferidos sem aprovacao humana, na mesma transacao que publicou o indice.`;
     case "GarantiaResgatada":
       return `${emEth(a.valor)} devolvidos apos o fim da vigencia sem acionamento.`;
+    case "ApoliceCancelada":
+      return Number(a.garantiaDevolvida) > 0
+        ? `${emEth(a.garantiaDevolvida)} de garantia devolvidos a seguradora.`
+        : "Cancelada antes do deposito da garantia; nenhum valor movimentado.";
+    case "IndiceRetificado":
+      return (
+        `Periodo ${periodoEmData(a.periodo)} — de ${emPercentual(a.indiceDanoOriginalBps)} para ` +
+        `${emPercentual(a.indiceDanoBps)}, conforme o parecer do perito (resumo ${hashCurto(a.hashParecer)}). ` +
+        "A publicacao original continua registrada."
+      );
     default:
       return "";
   }
@@ -178,6 +190,9 @@ export default function ApoliceDetalhe() {
   const [aviso, setAviso] = useState(null);
   const [operando, setOperando] = useState(false);
   const [doBackend, setDoBackend] = useState(null);
+  const [contestacoes, setContestacoes] = useState([]);
+  const [contestando, setContestando] = useState(null);
+  const [motivo, setMotivo] = useState("");
 
   const carregar = useCallback(async () => {
     setErro(null);
@@ -198,6 +213,14 @@ export default function ApoliceDetalhe() {
       api(`/apolices/${endereco}`)
         .then(setDoBackend)
         .catch(() => setDoBackend(null));
+
+      api("/contestacoes")
+        .then((r) =>
+          setContestacoes(
+            r.contestacoes.filter((c) => c.apolice_endereco === endereco.toLowerCase()),
+          ),
+        )
+        .catch(() => setContestacoes([]));
     } catch (falha) {
       setErro(mensagemDeErro(falha));
     } finally {
@@ -221,6 +244,8 @@ export default function ApoliceDetalhe() {
     contrato.on("IndicesPublicados", atualizar);
     contrato.on("PagamentoExecutado", atualizar);
     contrato.on("GarantiaDepositada", atualizar);
+    contrato.on("ApoliceCancelada", atualizar);
+    contrato.on("IndiceRetificado", atualizar);
 
     return () => {
       contrato.removeAllListeners();
@@ -278,6 +303,59 @@ export default function ApoliceDetalhe() {
     }
   }
 
+  /**
+   * Cancelamento antes da vigencia (RF10). O produtor titular ou a seguradora
+   * assinam com a propria carteira; a garantia, se houver, volta a seguradora.
+   */
+  async function cancelar() {
+    const confirmado = window.confirm(
+      "Cancelar a apolice? Depois de cancelada, ela nao cobre mais nada, e isso nao pode ser desfeito.",
+    );
+    if (!confirmado) return;
+
+    setAviso(null);
+    setErro(null);
+    setOperando(true);
+
+    try {
+      const contrato = contratoApolice(endereco, signatario);
+      const transacao = await contrato.cancelar();
+
+      setAviso(`Transacao enviada: ${transacao.hash}. Aguardando confirmacao…`);
+      await transacao.wait();
+      setAviso("Apolice cancelada. A garantia, se ja depositada, voltou para a seguradora.");
+      await carregar();
+    } catch (falha) {
+      setErro(mensagemDeErro(falha));
+    } finally {
+      setOperando(false);
+    }
+  }
+
+  /** Contestacao do indice de dano de um periodo (RF28). */
+  async function contestar(periodo) {
+    setAviso(null);
+    setErro(null);
+    setOperando(true);
+
+    try {
+      await api("/contestacoes", {
+        metodo: "POST",
+        corpo: { apolice: endereco, periodo, motivo },
+      });
+      setAviso(
+        "Contestacao registrada. Um perito vai analisar; se deferida, o indice retificado e submetido ao contrato pelo oraculo.",
+      );
+      setContestando(null);
+      setMotivo("");
+      await carregar();
+    } catch (falha) {
+      setErro(mensagemDeErro(falha));
+    } finally {
+      setOperando(false);
+    }
+  }
+
   if (carregando) {
     return (
       <div className="pagina">
@@ -305,6 +383,25 @@ export default function ApoliceDetalhe() {
     conta.toLowerCase() === apolice.seguradora.toLowerCase();
 
   const vigenciaVencida = Date.now() / 1000 > t.vigenciaFim;
+  const ehProdutorTitular =
+    perfil === PERFIS.PRODUTOR && conta && conta.toLowerCase() === t.produtor.toLowerCase();
+
+  // A mesma regra do contrato: so antes do inicio da vigencia, e so enquanto a
+  // apolice aguarda garantia ou esta ativa.
+  const podeCancelar =
+    (ehSeguradora || ehProdutorTitular) &&
+    (apolice.situacao === 0 || apolice.situacao === 1) &&
+    Date.now() / 1000 < t.vigenciaInicio;
+
+  const contestacaoDo = (periodo) =>
+    contestacoes.find((c) => Number(c.periodo) === Number(periodo)) ?? null;
+
+  const ROTULO_CONTESTACAO = {
+    aberta: "contestacao aguardando o perito",
+    deferida: "deferida; aguardando o oraculo",
+    indeferida: "contestacao indeferida",
+    publicada: "retificacao publicada",
+  };
 
   /** Relato do oraculo sobre um periodo: fontes usadas, descartes, gas, latencia. */
   const relatoDoOraculo = (periodo) =>
@@ -339,6 +436,23 @@ export default function ApoliceDetalhe() {
       {aviso ? <Aviso tipo="sucesso">{aviso}</Aviso> : null}
 
       <Aviso tipo="informacao">{explicacaoSituacao(apolice.situacao)}</Aviso>
+
+      {podeCancelar ? (
+        <div className="cartao">
+          <h2>Cancelamento antes da vigencia</h2>
+          <p className="silencioso">
+            A cobertura so comeca em {emData(t.vigenciaInicio)}. Ate la, o produtor ou a seguradora
+            podem cancelar; a garantia depositada volta para a seguradora (RF10).
+          </p>
+          <button
+            className="secundario"
+            onClick={cancelar}
+            disabled={operando || !signatario}
+          >
+            {operando ? "Aguardando a carteira…" : "Cancelar apolice"}
+          </button>
+        </div>
+      ) : null}
 
       <div className="grade">
         <Indicador rotulo="Limite contratado" valor={emEth(t.valorIndenizacao)} />
@@ -485,7 +599,35 @@ export default function ApoliceDetalhe() {
                       </td>
                       <td className="numero">{p.indiceClimatico} dias</td>
                       <td className="numero">
-                        {p.indiceDanoBps > 0 ? emPercentual(p.indiceDanoBps) : "—"}
+                        {p.retificacao ? (
+                          <>
+                            <s>{emPercentual(p.indiceDanoBps)}</s>{" "}
+                            {emPercentual(p.retificacao.indiceDanoBps)}
+                            <div className="silencioso">retificado pelo perito</div>
+                          </>
+                        ) : p.indiceDanoBps > 0 ? (
+                          emPercentual(p.indiceDanoBps)
+                        ) : (
+                          "—"
+                        )}
+                        {contestacaoDo(p.periodo) && !p.retificacao ? (
+                          <div className="silencioso">
+                            {ROTULO_CONTESTACAO[contestacaoDo(p.periodo).situacao]}
+                          </div>
+                        ) : null}
+                        {ehProdutorTitular &&
+                        apolice.situacao === 1 &&
+                        !p.retificacao &&
+                        !contestacaoDo(p.periodo) ? (
+                          <div>
+                            <button
+                              className="secundario pequeno"
+                              onClick={() => setContestando(p.periodo)}
+                            >
+                              Contestar
+                            </button>
+                          </div>
+                        ) : null}
                       </td>
                       <td className="numero">
                         {p.confiancaBps > 0 ? emPercentual(p.confiancaBps) : "—"}
@@ -507,6 +649,34 @@ export default function ApoliceDetalhe() {
               </table>
             </div>
           )}
+
+          {contestando ? (
+            <div className="cartao">
+              <h3>Contestar o indice de {periodoEmData(contestando)}</h3>
+              <p className="silencioso">
+                Explique por que o indice de dano nao corresponde a lavoura. Um perito agronomo
+                analisa as mesmas imagens; se ele deferir, o indice retificado e submetido ao
+                contrato, que reavalia a condicao. A publicacao original continua registrada.
+              </p>
+              <textarea
+                rows={4}
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ex.: a metade norte do talhao secou e as fotos foram tiradas na parte irrigada."
+              />
+              <div className="linha-de-botoes">
+                <button
+                  onClick={() => contestar(contestando)}
+                  disabled={operando || motivo.trim().length < 10}
+                >
+                  Enviar contestacao
+                </button>
+                <button className="secundario" onClick={() => setContestando(null)}>
+                  Desistir
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <RodapeDaFronteira>
             O contrato nao verifica se o indice esta correto, apenas se quem publicou tinha

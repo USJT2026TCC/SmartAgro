@@ -111,7 +111,13 @@ export async function lerPublicacoes(endereco, provedor) {
 
   const publicacoes = await Promise.all(
     periodos.map(async (periodo) => {
-      const bruto = await contrato.publicacao(periodo);
+      const [bruto, retificado] = await Promise.all([
+        contrato.publicacao(periodo),
+        contrato.periodoRetificado(periodo),
+      ]);
+
+      // Retificacao depois de contestacao (RF28): fica ao lado da original.
+      const r = retificado ? await contrato.retificacao(periodo) : null;
 
       return {
         periodo: Number(periodo),
@@ -122,6 +128,14 @@ export async function lerPublicacoes(endereco, provedor) {
         publicadoEm: Number(bruto.publicadoEm),
         hashEvidencias: bruto.hashEvidencias,
         versaoModelo: bruto.versaoModelo,
+        retificacao: r
+          ? {
+              indiceDanoBps: Number(r.indiceDanoBps),
+              confiancaBps: Number(r.confiancaBps),
+              publicadoEm: Number(r.publicadoEm),
+              hashParecer: r.hashParecer,
+            }
+          : null,
       };
     }),
   );
