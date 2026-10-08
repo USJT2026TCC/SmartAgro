@@ -1,6 +1,7 @@
 import { criarApp } from "./app.js";
 import { config } from "./config.js";
 import { abrirBanco } from "./banco/conexao.js";
+import { carregarHistoricoClimatico } from "./banco/historico.js";
 import { migrar } from "./banco/migrar.js";
 import { semear } from "./banco/semente.js";
 import { criarIndexador } from "./cadeia/indexador.js";
@@ -18,6 +19,9 @@ async function iniciar() {
   const aplicadas = await migrar(banco);
 
   if (aplicadas.length > 0) console.log(`Migracoes aplicadas: ${aplicadas.join(", ")}`);
+
+  const diasDeHistorico = await carregarHistoricoClimatico(banco);
+  if (diasDeHistorico > 0) console.log(`Historico de chuva do INMET carregado: ${diasDeHistorico} dias.`);
 
   if (!config.emProducao && (await semear(banco))) {
     console.log(

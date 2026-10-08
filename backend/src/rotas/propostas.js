@@ -3,6 +3,7 @@ import { Router } from "express";
 import { conflito, naoEncontrado, pedidoInvalido } from "../erros.js";
 import { apoliceDoRecibo } from "../cadeia/leitor.js";
 import { registrarApoliceEmitida } from "../dominio/apolices.js";
+import { historicoDaCondicao } from "../dominio/historicoClimatico.js";
 import { calcularCotacao } from "../dominio/cotacao.js";
 import { descreverTermos, montarStructDeTermos, resumirTermos } from "../dominio/termos.js";
 import { auditar, exigirPerfil, exigirSessao } from "../seguranca/sessoes.js";
@@ -125,6 +126,9 @@ function termosDoProduto(produto) {
   };
 }
 
+/** Raio, em metros, das estacoes que contam como "historico da localidade". */
+const RAIO_DO_HISTORICO_M = 100_000;
+
 /** Prazo maximo entre a proposta e o inicio da cobertura. */
 const MAXIMO_DE_DIAS_ATE_O_INICIO = 120;
 
@@ -138,13 +142,15 @@ function isoDaData(valor) {
  * mais longe que isso, as condicoes do produto podem mudar antes de a cobertura
  * comecar.
  */
-function dataDeInicio(valor) {
+function dataDeInicio(valor, { limitarAoPrazo = true } = {}) {
   if (valor === undefined || valor === null || valor === "") return null;
 
   const texto = String(valor);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || Number.isNaN(Date.parse(`${texto}T00:00:00Z`))) {
     throw pedidoInvalido('A data de inicio deve estar no formato AAAA-MM-DD.');
   }
+
+  if (!limitarAoPrazo) return texto;
 
   const dias = (Date.parse(`${texto}T00:00:00Z`) - Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`)) / 86_400_000;
   if (dias < 0 || dias > MAXIMO_DE_DIAS_ATE_O_INICIO) {
@@ -175,13 +181,39 @@ export function rotasDePropostas() {
       taxaPremioBps: produto.taxa_premio_bps,
     });
 
+    const termos = termosDoProduto(produto);
+    // Na simulacao, qualquer data: o produtor pode comparar epocas do ano. So a
+    // proposta limita o inicio a 120 dias.
+    const inicio =
+      dataDeInicio(req.body?.inicioDaVigencia, { limitarAoPrazo: false }) ??
+      new Date().toISOString().slice(0, 10);
+
+    // Historico climatico da localidade (RF06): estacoes do INMET a ate 100 km
+    // do talhao, medido pelo PostGIS sobre o elipsoide.
+    const { rows: linhas } = await banco.query(
+      `SELECT h.estacao, h.data::text AS data, h.chuva_mm, h.horas_validas
+         FROM historico_chuva h
+         JOIN estacoes_inmet e ON e.codigo = h.estacao
+         JOIN talhoes t ON t.id = $1
+        WHERE ST_DWithin(e.posicao::geography, ST_Centroid(t.geometria)::geography, $2)`,
+      [talhao.id, RAIO_DO_HISTORICO_M],
+    );
+
+    const historico = historicoDaCondicao({
+      linhas,
+      inicio,
+      vigenciaDias: Number(termos.vigenciaDias),
+      termos,
+    });
+
     res.json({
       cotacao: {
         areaSeguradaHa: area,
         areaMedidaDoTalhaoHa: talhao.area_ha,
         valorIndenizacaoWei: valorIndenizacaoWei.toString(),
         premioWei: premioWei.toString(),
-        termos: termosDoProduto(produto),
+        termos,
+        historico,
       },
     });
   });

@@ -99,6 +99,19 @@ def comando_estacoes(opcoes) -> None:
         print(linha)
 
 
+def comando_historico(opcoes) -> None:
+    from .historico import gerar
+
+    anos = list(range(opcoes.de, opcoes.ate + 1))
+    estacoes = [e.strip().upper() for e in opcoes.estacoes.split(",") if e.strip()]
+
+    print(f"Historico de chuva diaria: {', '.join(estacoes)}, {anos[0]} a {anos[-1]}")
+    print("Fonte: INMET, https://portal.inmet.gov.br/dadoshistoricos")
+
+    linhas = gerar(anos, estacoes, DIR_DADOS, Path(opcoes.saida), apagar_zip=opcoes.apagar_zip)
+    print(f"{linhas} dias gravados em {opcoes.saida}")
+
+
 def comando_analisar(opcoes) -> None:
     estacao, leituras = abrir_do_zip(_zip_do_ano(opcoes.ano), opcoes.estacao)
     dias = serie.resumo_diario(leituras)
@@ -259,6 +272,18 @@ def construir_parser() -> argparse.ArgumentParser:
     ponte.add_argument("--broker", default="localhost")
     ponte.add_argument("--porta", type=int, default=1883)
     ponte.set_defaults(funcao=comando_ponte)
+
+    historico = sub.add_parser(
+        "historico", help="chuva diaria de varios anos, para a cotacao com historico (RF06)"
+    )
+    historico.add_argument("--estacoes", required=True, help="codigos separados por virgula")
+    historico.add_argument("--de", type=int, required=True, help="primeiro ano")
+    historico.add_argument("--ate", type=int, required=True, help="ultimo ano")
+    historico.add_argument("--saida", required=True, help="caminho do CSV gerado")
+    historico.add_argument(
+        "--apagar-zip", action="store_true", help="apaga cada ZIP baixado depois de extrair"
+    )
+    historico.set_defaults(funcao=comando_historico)
 
     endereco = sub.add_parser("endereco", help="endereco publico da chave de uma fonte")
     endereco.add_argument("--fonte", required=True)

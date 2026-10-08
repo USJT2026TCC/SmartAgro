@@ -125,7 +125,7 @@ def _numero(texto: str) -> float | None:
 
 
 def _instante(data: str, hora: str) -> datetime:
-    """'2024/07/02' + '0300 UTC' -> datetime com fuso UTC."""
+    """'2024/07/02' + '0300 UTC' (ou '2018-07-02' + '03:00') -> datetime com fuso UTC."""
     data = data.replace("-", "/").strip()
     hora_limpa = hora.strip().replace("UTC", "").strip()
     horas = int(hora_limpa[:2])
@@ -161,8 +161,11 @@ def ler_csv(conteudo: bytes) -> tuple[Estacao, list[Leitura]]:
     leituras: list[Leitura] = []
 
     for registro in leitor:
-        data = (registro.get("Data") or "").strip()
-        hora = (registro.get("Hora UTC") or "").strip()
+        # Ate 2018 o INMET nomeava as colunas "DATA (YYYY-MM-DD)" e "HORA (UTC)",
+        # com a hora em "00:00"; de 2019 em diante, "Data" e "Hora UTC", com
+        # "0000 UTC". Sem aceitar os dois, os anos antigos voltavam vazios.
+        data = (registro.get("Data") or registro.get("DATA (YYYY-MM-DD)") or "").strip()
+        hora = (registro.get("Hora UTC") or registro.get("HORA (UTC)") or "").strip()
 
         if not data or not hora:
             continue

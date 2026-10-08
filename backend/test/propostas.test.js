@@ -229,6 +229,31 @@ describe("propostas e emissao", () => {
     assert.equal(ethers.decodeBytes32String(preparo.termos.talhao), "talhao-01");
   });
 
+  test("a cotacao traz o historico climatico real das estacoes do INMET proximas (RF06)", async () => {
+    const produtoIntegral = await idDoProduto(ctx.banco, "Estiagem — soja");
+    const cotar = async (inicioDaVigencia) => {
+      const r = await ctx
+        .api()
+        .post("/api/cotacoes")
+        .set(com(produtor))
+        .send({ talhaoId, produtoId: produtoIntegral, areaHa: "180", inicioDaVigencia });
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      return r.body.cotacao.historico;
+    };
+
+    // Comecando em maio, a cobertura atravessa a seca do inverno paulista: os
+    // 30 dias sem chuva aconteceram em todos os anos avaliados.
+    const seca = await cotar("2027-05-01");
+    assert.equal(seca.aplicavel, true);
+    assert.deepEqual(seca.estacoes, ["A747", "A770"]);
+    assert.ok(seca.anosAvaliados >= 8, `anos avaliados: ${seca.anosAvaliados}`);
+    assert.equal(seca.acionamentos, seca.anosAvaliados);
+
+    // Comecando em outubro, a cobertura cai nas chuvas: aciona raramente.
+    const chuvas = await cotar("2026-10-07");
+    assert.ok(chuvas.frequencia < 0.25, `frequencia: ${chuvas.frequencia}`);
+  });
+
   test("a vigencia comeca na data pedida pelo produtor, a meia-noite de Brasilia (RF10)", async () => {
     const daqui30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
 
