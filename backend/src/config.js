@@ -73,6 +73,21 @@ export const config = {
   /** Liga o indexador. Os testes desligam, porque nao ha cadeia disponivel. */
   indexadorAtivo: process.env.INDEXADOR !== "desligado",
 
+  /**
+   * E-mail (RF27). Sem SMTP_URL, as mensagens vao para a caixa de saida local,
+   * em arquivos .eml. Ex.: smtps://usuario:senha@smtp.exemplo.com:465
+   */
+  smtpUrl: process.env.SMTP_URL || "",
+  remetenteEmail: process.env.EMAIL_REMETENTE || "AgroSmart <avisos@agrosmart.test>",
+  dirEmails: process.env.DIR_EMAILS || join(RAIZ, "dados", "emails"),
+  intervaloDoEmail: Number(process.env.INTERVALO_EMAIL_MS || 15000),
+  emailAtivo: process.env.EMAIL !== "desligado",
+
+  /** Explorador de blocos, para o link da transacao no e-mail. Vazio em rede local. */
+  exploradorDeBlocos:
+    process.env.EXPLORADOR_DE_BLOCOS ??
+    ((process.env.REDE || "localhost") === "sepolia" ? "https://sepolia.etherscan.io" : ""),
+
   /** Onde as imagens dos talhoes ficam gravadas. */
   dirImagens: process.env.DIR_IMAGENS || join(RAIZ, "dados", "imagens"),
 

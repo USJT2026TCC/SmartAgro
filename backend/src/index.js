@@ -2,6 +2,7 @@ import { criarApp } from "./app.js";
 import { config } from "./config.js";
 import { abrirBanco } from "./banco/conexao.js";
 import { carregarHistoricoClimatico } from "./banco/historico.js";
+import { criarDespachanteDeEmail } from "./notificacoes/email.js";
 import { migrar } from "./banco/migrar.js";
 import { semear } from "./banco/semente.js";
 import { criarIndexador } from "./cadeia/indexador.js";
@@ -31,6 +32,7 @@ async function iniciar() {
 
   const cadeia = criarLeitorDaCadeia();
   const indexador = config.indexadorAtivo ? criarIndexador(banco) : null;
+  const despachante = config.emailAtivo ? criarDespachanteDeEmail(banco) : null;
 
   const app = criarApp({ banco, cadeia, indexador });
 
@@ -45,12 +47,21 @@ async function iniciar() {
   });
 
   indexador?.iniciar();
+  despachante?.iniciar();
+  if (despachante) {
+    console.log(
+      config.smtpUrl
+        ? "E-mail: enviando pelo SMTP configurado."
+        : `E-mail: sem SMTP_URL, mensagens gravadas em ${config.dirEmails}`,
+    );
+  }
 
   // Encerramento limpo: para o indexador, fecha a porta e o banco. Sem isso, o
   // PGlite pode ficar com o diretorio de dados travado ate o proximo inicio.
   const encerrar = async (sinal) => {
     console.log(`\n${sinal} recebido, encerrando...`);
     indexador?.parar();
+    despachante?.parar();
     servidor.close();
     encerrarProvedor();
     await banco.fechar();

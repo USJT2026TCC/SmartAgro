@@ -183,6 +183,12 @@ export async function semear(banco) {
         ],
       );
     }
+
+    // E-mails de demonstracao no dominio reservado .test (RFC 2606): nao
+    // existem, e as mensagens vao para a caixa de saida local (RF27).
+    await tx.query(
+      "UPDATE usuarios SET email = identificador || '@agrosmart.test' WHERE email IS NULL",
+    );
   });
 
   return true;

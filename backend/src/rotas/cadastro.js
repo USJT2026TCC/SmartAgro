@@ -71,6 +71,13 @@ function produtoPublico(p) {
   };
 }
 
+/** E-mail opcional para as notificacoes (RF27). */
+function emailOpcional(valor) {
+  const email = texto(valor, "email", { max: 200, obrigatorio: false })?.toLowerCase() ?? null;
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw pedidoInvalido("E-mail invalido.");
+  return email;
+}
+
 export function rotasDeCadastro() {
   const r = Router();
 
@@ -78,7 +85,7 @@ export function rotasDeCadastro() {
 
   r.get("/produtores", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
     const { rows } = await req.app.locals.banco.query(
-      `SELECT id, identificador, nome, documento, carteira FROM usuarios
+      `SELECT id, identificador, nome, documento, email, carteira FROM usuarios
         WHERE perfil = 'produtor' ORDER BY nome`,
     );
 
@@ -96,6 +103,7 @@ export function rotasDeCadastro() {
     const nome = texto(req.body?.nome, "nome", { max: 120 });
     const documento = texto(req.body?.documento, "documento", { max: 20, obrigatorio: false });
     const senhaInicial = texto(req.body?.senhaInicial, "senhaInicial", { max: 200 });
+    const email = emailOpcional(req.body?.email);
 
     if (!/^[a-z0-9._-]{3,60}$/.test(identificador)) {
       throw pedidoInvalido("O identificador aceita letras minusculas, numeros, ponto, hifen e sublinhado.");
@@ -111,10 +119,10 @@ export function rotasDeCadastro() {
     if (existentes[0]) throw conflito("Ja existe um usuario com esse identificador.");
 
     const { rows } = await banco.query(
-      `INSERT INTO usuarios (identificador, nome, perfil, documento, hash_senha)
-       VALUES ($1, $2, 'produtor', $3, $4)
-       RETURNING id, identificador, nome, documento, carteira`,
-      [identificador, nome, documento, await gerarHashDeSenha(senhaInicial)],
+      `INSERT INTO usuarios (identificador, nome, perfil, documento, hash_senha, email)
+       VALUES ($1, $2, 'produtor', $3, $4, $5)
+       RETURNING id, identificador, nome, documento, email, carteira`,
+      [identificador, nome, documento, await gerarHashDeSenha(senhaInicial), email],
     );
 
     await auditar(banco, req, "produtor_cadastrado", { recurso: rows[0].id, detalhes: { identificador } });
@@ -127,12 +135,14 @@ export function rotasDeCadastro() {
     const id = uuid(req.params.id, "id");
     const nome = texto(req.body?.nome, "nome", { max: 120, obrigatorio: false });
     const documento = texto(req.body?.documento, "documento", { max: 20, obrigatorio: false });
+    const email = emailOpcional(req.body?.email);
 
     const { rows } = await banco.query(
-      `UPDATE usuarios SET nome = COALESCE($2, nome), documento = COALESCE($3, documento)
+      `UPDATE usuarios SET nome = COALESCE($2, nome), documento = COALESCE($3, documento),
+                           email = COALESCE($4, email)
         WHERE id = $1 AND perfil = 'produtor'
-        RETURNING id, identificador, nome, documento, carteira`,
-      [id, nome, documento],
+        RETURNING id, identificador, nome, documento, email, carteira`,
+      [id, nome, documento, email],
     );
     if (!rows[0]) throw naoEncontrado("Produtor");
 
