@@ -94,6 +94,16 @@ describe("contestacao (RF28)", () => {
     assert.ok(rows[0].lote_id, "o lote das evidencias deveria estar ligado");
   });
 
+  test("o perito recebe o aviso de que ha uma contestacao esperando por ele", async () => {
+    await contestar();
+
+    const r = await ctx.api().get("/api/notificacoes").set(com(perito));
+    const aviso = r.body.notificacoes.find((n) => n.titulo === "Contestacao aguardando parecer");
+    assert.ok(aviso, JSON.stringify(r.body.notificacoes));
+    assert.match(aviso.mensagem, /12% do periodo 20261020/);
+    assert.match(aviso.mensagem, /Metade da lavoura secou/);
+  });
+
   test("uma contestacao por periodo, como o contrato aceita uma retificacao", async () => {
     assert.equal((await contestar()).status, 201);
     assert.equal((await contestar()).status, 409);

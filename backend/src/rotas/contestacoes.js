@@ -121,6 +121,23 @@ export function rotasDeContestacoes() {
       detalhes: { apolice, periodo: p },
     });
 
+    // O perito precisa saber que ha um caso esperando por ele, como ja acontece
+    // com a analise de baixa confianca (RF27).
+    const { rows: peritos } = await banco.query("SELECT id FROM usuarios WHERE perfil = 'perito'");
+    for (const { id } of peritos) {
+      await banco.query(
+        `INSERT INTO notificacoes (usuario_id, tipo, titulo, mensagem, apolice_endereco, tx_hash)
+         VALUES ($1, 'contestacao_aberta', 'Contestacao aguardando parecer', $2, $3, $4)
+         ON CONFLICT DO NOTHING`,
+        [
+          id,
+          `${req.usuario.nome} contestou o indice de dano de ${publicacao.indice_dano_bps / 100}% do periodo ${p}. Motivo: ${motivo}`,
+          apolice,
+          `contestacao:${rows[0].id}`,
+        ],
+      );
+    }
+
     res.status(201).json({ contestacao: { id: rows[0].id, situacao: "aberta" } });
   });
 
