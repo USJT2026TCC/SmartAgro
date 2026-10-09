@@ -110,7 +110,12 @@ export default function Oraculos() {
     <div className="pagina">
       <div className="entre">
         <h1>Oraculos autorizados</h1>
-        <button className="secundario pequeno" onClick={carregar} disabled={carregando}>
+        <button
+          className="secundario pequeno"
+          onClick={carregar}
+          title="Le de novo do contrato quem esta autorizado a publicar."
+          disabled={carregando}
+        >
           Atualizar
         </button>
       </div>
@@ -137,8 +142,9 @@ export default function Oraculos() {
           </button>
         </Aviso>
       ) : carteiraErrada ? (
-        <Aviso tipo="erro" titulo="Esta carteira nao administra o registro.">
-          Apenas <span className="mono">{seguradoraDoRegistro}</span> pode alterar a lista.
+        <Aviso tipo="erro" titulo="A conta selecionada na MetaMask nao administra o registro.">
+          Ver a lista funciona com qualquer conta. Para autorizar ou revogar, selecione na MetaMask
+          a conta <span className="mono">{seguradoraDoRegistro}</span>, a da seguradora.
         </Aviso>
       ) : null}
 

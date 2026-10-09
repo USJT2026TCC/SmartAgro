@@ -42,3 +42,19 @@ export const USUARIOS_DE_DEMONSTRACAO = [
 ];
 
 export const SENHA_DE_DEMONSTRACAO = "agrosmart";
+
+/**
+ * Para onde ir depois do login.
+ *
+ * O endereco guardado e o da ultima tela aberta, que pode ser de outro perfil:
+ * quem sai como seguradora e entra como perito voltaria para uma tela da
+ * seguradora e cairia em "Sem acesso". Tela de outro perfil vira a tela
+ * inicial do perfil que acabou de entrar; telas comuns (apolice, avisos, conta)
+ * continuam valendo.
+ */
+export function destinoAposEntrar(destino, perfil) {
+  const dono = Object.values(PERFIS).find(
+    (p) => destino === `/${p}` || destino.startsWith(`/${p}/`),
+  );
+  return dono && dono !== perfil ? "/" : destino;
+}

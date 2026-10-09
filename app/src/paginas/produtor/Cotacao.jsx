@@ -8,6 +8,7 @@ import {
   MODO_PAGAMENTO,
   OPERADOR,
   percentualDevido,
+  condicaoEmPalavras,
 } from "../../cadeia/regraDeGatilho";
 import { emEth, emPercentual } from "../../cadeia/formatos";
 import { Aviso, Campo, Carregando, RodapeDaFronteira } from "../../componentes/ui";
@@ -164,27 +165,7 @@ export default function Cotacao() {
   const exemplos = useMemo(() => (termos ? exemplosDeAcionamento(termos) : []), [termos]);
 
   /** A condicao em linguagem corrente (RNF04). */
-  const condicaoEmPalavras = useMemo(() => {
-    if (!produto) return null;
-
-    const clima = `${produto.limiarClimatico} dias seguidos sem chuva`;
-    const dano = `${produto.limiarDanoBps / 100}% da lavoura comprometida`;
-
-    const gatilho =
-      {
-        [OPERADOR.CLIMATICO]: `Se o talhao passar ${clima}`,
-        [OPERADOR.DANO]: `Se o modelo de imagens apontar ${dano}`,
-        [OPERADOR.OU]: `Se o talhao passar ${clima} OU o modelo apontar ${dano}`,
-        [OPERADOR.E]: `Se o talhao passar ${clima} E o modelo apontar ${dano}, no mesmo periodo`,
-      }[produto.operador] ?? "";
-
-    const pagamento =
-      produto.modoPagamento === MODO_PAGAMENTO.INTEGRAL
-        ? "o contrato paga o limite integral."
-        : `o contrato paga metade do limite, e o valor cresce ate o limite integral quando a estiagem chega a ${produto.limiarClimaticoIntegral} dias.`;
-
-    return `${gatilho}, ${pagamento}`;
-  }, [produto]);
+  const textoDaCondicao = useMemo(() => (produto ? condicaoEmPalavras(produto) : null), [produto]);
 
   async function enviarProposta() {
     setErro(null);
@@ -372,7 +353,7 @@ export default function Cotacao() {
           <h2>3. O que aciona o pagamento</h2>
 
           <Aviso tipo="informacao" titulo="Em palavras:">
-            {condicaoEmPalavras}
+            {textoDaCondicao}
           </Aviso>
 
           <p className="silencioso">

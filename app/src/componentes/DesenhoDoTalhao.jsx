@@ -1,6 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+
+import { localizarMunicipio } from "../cadastro/localizarMunicipio";
 
 /**
  * Desenho do poligono do talhao sobre o mapa (HU09, criterio 1).
@@ -16,16 +18,39 @@ import "leaflet/dist/leaflet.css";
  * @param {object} p
  * @param {Array<[number, number]>} p.vertices Pares [longitude, latitude].
  * @param {(vertices: Array<[number, number]>) => void} p.aoMudar
+ * @param {string} [p.municipio] Ao ser preenchido, o mapa vai para la, se ainda nao ha poligono.
  */
-export default function DesenhoDoTalhao({ vertices, aoMudar }) {
+export default function DesenhoDoTalhao({ vertices, aoMudar, municipio = "" }) {
   const recipiente = useRef(null);
   const mapa = useRef(null);
   const camada = useRef(null);
   const aoMudarAtual = useRef(aoMudar);
   const verticesAtuais = useRef(vertices);
 
+  const [localizado, setLocalizado] = useState(null);
+
   aoMudarAtual.current = aoMudar;
   verticesAtuais.current = vertices;
+
+  // Leva o mapa ao municipio digitado. So pergunta depois de uma pausa na
+  // digitacao, e nao mexe no mapa se o poligono ja comecou a ser desenhado.
+  useEffect(() => {
+    if (!municipio || municipio.trim().length < 3) return undefined;
+
+    let valido = true;
+    const espera = setTimeout(async () => {
+      if (verticesAtuais.current.length) return;
+      const lugar = await localizarMunicipio(municipio);
+      if (!valido) return;
+      setLocalizado(lugar ? lugar.nome : "nao encontrado");
+      if (lugar && mapa.current) mapa.current.setView([lugar.lat, lugar.lon], 13);
+    }, 900);
+
+    return () => {
+      valido = false;
+      clearTimeout(espera);
+    };
+  }, [municipio]);
 
   // Cria o mapa uma vez.
   useEffect(() => {
@@ -87,6 +112,11 @@ export default function DesenhoDoTalhao({ vertices, aoMudar }) {
       <div className="linha-de-botoes">
         <span className="silencioso">
           {vertices.length} vertice(s). Clique no mapa para marcar.
+          {localizado === "nao encontrado"
+            ? " Municipio nao encontrado no mapa: navegue ate o local."
+            : localizado
+              ? ` Mapa em ${localizado}.`
+              : ""}
         </span>
         <button
           type="button"

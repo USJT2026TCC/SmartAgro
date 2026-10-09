@@ -5,6 +5,7 @@ import { emPercentual, hashCurto } from "../../cadeia/formatos";
 import MapaDoTalhao from "../../componentes/MapaDoTalhao";
 import { Aviso, Campo, Carregando, RodapeDaFronteira, Selo } from "../../componentes/ui";
 import { anelDoPoligono, pontoNoPoligono } from "../../fotos/geografia";
+import { problemaDoFormato } from "../../fotos/formato";
 import { lerDaFoto, localizacaoDoAparelho, ORIGENS } from "../../fotos/localizacao";
 
 /**
@@ -134,6 +135,12 @@ export default function FotosDaLavoura() {
     setFotos((lista) => [...lista, ...novas]);
 
     for (const foto of novas) {
+      const formato = await problemaDoFormato(foto.arquivo);
+      if (formato) {
+        atualizar(foto.chave, { situacao: "recusada", mensagem: formato });
+        continue;
+      }
+
       const lido = await lerDaFoto(foto.arquivo);
 
       if (lido.origem === "exif") {
@@ -275,10 +282,29 @@ export default function FotosDaLavoura() {
     <div className="pagina">
       <h1>Fotos da lavoura</h1>
       <p className="silencioso">
-        Fotografe a lavoura vista de cima ou de perto das plantas. O modulo de visao estima quanto
-        da lavoura foi afetado pela seca, e esse indice pode acionar a apolice junto com o indice de
-        chuva.
+        As fotos servem de prova do estado da lavoura. Um modelo de visao computacional estima que
+        parte dela foi afetada pela seca, e esse percentual pode acionar a apolice, junto com o
+        indice de chuva das estacoes.
       </p>
+
+      <ol className="passos">
+        <li>
+          Escolha o talhao e clique em <strong>Abrir lote de fotos</strong>.
+        </li>
+        <li>
+          <strong>Tire as fotos</strong> pelo celular, andando pelo talhao, com o GPS ligado; ou{" "}
+          <strong>escolha</strong> fotos ja tiradas (JPEG ou PNG).
+        </li>
+        <li>
+          Confira no mapa: ponto verde esta dentro do talhao; vermelho sera recusado. Foto sem GPS
+          pode ser localizada pelo aparelho ou marcada no mapa.
+        </li>
+        <li>
+          <strong>Envie</strong> e, quando terminar, <strong>feche o lote</strong>. Depois de
+          fechado, a analise e feita automaticamente e o resultado aparece em &quot;Lotes deste
+          talhao&quot;.
+        </li>
+      </ol>
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
       {aviso ? <Aviso tipo="sucesso">{aviso}</Aviso> : null}

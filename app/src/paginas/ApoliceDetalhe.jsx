@@ -434,7 +434,11 @@ export default function ApoliceDetalhe() {
         </div>
         <div className="linha-de-botoes">
           <SeloSituacao situacao={apolice.situacao} />
-          <button className="secundario pequeno" onClick={carregar}>
+          <button
+            className="secundario pequeno"
+            onClick={carregar}
+            title="Le de novo o contrato na rede. A tela ja se atualiza sozinha quando chega um evento; o botao e para quando se quer ter certeza."
+          >
             Atualizar
           </button>
         </div>
@@ -683,9 +687,10 @@ export default function ApoliceDetalhe() {
           ) : null}
 
           <RodapeDaFronteira>
-            O contrato nao verifica se o indice esta correto, apenas se quem publicou tinha
-            autorizacao. O resumo das evidencias e a versao do modelo ficam gravados para que a
-            analise possa ser reexecutada e conferida depois (RNF18, RNF19).
+            O contrato nao verifica se o indice esta correto, so se quem publicou estava autorizado.
+            Por isso cada publicacao grava duas "impressoes digitais": a do conjunto de fotos
+            analisado e a do modelo que fez a conta. Com elas, qualquer pessoa pode refazer a
+            analise depois e conferir se o numero bate (RNF18, RNF19).
           </RodapeDaFronteira>
         </div>
       </div>

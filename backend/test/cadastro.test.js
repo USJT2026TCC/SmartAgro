@@ -243,11 +243,12 @@ describe("cadastro", () => {
       const r = await ctx.api().post("/api/produtores").set(com(seguradora)).send({
         identificador: "maria.silva",
         nome: "Maria Silva",
-        documento: "123",
+        documento: "52998224725",
         senhaInicial: "senha-inicial-123",
       });
       assert.equal(r.status, 201, JSON.stringify(r.body));
       assert.equal(r.body.produtor.identificador, "maria.silva");
+      assert.equal(r.body.produtor.documento, "529.982.247-25", "guardado sempre formatado");
       assert.equal(r.body.produtor.hash_senha, undefined, "o hash nunca sai da API");
 
       const login = await ctx
@@ -271,6 +272,38 @@ describe("cadastro", () => {
       assert.equal((await enviar({ identificador: "curta", senhaInicial: "123" })).status, 400);
     });
 
+    test("CPF ou CNPJ com digito verificador errado e recusado, com o motivo", async () => {
+      const enviar = (documento) =>
+        ctx
+          .api()
+          .post("/api/produtores")
+          .set(com(seguradora))
+          .send({
+            identificador: `doc-${documento.replace(/\D/g, "")}`,
+            nome: "X",
+            senhaInicial: "senha-longa-123",
+            documento,
+          });
+
+      for (const [documento, motivo] of [
+        ["123", /11 digitos/],
+        ["529.982.247-26", /CPF invalido/],
+        ["999.999.999-99", /digitos iguais/],
+        ["11.222.333/0001-80", /CNPJ invalido/],
+      ]) {
+        const r = await enviar(documento);
+        assert.equal(r.status, 400, documento);
+        assert.match(r.body.erro.mensagem, motivo);
+      }
+
+      const edicao = await ctx
+        .api()
+        .patch(`/api/produtores/${produtorId}`)
+        .set(com(seguradora))
+        .send({ documento: "000.000.000-00" });
+      assert.equal(edicao.status, 400);
+    });
+
     test("so a seguradora cadastra ou edita produtores", async () => {
       const r = await ctx
         .api()
@@ -285,9 +318,9 @@ describe("cadastro", () => {
         .api()
         .patch(`/api/produtores/${produtorId}`)
         .set(com(seguradora))
-        .send({ documento: "999.999.999-99" });
+        .send({ documento: "11.222.333/0001-81" });
       assert.equal(r.status, 200);
-      assert.equal(r.body.produtor.documento, "999.999.999-99");
+      assert.equal(r.body.produtor.documento, "11.222.333/0001-81");
       assert.ok(r.body.produtor.nome, "o nome nao enviado e mantido");
 
       const lista = await ctx.api().get("/api/propriedades").set(com(seguradora));

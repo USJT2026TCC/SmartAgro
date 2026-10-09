@@ -68,7 +68,11 @@ export default function CarteiraDaSeguradora() {
     <div className="pagina">
       <div className="entre">
         <h1>Carteira</h1>
-        <button className="secundario pequeno" onClick={carregar}>
+        <button
+          className="secundario pequeno"
+          onClick={carregar}
+          title="Recalcula os indicadores com o que o servidor ja leu da rede."
+        >
           Atualizar
         </button>
       </div>
@@ -165,6 +169,54 @@ export default function CarteiraDaSeguradora() {
             />
           </div>
 
+          {apolices === null ? null : apolices.length === 0 ? (
+            <div className="cartao">
+              <p>Nenhuma apolice emitida ainda.</p>
+            </div>
+          ) : (
+            <div className="cartao tabela-rolavel">
+              <h2>Apolices emitidas</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Talhao</th>
+                    <th>Produtor</th>
+                    <th>Emitida em</th>
+                    <th className="numero">Limite</th>
+                    <th className="numero">Pago</th>
+                    <th>Situacao</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {apolices.map((a) => (
+                    <tr key={a.endereco}>
+                      <td>
+                        {a.talhao ?? "—"}
+                        <div className="silencioso">{a.cultura ?? ""}</div>
+                      </td>
+                      <td>
+                        {a.produtor.nome ?? "—"}
+                        <div>
+                          <LinkDaCadeia valor={a.produtor.carteira} tipo="address" />
+                        </div>
+                      </td>
+                      <td>{emData(new Date(a.emitidaEm).getTime() / 1000)}</td>
+                      <td className="numero">{emEth(a.valorIndenizacaoWei)}</td>
+                      <td className="numero">{emEth(a.valorPagoWei)}</td>
+                      <td>
+                        <SeloSituacao situacao={a.situacao} />
+                      </td>
+                      <td>
+                        <Link to={`/apolice/${a.endereco}`}>Detalhes</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           <div className="grade-2">
             {[
               ["Por cultura", relatorio.porCultura, "cultura"],
@@ -200,161 +252,117 @@ export default function CarteiraDaSeguradora() {
             ))}
           </div>
 
-          <div className="cartao" style={{ marginTop: 16 }}>
-            <h2>Custo e latencia da travessia</h2>
-            <p className="silencioso">
-              Os numeros do capitulo de resultados. Contam apenas publicacoes que o indexador ja
-              confirmou na cadeia.
-            </p>
+          <details className="avancado">
+            <summary>
+              Numeros tecnicos: custo da rede, fontes de dados e enderecos dos contratos
+            </summary>
+            <div className="cartao">
+              <h2>Custo e latencia da travessia</h2>
+              <p className="silencioso">
+                Os numeros do capitulo de resultados. Contam apenas publicacoes que o indexador ja
+                confirmou na cadeia.
+              </p>
 
-            {p.total === 0 ? (
-              <p className="silencioso">Nenhuma publicacao confirmada ainda.</p>
-            ) : (
+              {p.total === 0 ? (
+                <p className="silencioso">Nenhuma publicacao confirmada ainda.</p>
+              ) : (
+                <div className="grade">
+                  <Indicador
+                    rotulo="Publicacoes"
+                    valor={p.total}
+                    nota={`${p.com_acionamento} com pagamento`}
+                  />
+                  <Indicador
+                    rotulo="Gas medio sem acionar"
+                    valor={Number(p.gas_medio_sem_acionar).toLocaleString("pt-BR")}
+                    nota={`min ${Number(p.gas_minimo).toLocaleString("pt-BR")} · max ${Number(p.gas_maximo).toLocaleString("pt-BR")}`}
+                  />
+                  <Indicador
+                    rotulo="Gas medio acionando"
+                    valor={Number(p.gas_medio_acionando).toLocaleString("pt-BR")}
+                    nota="inclui a transferencia de valor"
+                  />
+                  <Indicador
+                    rotulo="Latencia"
+                    valor={p.latencia_media_ms !== null ? `${p.latencia_media_ms} ms` : "—"}
+                    nota={
+                      p.latencia_p95_ms !== null
+                        ? `p95: ${p.latencia_p95_ms} ms`
+                        : "envio ate confirmacao"
+                    }
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="cartao">
+              <h2>Fontes de dados</h2>
               <div className="grade">
                 <Indicador
-                  rotulo="Publicacoes"
-                  valor={p.total}
-                  nota={`${p.com_acionamento} com pagamento`}
+                  rotulo="Fontes ativas"
+                  valor={`${relatorio.fontes.ativas} de ${relatorio.fontes.total}`}
                 />
                 <Indicador
-                  rotulo="Gas medio sem acionar"
-                  valor={Number(p.gas_medio_sem_acionar).toLocaleString("pt-BR")}
-                  nota={`min ${Number(p.gas_minimo).toLocaleString("pt-BR")} · max ${Number(p.gas_maximo).toLocaleString("pt-BR")}`}
-                />
-                <Indicador
-                  rotulo="Gas medio acionando"
-                  valor={Number(p.gas_medio_acionando).toLocaleString("pt-BR")}
-                  nota="inclui a transferencia de valor"
-                />
-                <Indicador
-                  rotulo="Latencia"
-                  valor={p.latencia_media_ms !== null ? `${p.latencia_media_ms} ms` : "—"}
+                  rotulo="Abaixo do limiar de reputacao"
+                  valor={relatorio.fontes.abaixo_do_limiar}
                   nota={
-                    p.latencia_p95_ms !== null
-                      ? `p95: ${p.latencia_p95_ms} ms`
-                      : "envio ate confirmacao"
+                    relatorio.fontes.abaixo_do_limiar > 0
+                      ? "suas leituras nao entram no indice"
+                      : "todas operando"
                   }
                 />
               </div>
-            )}
-          </div>
-
-          <div className="cartao">
-            <h2>Fontes de dados</h2>
-            <div className="grade">
-              <Indicador
-                rotulo="Fontes ativas"
-                valor={`${relatorio.fontes.ativas} de ${relatorio.fontes.total}`}
-              />
-              <Indicador
-                rotulo="Abaixo do limiar de reputacao"
-                valor={relatorio.fontes.abaixo_do_limiar}
-                nota={
-                  relatorio.fontes.abaixo_do_limiar > 0
-                    ? "suas leituras nao entram no indice"
-                    : "todas operando"
-                }
-              />
+              <p>
+                <Link to="/seguradora/fontes">Gerenciar fontes</Link>
+              </p>
             </div>
-            <p>
-              <Link to="/seguradora/fontes">Gerenciar fontes</Link>
-            </p>
-          </div>
+            {implantacao ? (
+              <div className="cartao">
+                <h2>Infraestrutura</h2>
+                <div className="tabela-rolavel">
+                  <table>
+                    <tbody>
+                      <tr>
+                        <th>Registro de oraculos</th>
+                        <td>
+                          <LinkDaCadeia
+                            valor={implantacao.contratos.OracleRegistry}
+                            tipo="address"
+                            curto={false}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <th>Fabrica de apolices</th>
+                        <td>
+                          <LinkDaCadeia
+                            valor={implantacao.contratos.ApoliceFactory}
+                            tipo="address"
+                            curto={false}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <th>Banco de dados</th>
+                        <td>{saude?.banco?.motor ?? "—"}</td>
+                      </tr>
+                      <tr>
+                        <th>Indexador</th>
+                        <td>{saude?.indexador?.ativo ? "acompanhando a cadeia" : "parado"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <RodapeDaFronteira>
+                  Enderecos lidos de <code>contratos/implantacoes/</code>, gerado pelo script de
+                  implantacao.
+                </RodapeDaFronteira>
+              </div>
+            ) : null}
+          </details>
         </>
       )}
-
-      {apolices === null ? null : apolices.length === 0 ? (
-        <div className="cartao">
-          <p>Nenhuma apolice emitida ainda.</p>
-        </div>
-      ) : (
-        <div className="cartao tabela-rolavel">
-          <h2>Apolices emitidas</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Talhao</th>
-                <th>Produtor</th>
-                <th>Emitida em</th>
-                <th className="numero">Limite</th>
-                <th className="numero">Pago</th>
-                <th>Situacao</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {apolices.map((a) => (
-                <tr key={a.endereco}>
-                  <td>
-                    {a.talhao ?? "—"}
-                    <div className="silencioso">{a.cultura ?? ""}</div>
-                  </td>
-                  <td>
-                    {a.produtor.nome ?? "—"}
-                    <div>
-                      <LinkDaCadeia valor={a.produtor.carteira} tipo="address" />
-                    </div>
-                  </td>
-                  <td>{emData(new Date(a.emitidaEm).getTime() / 1000)}</td>
-                  <td className="numero">{emEth(a.valorIndenizacaoWei)}</td>
-                  <td className="numero">{emEth(a.valorPagoWei)}</td>
-                  <td>
-                    <SeloSituacao situacao={a.situacao} />
-                  </td>
-                  <td>
-                    <Link to={`/apolice/${a.endereco}`}>Detalhes</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {implantacao ? (
-        <div className="cartao">
-          <h2>Infraestrutura</h2>
-          <div className="tabela-rolavel">
-            <table>
-              <tbody>
-                <tr>
-                  <th>Registro de oraculos</th>
-                  <td>
-                    <LinkDaCadeia
-                      valor={implantacao.contratos.OracleRegistry}
-                      tipo="address"
-                      curto={false}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <th>Fabrica de apolices</th>
-                  <td>
-                    <LinkDaCadeia
-                      valor={implantacao.contratos.ApoliceFactory}
-                      tipo="address"
-                      curto={false}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <th>Banco de dados</th>
-                  <td>{saude?.banco?.motor ?? "—"}</td>
-                </tr>
-                <tr>
-                  <th>Indexador</th>
-                  <td>{saude?.indexador?.ativo ? "acompanhando a cadeia" : "parado"}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <RodapeDaFronteira>
-            Enderecos lidos de <code>contratos/implantacoes/</code>, gerado pelo script de
-            implantacao.
-          </RodapeDaFronteira>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../../api/cliente";
-import { MODO_PAGAMENTO, OPERADOR } from "../../cadeia/regraDeGatilho";
+import { mascararDocumento, problemaDoDocumento } from "../../cadastro/documento";
+import { MODO_PAGAMENTO, OPERADOR, condicaoEmPalavras } from "../../cadeia/regraDeGatilho";
 import { Aviso, Campo, Carregando, RodapeDaFronteira, Selo } from "../../componentes/ui";
 import DesenhoDoTalhao, { anelDoGeoJson } from "../../componentes/DesenhoDoTalhao";
 
@@ -54,12 +55,32 @@ const PRODUTO_INICIAL = {
   modoPagamento: MODO_PAGAMENTO.INTEGRAL,
   limiarClimatico: 30,
   limiarClimaticoIntegral: 60,
-  limiarDanoBps: 0,
-  limiarDanoIntegralBps: 0,
+  limiarDanoPct: "20",
+  limiarDanoIntegralPct: "60",
   valorPorHectareEth: "0.006",
   vigenciaDias: 180,
   taxaPremioPct: "4.5",
 };
+
+/**
+ * Termos do produto como o contrato espera. Na tela o dano e digitado em
+ * percentual, que e como se fala; o contrato trabalha em pontos-base
+ * (centesimos de ponto percentual), para nao usar fracao.
+ */
+function termosDoFormulario(p) {
+  const bps = (texto) => Math.round(Number(String(texto ?? "0").replace(",", ".")) * 100) || 0;
+  const usaDano = Number(p.operador) !== OPERADOR.CLIMATICO;
+  const usaClima = Number(p.operador) !== OPERADOR.DANO;
+  const escalonado = Number(p.modoPagamento) === MODO_PAGAMENTO.ESCALONADO;
+  return {
+    operador: Number(p.operador),
+    modoPagamento: Number(p.modoPagamento),
+    limiarClimatico: usaClima ? Number(p.limiarClimatico) : 0,
+    limiarClimaticoIntegral: usaClima && escalonado ? Number(p.limiarClimaticoIntegral) : 0,
+    limiarDanoBps: usaDano ? bps(p.limiarDanoPct) : 0,
+    limiarDanoIntegralBps: usaDano && escalonado ? bps(p.limiarDanoIntegralPct) : 0,
+  };
+}
 
 export default function TalhoesEProdutos() {
   const [talhoes, setTalhoes] = useState(null);
@@ -151,6 +172,12 @@ export default function TalhoesEProdutos() {
     setErro(null);
     setAviso(null);
 
+    const problema = problemaDoDocumento(novoProdutor.documento);
+    if (problema) {
+      setErro(problema);
+      return;
+    }
+
     try {
       const { produtor } = await api("/produtores", { metodo: "POST", corpo: novoProdutor });
       setAviso(
@@ -222,14 +249,12 @@ export default function TalhoesEProdutos() {
       const { produto: criado } = await api("/produtos", {
         metodo: "POST",
         corpo: {
-          ...produto,
-          operador: Number(produto.operador),
-          modoPagamento: Number(produto.modoPagamento),
-          limiarClimatico: Number(produto.limiarClimatico),
-          limiarClimaticoIntegral: Number(produto.limiarClimaticoIntegral),
-          limiarDanoBps: Number(produto.limiarDanoBps),
-          limiarDanoIntegralBps: Number(produto.limiarDanoIntegralBps),
+          nome: produto.nome,
+          cultura: produto.cultura,
+          valorPorHectareEth: produto.valorPorHectareEth,
+          taxaPremioPct: produto.taxaPremioPct,
           vigenciaDias: Number(produto.vigenciaDias),
+          ...termosDoFormulario(produto),
         },
       });
 
@@ -253,6 +278,7 @@ export default function TalhoesEProdutos() {
 
   const escalonado = Number(produto.modoPagamento) === MODO_PAGAMENTO.ESCALONADO;
   const usaDano = Number(produto.operador) !== OPERADOR.CLIMATICO;
+  const usaClima = Number(produto.operador) !== OPERADOR.DANO;
 
   return (
     <div className="pagina">
@@ -286,11 +312,23 @@ export default function TalhoesEProdutos() {
                 onChange={(e) => setNovoProdutor({ ...novoProdutor, nome: e.target.value })}
               />
             </Campo>
-            <Campo rotulo="CPF ou CNPJ" htmlFor="novo-documento">
+            <Campo
+              rotulo="CPF ou CNPJ"
+              htmlFor="novo-documento"
+              ajuda={
+                novoProdutor.documento.replace(/\D/g, "").length >= 11
+                  ? (problemaDoDocumento(novoProdutor.documento) ?? "Documento valido.")
+                  : "Opcional. Os digitos verificadores sao conferidos."
+              }
+            >
               <input
                 id="novo-documento"
+                inputMode="numeric"
+                placeholder="000.000.000-00"
                 value={novoProdutor.documento}
-                onChange={(e) => setNovoProdutor({ ...novoProdutor, documento: e.target.value })}
+                onChange={(e) =>
+                  setNovoProdutor({ ...novoProdutor, documento: mascararDocumento(e.target.value) })
+                }
               />
             </Campo>
             <Campo
@@ -441,7 +479,16 @@ export default function TalhoesEProdutos() {
               <input
                 id="municipio"
                 value={talhao.municipio}
-                onChange={(e) => setTalhao({ ...talhao, municipio: e.target.value })}
+                onChange={(e) =>
+                  setTalhao({
+                    ...talhao,
+                    municipio: e.target.value,
+                    // O poligono de exemplo fica em Sao Simao/SP. Talhao em outro
+                    // municipio e desenhado la: o exemplo sai, e o mapa vai ate o
+                    // municipio digitado.
+                    poligono: talhao.poligono === POLIGONO_EXEMPLO ? "[]" : talhao.poligono,
+                  })
+                }
                 placeholder="Ribeirao Preto/SP"
               />
             </Campo>
@@ -462,11 +509,12 @@ export default function TalhoesEProdutos() {
 
           <Campo
             rotulo="Poligono"
-            ajuda="Desenhe no mapa, importe um GeoJSON ou edite a lista de pares [longitude, latitude]. O anel e fechado automaticamente, e a validade e a area sao decididas pelo PostGIS."
+            ajuda="Clique no mapa nos cantos do talhao, em ordem. Quem ja tem o desenho pronto (de um GPS ou de outro sistema) pode importar o arquivo GeoJSON abaixo. A area e calculada pelo servidor."
           >
             <DesenhoDoTalhao
               vertices={verticesDoTexto(talhao.poligono)}
               aoMudar={(v) => setTalhao({ ...talhao, poligono: JSON.stringify(v) })}
+              municipio={talhao.municipio}
             />
           </Campo>
 
@@ -488,15 +536,22 @@ export default function TalhoesEProdutos() {
             />
           </Campo>
 
-          <Campo rotulo="Vertices (lon, lat)" htmlFor="poligono">
-            <textarea
-              id="poligono"
-              rows={3}
-              className="mono"
-              value={talhao.poligono}
-              onChange={(e) => setTalhao({ ...talhao, poligono: e.target.value })}
-            />
-          </Campo>
+          <details className="avancado">
+            <summary>Ver ou corrigir as coordenadas a mao</summary>
+            <Campo
+              rotulo="Vertices (lon, lat)"
+              htmlFor="poligono"
+              ajuda="A mesma lista que o mapa desenha, em pares [longitude, latitude]. Util para ajustar um ponto com precisao."
+            >
+              <textarea
+                id="poligono"
+                rows={3}
+                className="mono"
+                value={talhao.poligono}
+                onChange={(e) => setTalhao({ ...talhao, poligono: e.target.value })}
+              />
+            </Campo>
+          </details>
 
           <button type="submit">Salvar talhao</button>
         </form>
@@ -551,53 +606,55 @@ export default function TalhoesEProdutos() {
               </select>
             </Campo>
 
-            <Campo rotulo="Gatilho (dias sem chuva)" htmlFor="limiar">
-              <input
-                id="limiar"
-                type="number"
-                min="0"
-                value={produto.limiarClimatico}
-                onChange={(e) => setProduto({ ...produto, limiarClimatico: e.target.value })}
-                disabled={Number(produto.operador) === OPERADOR.DANO}
-              />
-            </Campo>
+            {usaClima ? (
+              <Campo rotulo="Aciona com quantos dias sem chuva" htmlFor="limiar">
+                <input
+                  id="limiar"
+                  type="number"
+                  min="1"
+                  value={produto.limiarClimatico}
+                  onChange={(e) => setProduto({ ...produto, limiarClimatico: e.target.value })}
+                />
+              </Campo>
+            ) : null}
 
-            <Campo rotulo="Dias para pagar 100%" htmlFor="limiar-integral">
-              <input
-                id="limiar-integral"
-                type="number"
-                min="0"
-                value={produto.limiarClimaticoIntegral}
-                onChange={(e) =>
-                  setProduto({ ...produto, limiarClimaticoIntegral: e.target.value })
-                }
-                disabled={!escalonado}
-              />
-            </Campo>
+            {usaClima && escalonado ? (
+              <Campo rotulo="Paga 100% com quantos dias" htmlFor="limiar-integral">
+                <input
+                  id="limiar-integral"
+                  type="number"
+                  min="1"
+                  value={produto.limiarClimaticoIntegral}
+                  onChange={(e) =>
+                    setProduto({ ...produto, limiarClimaticoIntegral: e.target.value })
+                  }
+                />
+              </Campo>
+            ) : null}
 
-            <Campo rotulo="Gatilho de dano (bps)" htmlFor="dano">
-              <input
-                id="dano"
-                type="number"
-                min="0"
-                max="10000"
-                value={produto.limiarDanoBps}
-                onChange={(e) => setProduto({ ...produto, limiarDanoBps: e.target.value })}
-                disabled={!usaDano}
-              />
-            </Campo>
+            {usaDano ? (
+              <Campo rotulo="Aciona com quanto de dano (%)" htmlFor="dano">
+                <input
+                  id="dano"
+                  inputMode="decimal"
+                  value={produto.limiarDanoPct}
+                  onChange={(e) => setProduto({ ...produto, limiarDanoPct: e.target.value })}
+                />
+              </Campo>
+            ) : null}
 
-            <Campo rotulo="Dano para 100% (bps)" htmlFor="dano-integral">
-              <input
-                id="dano-integral"
-                type="number"
-                min="0"
-                max="10000"
-                value={produto.limiarDanoIntegralBps}
-                onChange={(e) => setProduto({ ...produto, limiarDanoIntegralBps: e.target.value })}
-                disabled={!usaDano || !escalonado}
-              />
-            </Campo>
+            {usaDano && escalonado ? (
+              <Campo rotulo="Paga 100% com quanto de dano (%)" htmlFor="dano-integral">
+                <input
+                  id="dano-integral"
+                  inputMode="decimal"
+                  value={produto.limiarDanoIntegralPct}
+                  onChange={(e) =>
+                    setProduto({ ...produto, limiarDanoIntegralPct: e.target.value })
+                  }
+                />
+              </Campo>
+            ) : null}
 
             <Campo rotulo="Limite por hectare (ETH)" htmlFor="valor-ha">
               <input
@@ -627,6 +684,10 @@ export default function TalhoesEProdutos() {
               />
             </Campo>
           </div>
+
+          <Aviso tipo="informacao" titulo="Em palavras, como o produtor vai ler:">
+            {condicaoEmPalavras(termosDoFormulario(produto))}
+          </Aviso>
 
           <button type="submit">Salvar produto</button>
         </form>

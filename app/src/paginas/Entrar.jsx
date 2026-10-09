@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useSessao } from "../sessao/SessaoContexto";
 import {
+  destinoAposEntrar,
   ROTULOS_DE_PERFIL,
   SENHA_DE_DEMONSTRACAO,
   USUARIOS_DE_DEMONSTRACAO,
@@ -17,8 +18,14 @@ import { enderecosDaRede, redeAtiva } from "../cadeia/rede";
  * uma segunda etapa, que pede o codigo de seis digitos do aplicativo autenticador.
  */
 export default function Entrar() {
-  const { entrar, confirmarSegundoFator, cancelarSegundoFator, segundoFatorPendente, autenticado } =
-    useSessao();
+  const {
+    entrar,
+    confirmarSegundoFator,
+    cancelarSegundoFator,
+    segundoFatorPendente,
+    autenticado,
+    perfil,
+  } = useSessao();
   const navegar = useNavigate();
   const local = useLocation();
 
@@ -32,7 +39,7 @@ export default function Entrar() {
   const enderecos = enderecosDaRede();
   const destino = local.state?.de ?? "/";
 
-  if (autenticado) return <Navigate to={destino} replace />;
+  if (autenticado) return <Navigate to={destinoAposEntrar(destino, perfil)} replace />;
 
   async function enviarSenha(evento) {
     evento.preventDefault();
@@ -41,7 +48,9 @@ export default function Entrar() {
 
     try {
       const resultado = await entrar(identificador, senha);
-      if (!resultado.segundoFator) navegar(destino, { replace: true });
+      if (!resultado.segundoFator) {
+        navegar(destinoAposEntrar(destino, resultado.usuario.perfil), { replace: true });
+      }
     } catch (falha) {
       setErro(falha.message);
     } finally {
@@ -55,8 +64,8 @@ export default function Entrar() {
     setEnviando(true);
 
     try {
-      await confirmarSegundoFator(codigo);
-      navegar(destino, { replace: true });
+      const usuario = await confirmarSegundoFator(codigo);
+      navegar(destinoAposEntrar(destino, usuario.perfil), { replace: true });
     } catch (falha) {
       setErro(falha.message);
       setCodigo("");

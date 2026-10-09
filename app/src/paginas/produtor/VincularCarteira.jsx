@@ -29,6 +29,7 @@ export default function VincularCarteira() {
   } = useCarteira();
 
   const [saldo, setSaldo] = useState(null);
+  const [recebido, setRecebido] = useState(null);
   const [erro, setErro] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [assinando, setAssinando] = useState(false);
@@ -45,6 +46,18 @@ export default function VincularCarteira() {
       .then(setSaldo)
       .catch(() => setSaldo(null));
   }, [conta, provedorLeitura]);
+
+  // Quanto das apolices ja caiu nesta conta: a soma do que cada contrato pagou.
+  useEffect(() => {
+    api("/apolices")
+      .then(({ apolices }) =>
+        setRecebido({
+          total: apolices.reduce((soma, a) => soma + BigInt(a.valorPagoWei ?? "0"), 0n),
+          pagas: apolices.filter((a) => BigInt(a.valorPagoWei ?? "0") > 0n).length,
+        }),
+      )
+      .catch(() => setRecebido(null));
+  }, []);
 
   async function vincular() {
     setErro(null);
@@ -143,9 +156,23 @@ export default function VincularCarteira() {
               <div className="mono">{conta}</div>
             </Campo>
 
-            <Campo rotulo="Saldo">
+            <Campo
+              rotulo="Saldo da carteira"
+              ajuda="Tudo o que esta conta tem na rede, de qualquer origem: o ETH de teste recebido de faucet ou de outra carteira, mais as indenizacoes. E o mesmo numero que a MetaMask mostra."
+            >
               <div>{saldo === null ? "—" : emEth(saldo)}</div>
             </Campo>
+
+            {recebido ? (
+              <Campo
+                rotulo="Indenizacoes ja recebidas pelo AgroSmart"
+                ajuda="Soma do que os contratos das suas apolices transferiram para a carteira vinculada. Cada pagamento aparece tambem no detalhe da apolice, com o link da transacao."
+              >
+                <div>
+                  {emEth(recebido.total)} em {recebido.pagas} apolice(s)
+                </div>
+              </Campo>
+            ) : null}
 
             {!redeCorreta ? (
               <Aviso tipo="alerta" titulo="Carteira em outra rede.">

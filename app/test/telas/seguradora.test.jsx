@@ -169,7 +169,7 @@ describe("propostas e emissao (RF07, UC05)", () => {
       rotas: { "GET /propostas": { propostas: [] } },
     });
 
-    expect(await achar("Esta carteira nao e a seguradora da fabrica.")).toBeTruthy();
+    expect(await achar("A conta selecionada na MetaMask nao e a da seguradora.")).toBeTruthy();
     expect(await achar("Nenhuma proposta recebida.")).toBeTruthy();
   });
 
@@ -247,6 +247,18 @@ describe("fontes de dados (RF11, RF13)", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Identificador"), { target: { value: "sensor-02" } });
+
+    // Texto que nao e endereco Ethereum: recusado na tela, sem ir ao servidor.
+    fireEvent.change(screen.getByLabelText("Chave publica (endereco)"), {
+      target: { value: "Q2WD89CC5B2KTBXVCR25DU5195XVM4KZ2T" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar" }));
+    expect(await achar(/precisa ser um endereco Ethereum/)).toBeTruthy();
+    expect(chamadas.some((c) => c.metodo === "POST" && c.caminho === "/fontes")).toBe(false);
+
+    fireEvent.change(screen.getByLabelText("Chave publica (endereco)"), {
+      target: { value: "0x90F79bf6EB2c4f870365E785982E1f101E93b906" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Registrar" }));
     expect(await achar(/Fonte sensor-02 registrada/)).toBeTruthy();
   });
@@ -532,10 +544,44 @@ describe("talhoes, produtores e produtos (RF03, RF05, HU09)", () => {
     fireEvent.change(within(formulario).getAllByRole("textbox")[0], {
       target: { value: "Seca escalonada" },
     });
+
+    // Somente clima: os campos de dano nem aparecem.
+    expect(within(formulario).queryByLabelText("Aciona com quanto de dano (%)")).toBeNull();
+
+    fireEvent.change(within(formulario).getByLabelText("Operador da condicao"), {
+      target: { value: "1" },
+    });
+    fireEvent.change(within(formulario).getByLabelText("Modo de pagamento"), {
+      target: { value: "1" },
+    });
+    // Somente dano: os de chuva somem, e o dano e digitado em percentual.
+    expect(within(formulario).queryByLabelText("Aciona com quantos dias sem chuva")).toBeNull();
+    fireEvent.change(within(formulario).getByLabelText("Aciona com quanto de dano (%)"), {
+      target: { value: "25" },
+    });
+    fireEvent.change(within(formulario).getByLabelText("Paga 100% com quanto de dano (%)"), {
+      target: { value: "70,5" },
+    });
+
+    expect(
+      within(formulario).getByText(
+        "Se o modelo de imagens apontar 25% da lavoura comprometida, o contrato paga metade do limite, e o valor cresce ate o limite integral quando o dano chega a 70,5%.",
+      ),
+    ).toBeTruthy();
+
     fireEvent.submit(formulario);
 
     await waitFor(() =>
       expect(chamadas.some((c) => c.metodo === "POST" && c.caminho === "/produtos")).toBe(true),
     );
+    const corpo = chamadas.find((c) => c.metodo === "POST" && c.caminho === "/produtos").corpo;
+    expect(corpo).toMatchObject({
+      operador: 1,
+      modoPagamento: 1,
+      limiarClimatico: 0,
+      limiarClimaticoIntegral: 0,
+      limiarDanoBps: 2500,
+      limiarDanoIntegralBps: 7050,
+    });
   });
 });

@@ -153,7 +153,11 @@ export default function Propostas() {
     <div className="pagina">
       <div className="entre">
         <h1>Propostas</h1>
-        <button className="secundario pequeno" onClick={carregar}>
+        <button
+          className="secundario pequeno"
+          onClick={carregar}
+          title="Busca de novo as propostas enviadas pelos produtores."
+        >
           Atualizar
         </button>
       </div>
@@ -179,10 +183,12 @@ export default function Propostas() {
           </button>
         </Aviso>
       ) : carteiraErrada ? (
-        <Aviso tipo="erro" titulo="Esta carteira nao e a seguradora da fabrica.">
-          A fabrica so aceita emissao de <span className="mono">{seguradoraDaFabrica}</span>.
-          Qualquer outro endereco tem a transacao revertida com <code>NaoEhSeguradora</code> — o
-          controle de acesso do RNF10 funcionando.
+        <Aviso tipo="erro" titulo="A conta selecionada na MetaMask nao e a da seguradora.">
+          Para emitir, abra a MetaMask e selecione a conta{" "}
+          <span className="mono">{seguradoraDaFabrica}</span>, a unica que a fabrica aceita. A
+          MetaMask nao sabe quem entrou no aplicativo: ela assina com a conta que estiver
+          selecionada nela, e qualquer outra teria a transacao recusada pelo contrato com{" "}
+          <code>NaoEhSeguradora</code> (RNF10).
         </Aviso>
       ) : null}
 

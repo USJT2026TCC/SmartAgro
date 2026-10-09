@@ -56,6 +56,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// Os primeiros bytes de um JPEG: a tela confere o formato pelo conteudo, e nao pelo nome.
+const CABECALHO_JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+
 const TALHAO = {
   id: "t1",
   identificador: "talhao-01",
@@ -124,7 +127,7 @@ describe("fotos da lavoura (RF14, HU11)", () => {
 
     const galeria = container.querySelector('input[type="file"][multiple]');
     const arquivos = ["dentro.jpg", "sem-gps.jpg", "sem-gps-2.jpg"].map(
-      (n) => new File([n], n, { type: "image/jpeg" }),
+      (n) => new File([CABECALHO_JPEG, n], n, { type: "image/jpeg" }),
     );
     fireEvent.change(galeria, { target: { files: arquivos } });
 
@@ -167,7 +170,7 @@ describe("fotos da lavoura (RF14, HU11)", () => {
       return e;
     });
     fireEvent.change(galeria, {
-      target: { files: [new File(["x"], "sem-gps.jpg", { type: "image/jpeg" })] },
+      target: { files: [new File([CABECALHO_JPEG, "x"], "sem-gps.jpg", { type: "image/jpeg" })] },
     });
 
     fireEvent.click(await screen.findByRole("button", { name: "Marcar no mapa" }));

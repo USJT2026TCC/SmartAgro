@@ -150,3 +150,41 @@ export function exemplosDeAcionamento(termos) {
       valorWei: valorDevido(termos, diasSemChuva, 0),
     }));
 }
+
+/**
+ * A condicao contratada em uma frase, sem jargao (RNF04).
+ *
+ * Usada na cotacao, para o produtor, e no cadastro do produto, para a
+ * seguradora conferir o que esta configurando antes de salvar.
+ *
+ * @param {object} t Termos: operador, modoPagamento, limiares (dano em pontos-base).
+ */
+export function condicaoEmPalavras(t) {
+  const operador = Number(t.operador);
+  const clima = `${t.limiarClimatico} dias seguidos sem chuva`;
+  const pct = (bps) => String(Number(bps) / 100).replace(".", ",");
+  const dano = `${pct(t.limiarDanoBps)}% da lavoura comprometida`;
+
+  const gatilho =
+    {
+      [OPERADOR.CLIMATICO]: `Se o talhao passar ${clima}`,
+      [OPERADOR.DANO]: `Se o modelo de imagens apontar ${dano}`,
+      [OPERADOR.OU]: `Se o talhao passar ${clima} OU o modelo apontar ${dano}`,
+      [OPERADOR.E]: `Se o talhao passar ${clima} E o modelo apontar ${dano}, no mesmo periodo`,
+    }[operador] ?? "";
+
+  if (Number(t.modoPagamento) === MODO_PAGAMENTO.INTEGRAL) {
+    return `${gatilho}, o contrato paga o limite integral.`;
+  }
+
+  const integral = [];
+  if (operador !== OPERADOR.DANO)
+    integral.push(`a estiagem chega a ${t.limiarClimaticoIntegral} dias`);
+  if (operador !== OPERADOR.CLIMATICO) {
+    integral.push(`o dano chega a ${pct(t.limiarDanoIntegralBps)}%`);
+  }
+  return (
+    `${gatilho}, o contrato paga metade do limite, e o valor cresce ate o limite integral ` +
+    `quando ${integral.join(" ou ")}.`
+  );
+}

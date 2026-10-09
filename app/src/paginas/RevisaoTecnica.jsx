@@ -98,14 +98,20 @@ export default function RevisaoTecnica() {
     <div className="pagina">
       <div className="entre">
         <h1>Revisao tecnica</h1>
-        <button className="secundario pequeno" onClick={carregar}>
+        <button
+          className="secundario pequeno"
+          onClick={carregar}
+          title="Busca de novo no servidor os casos que chegaram depois que a tela abriu"
+        >
           Atualizar
         </button>
       </div>
 
       <p className="silencioso">
-        O perito atua por excecao: nos casos de baixa confianca do modelo. O fluxo normal dispensa
-        vistoria.
+        O perito so entra em dois casos. <strong>1.</strong> O modelo de visao analisou as fotos de
+        um lote, mas com confianca abaixo de 70%: o indice de dano fica parado aqui ate o perito
+        liberar ou rejeitar. <strong>2.</strong> O produtor discordou de um indice de dano ja
+        publicado e abriu uma contestacao. Fora disso, o pagamento segue sem vistoria.
       </p>
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
@@ -119,7 +125,10 @@ export default function RevisaoTecnica() {
 
           {pendentes.length === 0 ? (
             <div className="cartao">
-              <p className="silencioso">Nenhuma analise aguardando revisao.</p>
+              <p className="silencioso">
+                Nenhuma analise aguardando revisao. Aparece aqui quando o modelo devolve confianca
+                abaixo de 70% para um lote de fotos.
+              </p>
             </div>
           ) : (
             pendentes.map((a) => (
@@ -189,7 +198,10 @@ export default function RevisaoTecnica() {
 
           {contestacoesAbertas.length === 0 ? (
             <div className="cartao">
-              <p className="silencioso">Nenhuma contestacao aguardando parecer.</p>
+              <p className="silencioso">
+                Nenhuma contestacao aguardando parecer. Aparece aqui quando o produtor clica em
+                Contestar no detalhe de uma apolice.
+              </p>
             </div>
           ) : (
             contestacoesAbertas.map((c) => (
@@ -292,9 +304,10 @@ export default function RevisaoTecnica() {
           ) : null}
 
           <RodapeDaFronteira>
-            O resumo das evidencias identifica exatamente qual lote de imagens produziu o numero, e
-            a versao diz qual modelo o produziu. Com os dois, a analise pode ser reexecutada e
-            conferida depois (RNF18, RNF19).
+            Cada analise guarda duas "impressoes digitais": a do conjunto de fotos (se uma unica
+            foto fosse trocada, a impressao mudaria) e a do modelo que fez a conta. Assim, meses
+            depois, qualquer pessoa pode rodar o mesmo modelo nas mesmas fotos e conferir se sai o
+            mesmo indice (RNF18, RNF19).
           </RodapeDaFronteira>
         </>
       )}

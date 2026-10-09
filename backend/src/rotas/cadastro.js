@@ -2,6 +2,7 @@ import { Router } from "express";
 import { ethers } from "ethers";
 
 import { conflito, naoEncontrado, pedidoInvalido } from "../erros.js";
+import { conferirDocumento } from "../dominio/documento.js";
 import { paraPoligonoGeoJson } from "../dominio/geometria.js";
 import { gerarHashDeSenha } from "../seguranca/cripto.js";
 import { auditar, exigirPerfil, exigirSessao } from "../seguranca/sessoes.js";
@@ -78,6 +79,14 @@ function emailOpcional(valor) {
   return email;
 }
 
+/** CPF ou CNPJ opcional, conferido pelos digitos verificadores e guardado formatado. */
+function documentoOpcional(valor) {
+  if (valor === undefined || valor === null || String(valor).trim() === "") return null;
+  const conferido = conferirDocumento(String(valor));
+  if (!conferido.valido) throw pedidoInvalido(conferido.motivo);
+  return conferido.formatado;
+}
+
 export function rotasDeCadastro() {
   const r = Router();
 
@@ -103,7 +112,7 @@ export function rotasDeCadastro() {
       max: 60,
     }).toLowerCase();
     const nome = texto(req.body?.nome, "nome", { max: 120 });
-    const documento = texto(req.body?.documento, "documento", { max: 20, obrigatorio: false });
+    const documento = documentoOpcional(req.body?.documento);
     const senhaInicial = texto(req.body?.senhaInicial, "senhaInicial", { max: 200 });
     const email = emailOpcional(req.body?.email);
 
@@ -141,7 +150,7 @@ export function rotasDeCadastro() {
     const { banco } = req.app.locals;
     const id = uuid(req.params.id, "id");
     const nome = texto(req.body?.nome, "nome", { max: 120, obrigatorio: false });
-    const documento = texto(req.body?.documento, "documento", { max: 20, obrigatorio: false });
+    const documento = documentoOpcional(req.body?.documento);
     const email = emailOpcional(req.body?.email);
 
     const { rows } = await banco.query(

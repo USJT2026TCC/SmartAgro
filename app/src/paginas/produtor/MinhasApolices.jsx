@@ -40,7 +40,11 @@ export default function MinhasApolices() {
     <div className="pagina">
       <div className="entre">
         <h1>Minhas apolices</h1>
-        <button className="secundario pequeno" onClick={carregar}>
+        <button
+          className="secundario pequeno"
+          onClick={carregar}
+          title="Busca de novo as apolices e propostas, por exemplo depois que a seguradora emitiu uma."
+        >
           Atualizar
         </button>
       </div>

@@ -6,6 +6,7 @@ import { useSessao } from "../sessao/SessaoContexto";
 import { PERFIS, ROTULOS_DE_PERFIL } from "../sessao/perfis";
 import { useCarteira } from "../cadeia/CarteiraContexto";
 import { enderecoCurto } from "../cadeia/formatos";
+import { implantacaoDaRede } from "../cadeia/rede";
 
 /**
  * Barra superior: identidade, navegacao por perfil, notificacoes e carteira.
@@ -108,7 +109,7 @@ export default function Cabecalho() {
             {naoLidas > 0 ? <span className="contador">{naoLidas}</span> : null}
           </Link>
 
-          {!temCarteira ? (
+          {usuario?.perfil === PERFIS.PERITO ? null : !temCarteira ? (
             <span className="silencioso">Sem carteira no navegador</span>
           ) : !conta ? (
             <button className="secundario pequeno" onClick={conectar} disabled={conectando}>
@@ -119,9 +120,7 @@ export default function Cabecalho() {
               Trocar para {rede.nome}
             </button>
           ) : (
-            <span className="selo sucesso mono" title={conta}>
-              {enderecoCurto(conta)}
-            </span>
+            <SeloDaCarteira conta={conta} usuario={usuario} />
           )}
 
           {usuario ? (
@@ -137,5 +136,42 @@ export default function Cabecalho() {
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * A conta conectada na MetaMask, dizendo se e a certa para quem entrou.
+ *
+ * A MetaMask nao sabe quem esta logado no aplicativo: ela mostra a conta que
+ * estiver selecionada nela. Entrar como seguradora com a conta do produtor
+ * selecionada leva a "Esta carteira nao e a seguradora" na hora de assinar, e
+ * so o cabecalho avisando antes evita a confusao.
+ */
+function SeloDaCarteira({ conta, usuario }) {
+  const esperada =
+    usuario?.perfil === PERFIS.SEGURADORA
+      ? implantacaoDaRede()?.seguradora
+      : usuario?.perfil === PERFIS.PRODUTOR
+        ? usuario.carteira
+        : null;
+
+  const certa = !esperada || esperada.toLowerCase() === conta.toLowerCase();
+  const papel =
+    usuario?.perfil === PERFIS.SEGURADORA ? "da seguradora" : "vinculada ao seu cadastro";
+
+  return (
+    <span
+      className={`selo mono ${certa ? "sucesso" : "alerta"}`}
+      title={
+        certa
+          ? `Conta selecionada na MetaMask: ${conta}`
+          : `A conta selecionada na MetaMask (${conta}) nao e a ${papel}` +
+            (esperada ? ` (${esperada})` : "") +
+            ". Troque de conta na MetaMask para assinar."
+      }
+    >
+      {enderecoCurto(conta)}
+      {certa ? "" : " · conta errada"}
+    </span>
   );
 }

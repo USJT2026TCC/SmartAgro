@@ -737,3 +737,33 @@ tbody tr:last-child td {
   margin-bottom: 8px;
   cursor: crosshair;
 }
+
+/* Secoes recolhidas: o que e detalhe tecnico ou caminho alternativo fica a um
+   clique, sem disputar espaco com o fluxo principal da tela. */
+details.avancado {
+  margin: 4px 0 14px;
+  border: 1px dashed var(--borda);
+  border-radius: var(--raio-pequeno);
+  padding: 8px 12px;
+}
+
+details.avancado > summary {
+  cursor: pointer;
+  color: var(--tinta-suave);
+  font-size: 0.9rem;
+}
+
+details.avancado[open] > summary {
+  margin-bottom: 10px;
+}
+
+/* Passo a passo numerado no topo das telas com mais de uma etapa. */
+ol.passos {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  color: var(--tinta-suave);
+}
+
+ol.passos li {
+  margin-bottom: 4px;
+}

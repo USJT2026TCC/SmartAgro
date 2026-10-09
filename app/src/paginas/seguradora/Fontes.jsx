@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { ethers } from "ethers";
 
 import { api } from "../../api/cliente";
 import { emDataHora } from "../../cadeia/formatos";
@@ -46,6 +47,14 @@ export default function Fontes() {
     setErro(null);
     setAviso(null);
 
+    if (!ethers.isAddress(nova.endereco.trim())) {
+      setErro(
+        "A chave publica precisa ser um endereco Ethereum: 0x seguido de 40 caracteres de 0 a 9 e a a f. " +
+          "E o endereco que o proprio dispositivo mostra (no simulador: python -m simulador endereco --fonte <id>).",
+      );
+      return;
+    }
+
     try {
       await api("/fontes", { metodo: "POST", corpo: nova });
       setAviso(
@@ -72,13 +81,21 @@ export default function Fontes() {
     <div className="pagina">
       <div className="entre">
         <h1>Fontes de dados</h1>
-        <button className="secundario pequeno" onClick={carregar}>
+        <button
+          className="secundario pequeno"
+          onClick={carregar}
+          title="Busca de novo as fontes, com a reputacao e a ultima leitura de cada uma."
+        >
           Atualizar
         </button>
       </div>
       <p className="silencioso">
-        Estacoes e sensores de cada talhao. So leituras assinadas pela chave registrada aqui entram
-        no sistema (RNF17).
+        Uma <strong>fonte</strong> e um equipamento que mede o clima do talhao: uma estacao
+        meteorologica ou um sensor de solo. E daqui que vem a chuva usada para calcular os dias
+        secos. Cada equipamento tem uma chave propria e assina tudo o que envia; so entram no
+        sistema as leituras assinadas pela chave registrada aqui (RNF17). Registrar e o que liga um
+        equipamento novo ao talhao; desativar e o que tira do calculo um equipamento roubado,
+        quebrado ou suspeito, sem apagar o que ele ja enviou (RF12).
       </p>
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}

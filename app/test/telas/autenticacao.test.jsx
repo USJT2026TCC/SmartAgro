@@ -1,10 +1,17 @@
 /**
  * Entrada, segundo fator, perfis e sessao expirada (RF01, RF04, HU13).
  */
-import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { describe, expect, test, vi } from "vitest";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { USUARIOS, abrir, achar } from "./ambiente";
+import {
+  CONTA_DA_SEGURADORA,
+  CONTA_DO_PRODUTOR,
+  USUARIOS,
+  abrir,
+  achar,
+  carteiraFalsa,
+} from "./ambiente";
 
 vi.mock("../../src/cadeia/contratos", () => ({
   listarApolices: vi.fn(async () => []),
@@ -38,6 +45,39 @@ describe("autenticacao e perfis", () => {
     const login = chamadas.find((c) => c.caminho === "/autenticacao/entrar");
     expect(login.corpo).toEqual({ identificador: "produtor", senha: "agrosmart" });
     expect(sessionStorage.getItem("agrosmart:token")).toBe("t");
+  });
+
+  test("quem sai de uma tela da seguradora e entra como perito vai para a tela do perito", async () => {
+    // A ultima tela aberta fica guardada para voltar a ela depois do login; se
+    // ela e de outro perfil, o certo e a tela inicial de quem entrou, e nao
+    // "Sem acesso".
+    await abrir(
+      { pathname: "/entrar", state: { de: "/seguradora/propostas" } },
+      {
+        rotas: {
+          "POST /autenticacao/entrar": { token: "t", usuario: USUARIOS.perito },
+          "GET /perito/analises": { analises: [] },
+          "GET /contestacoes": { contestacoes: [] },
+        },
+      },
+    );
+
+    preencherEEntrar("perito", "agrosmart");
+
+    expect(await achar("Revisao tecnica")).toBeTruthy();
+    expect(screen.queryByText("Sem acesso")).toBeNull();
+  });
+
+  test("tela comum guardada antes do login continua valendo", async () => {
+    await abrir(
+      { pathname: "/entrar", state: { de: "/notificacoes" } },
+      {
+        rotas: { "POST /autenticacao/entrar": { token: "t", usuario: USUARIOS.perito } },
+      },
+    );
+
+    preencherEEntrar("perito", "agrosmart");
+    expect(await achar("Nenhuma notificacao.")).toBeTruthy();
   });
 
   test("senha errada mostra a mensagem do servidor", async () => {
@@ -131,5 +171,39 @@ describe("autenticacao e perfis", () => {
 
     await screen.findByLabelText("Identificador");
     expect(chamadas.some((c) => c.caminho === "/autenticacao/sair")).toBe(true);
+  });
+});
+
+describe("a conta da MetaMask no cabecalho", () => {
+  afterEach(() => {
+    cleanup();
+    delete window.ethereum;
+    localStorage.clear();
+  });
+
+  test("seguradora com a conta do produtor selecionada ve 'conta errada'", async () => {
+    carteiraFalsa(CONTA_DO_PRODUTOR);
+    await abrir("/notificacoes", { perfil: "seguradora" });
+
+    const selo = await achar(/conta errada/);
+    expect(selo.getAttribute("title")).toMatch(/nao e a da seguradora/);
+  });
+
+  test("seguradora com a propria conta ve o selo verde", async () => {
+    carteiraFalsa(CONTA_DA_SEGURADORA);
+    await abrir("/notificacoes", { perfil: "seguradora" });
+
+    await achar("Nenhuma notificacao.");
+    await waitFor(() => expect(document.querySelector("header .selo.sucesso")).not.toBeNull());
+    expect(screen.queryByText(/conta errada/)).toBeNull();
+  });
+
+  test("o perito nao assina nada, e nao ve conta nenhuma", async () => {
+    carteiraFalsa(CONTA_DO_PRODUTOR);
+    await abrir("/notificacoes", { perfil: "perito" });
+
+    await achar("Nenhuma notificacao.");
+    expect(document.querySelector("header .selo")).toBeNull();
+    expect(screen.queryByText("Sem carteira no navegador")).toBeNull();
   });
 });
