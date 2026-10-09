@@ -29,6 +29,7 @@ const Situacao = {
   ATIVA: 1,
   LIQUIDADA: 2,
   ENCERRADA: 3,
+  CANCELADA: 4,
 };
 
 const BPS = 10_000n;

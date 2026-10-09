@@ -20,7 +20,7 @@ import {
 import { texto } from "../validacao.js";
 
 /**
- * Autenticacao (RF01, RF04, RNF24, HU13).
+ * Autenticacao (RF01, RF04, HU13).
  *
  * Login em dois tempos quando o segundo fator esta ativo: a senha correta abre
  * uma sessao parcial, de cinco minutos, que so serve para confirmar o codigo

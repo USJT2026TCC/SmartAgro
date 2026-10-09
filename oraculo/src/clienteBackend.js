@@ -100,6 +100,15 @@ class ClienteBackend {
   relatarFalha(dados) {
     return this.requisitar("POST", "/oraculo/falhas", dados);
   }
+
+  /** Contestacoes deferidas pelo perito que ainda nao foram para a cadeia (RF28). */
+  async retificacoesPendentes() {
+    return (await this.requisitar("GET", "/oraculo/retificacoes-pendentes")).retificacoes;
+  }
+
+  relatarRetificacao(id, dados) {
+    return this.requisitar("POST", `/oraculo/retificacoes/${id}`, dados);
+  }
 }
 
 module.exports = { ClienteBackend };

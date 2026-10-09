@@ -11,7 +11,7 @@ const { ABI_APOLICE, ABI_REGISTRY, SITUACOES } = require("./abi");
  * a regra de consolidacao fica em `consolidador.js`, testavel sem blockchain, e
  * aqui ficam apenas assinatura, envio e leitura do recibo.
  *
- * A chave privada vem de variavel de ambiente e nunca e escrita em log (RNF16).
+ * A chave privada vem de variavel de ambiente e nunca e escrita em log (RNF14).
  */
 class Publicador {
   /**
@@ -27,7 +27,7 @@ class Publicador {
     // O tempo limite padrao do ethers para uma requisicao e de 300 segundos, e
     // na deteccao inicial de rede ele ainda repete a tentativa varias vezes. Com
     // o no fora do ar, o servico simplesmente travaria, em vez de falhar e
-    // devolver a publicacao a fila. Como o RNF22 exige que a indisponibilidade da
+    // devolver a publicacao a fila. Como o RNF20 exige que a indisponibilidade da
     // rede nao cause perda de dados, o que importa aqui e falhar rapido: a
     // entrada continua na fila e a proxima tentativa vem com espera crescente.
     const requisicao = new ethers.FetchRequest(rpcUrl);
@@ -116,16 +116,72 @@ class Publicador {
     hashEvidencias = ethers.ZeroHash,
     versaoModelo = ethers.ZeroHash,
   }) {
-    const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.carteira);
-
-    const argumentos = [
+    return this._enviar(enderecoApolice, "publicarIndices", [
       periodo,
       indiceClimatico,
       indiceDanoBps,
       confiancaBps,
       hashEvidencias,
       versaoModelo,
-    ];
+    ]);
+  }
+
+  /**
+   * Se a apolice esta dentro da vigencia, pelo relogio da propria rede.
+   *
+   * Antes do inicio, ou depois do fim, o contrato recusa a publicacao com
+   * ForaDaVigencia. Conferir antes evita gastar uma chamada e, principalmente,
+   * registrar como falha o que e so uma apolice que ainda nao comecou.
+   */
+  async dentroDaVigencia(enderecoApolice) {
+    const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.provider);
+    const [termos, bloco] = await Promise.all([
+      apolice.verTermos(),
+      this.provider.getBlock("latest"),
+    ]);
+
+    return (
+      bloco.timestamp >= Number(termos.vigenciaInicio) &&
+      bloco.timestamp <= Number(termos.vigenciaFim)
+    );
+  }
+
+  /** Se o periodo ja recebeu retificacao nessa apolice (RF28). */
+  async periodoJaRetificado(enderecoApolice, periodo) {
+    const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.provider);
+
+    return apolice.periodoRetificado(periodo);
+  }
+
+  /**
+   * Submete o indice de dano retificado depois de uma contestacao deferida (RF28).
+   *
+   * Mesmo caminho da publicacao: ensaio sem custo, estimativa, envio e espera
+   * pelas confirmacoes. A confianca vai em 100%: o indice foi fixado por um
+   * perito, e nao estimado pelo modelo.
+   */
+  async publicarRetificacao({
+    apolice: enderecoApolice,
+    periodo,
+    indiceDanoBps,
+    confiancaBps = 10_000,
+    hashEvidencias = ethers.ZeroHash,
+    versaoModelo = ethers.ZeroHash,
+    hashParecer,
+  }) {
+    return this._enviar(enderecoApolice, "publicarRetificacao", [
+      periodo,
+      indiceDanoBps,
+      confiancaBps,
+      hashEvidencias,
+      versaoModelo,
+      hashParecer,
+    ]);
+  }
+
+  /** Ensaia, estima, envia e confirma uma escrita na apolice. */
+  async _enviar(enderecoApolice, metodo, argumentos) {
+    const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.carteira);
 
     let recibo;
     let gasEstimado;
@@ -134,12 +190,12 @@ class Publicador {
 
     try {
       // Ensaio sem custo. Se a transacao fosse reverter, o erro aparece aqui.
-      await apolice.publicarIndices.staticCall(...argumentos);
+      await apolice[metodo].staticCall(...argumentos);
 
-      gasEstimado = await apolice.publicarIndices.estimateGas(...argumentos);
+      gasEstimado = await apolice[metodo].estimateGas(...argumentos);
 
       enviadoEm = new Date().toISOString();
-      const transacao = await apolice.publicarIndices(...argumentos);
+      const transacao = await apolice[metodo](...argumentos);
 
       recibo = await transacao.wait(this.confirmacoes);
       confirmadoEm = new Date().toISOString();

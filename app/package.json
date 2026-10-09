@@ -10,19 +10,28 @@
     "build": "npm run enderecos && vite build",
     "preview": "vite preview",
     "formatar": "prettier --write \"src/**/*.{js,jsx,css}\" \"scripts/*.mjs\"",
-    "testar": "node --test \"test/*.test.mjs\""
+    "testar": "vitest run",
+    "cobertura": "vitest run --coverage",
+    "dev:sepolia": "npm run enderecos && vite --mode sepolia"
   },
   "dependencies": {
     "ethers": "^6.13.4",
     "exifr": "^7.1.3",
+    "leaflet": "^1.9.4",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^5.0.3",
+    "jsdom": "^25.0.1",
+    "playwright-core": "^1.64.0",
     "prettier": "^3.3.3",
-    "vite": "^5.4.11"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
   }
 }

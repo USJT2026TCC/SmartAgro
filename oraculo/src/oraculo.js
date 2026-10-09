@@ -5,7 +5,7 @@ const path = require("node:path");
 const { config, exigirChave, lerImplantacao } = require("./config");
 const { consolidarIndiceClimatico } = require("./consolidador");
 const { RegistroReputacao } = require("./reputacao");
-const { FilaDePublicacoes, ESTADOS } = require("./fila");
+const { FilaDePublicacoes, ESTADOS, descreverErro } = require("./fila");
 const { RegistroDePublicacoes } = require("./registro");
 const { Publicador, paraBytes32 } = require("./publicador");
 const { ClienteBackend } = require("./clienteBackend");
@@ -18,7 +18,7 @@ const { ClienteBackend } = require("./clienteBackend");
  *
  * A ordem importa. A consolidacao grava na fila antes de qualquer tentativa de
  * publicacao, de modo que uma queda da rede ou do proprio processo nao perca o
- * indice (RF21, RNF22). Só depois da confirmacao em cadeia a entrada sai da fila e
+ * indice (RF21, RNF20). Só depois da confirmacao em cadeia a entrada sai da fila e
  * o custo e a latencia vao para o registro de auditoria (RF22).
  */
 class ServicoOraculo {
@@ -137,7 +137,7 @@ class ServicoOraculo {
       confiancaBps,
       hashEvidencias,
       versaoModelo,
-      // Guardado junto com a publicacao para tornar a decisao reconstituivel (RNF20).
+      // Guardado junto com a publicacao para tornar a decisao reconstituivel (RNF18).
       procedencia: {
         fontesUsadas: consolidacao.fontesUsadas,
         fontesDescartadas: consolidacao.fontesDescartadas,
@@ -224,7 +224,7 @@ class ServicoOraculo {
         await this.relatar("relatarFalha", {
           apolice: entrada.apolice,
           periodo: entrada.periodo,
-          motivo: erro?.shortMessage || erro?.message || String(erro),
+          motivo: descreverErro(erro),
           tentativas: entrada.tentativas,
         });
       }

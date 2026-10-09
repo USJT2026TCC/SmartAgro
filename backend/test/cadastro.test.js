@@ -128,7 +128,7 @@ describe("cadastro", () => {
       assert.equal(cadastro.status, 403);
     });
 
-    test("o talhao indica se atende o minimo de fontes independentes (RNF18)", async () => {
+    test("o talhao indica se atende o minimo de fontes independentes (RNF16)", async () => {
       const { body } = await ctx.api().get("/api/talhoes").set(com(seguradora));
       const t1 = body.talhoes.find((t) => t.identificador === "talhao-01");
       const t2 = body.talhoes.find((t) => t.identificador === "talhao-02");
@@ -236,6 +236,129 @@ describe("cadastro", () => {
       });
 
       assert.equal(r.status, 409);
+    });
+  });
+  describe("produtores e propriedades (RF03)", () => {
+    test("a seguradora cadastra um produtor, que consegue entrar com a senha inicial", async () => {
+      const r = await ctx.api().post("/api/produtores").set(com(seguradora)).send({
+        identificador: "maria.silva",
+        nome: "Maria Silva",
+        documento: "123",
+        senhaInicial: "senha-inicial-123",
+      });
+      assert.equal(r.status, 201, JSON.stringify(r.body));
+      assert.equal(r.body.produtor.identificador, "maria.silva");
+      assert.equal(r.body.produtor.hash_senha, undefined, "o hash nunca sai da API");
+
+      const login = await ctx
+        .api()
+        .post("/api/autenticacao/entrar")
+        .send({ identificador: "maria.silva", senha: "senha-inicial-123" });
+      assert.equal(login.status, 200);
+      assert.equal(login.body.usuario.perfil, "produtor");
+    });
+
+    test("identificador repetido, invalido ou senha curta sao recusados", async () => {
+      const enviar = (corpo) =>
+        ctx
+          .api()
+          .post("/api/produtores")
+          .set(com(seguradora))
+          .send({ nome: "X", senhaInicial: "senha-longa-123", ...corpo });
+
+      assert.equal((await enviar({ identificador: "produtor" })).status, 409);
+      assert.equal((await enviar({ identificador: "Com Espaco" })).status, 400);
+      assert.equal((await enviar({ identificador: "curta", senhaInicial: "123" })).status, 400);
+    });
+
+    test("so a seguradora cadastra ou edita produtores", async () => {
+      const r = await ctx
+        .api()
+        .post("/api/produtores")
+        .set(com(produtor))
+        .send({ identificador: "outro", nome: "Outro", senhaInicial: "senha-longa-123" });
+      assert.equal(r.status, 403);
+    });
+
+    test("edita nome e documento do produtor, e nome e municipio da propriedade", async () => {
+      const r = await ctx
+        .api()
+        .patch(`/api/produtores/${produtorId}`)
+        .set(com(seguradora))
+        .send({ documento: "999.999.999-99" });
+      assert.equal(r.status, 200);
+      assert.equal(r.body.produtor.documento, "999.999.999-99");
+      assert.ok(r.body.produtor.nome, "o nome nao enviado e mantido");
+
+      const lista = await ctx.api().get("/api/propriedades").set(com(seguradora));
+      const prop = lista.body.propriedades[0];
+      const e = await ctx
+        .api()
+        .patch(`/api/propriedades/${prop.id}`)
+        .set(com(seguradora))
+        .send({ municipio: "Cravinhos/SP" });
+      assert.equal(e.status, 200);
+      assert.equal(e.body.propriedade.municipio, "Cravinhos/SP");
+      assert.equal(e.body.propriedade.nome, prop.nome);
+    });
+  });
+
+  describe("edicao de talhao (RF03)", () => {
+    test("talhao sem proposta: troca o poligono e a area e recalculada pelo PostGIS", async () => {
+      const criado = await ctx.api().post("/api/talhoes").set(com(seguradora)).send(novoTalhao());
+      const id = criado.body.talhao.id;
+
+      const metade = [
+        [-47.81, -21.17],
+        [-47.8, -21.17],
+        [-47.8, -21.19],
+        [-47.81, -21.19],
+      ];
+      const r = await ctx
+        .api()
+        .patch(`/api/talhoes/${id}`)
+        .set(com(seguradora))
+        .send({ poligono: metade, cultura: "Milho" });
+
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.equal(r.body.talhao.cultura, "milho");
+      const razao = Number(r.body.talhao.areaHa) / Number(criado.body.talhao.areaHa);
+      assert.ok(Math.abs(razao - 0.5) < 0.01, `razao das areas: ${razao}`);
+    });
+
+    test("talhao com proposta ou apolice nao pode mudar", async () => {
+      const { rows } = await ctx.banco.query(
+        "SELECT id FROM talhoes WHERE identificador = 'talhao-01'",
+      );
+      await ctx.banco.query(
+        `INSERT INTO apolices (endereco, talhao_id, produtor_carteira, seguradora_carteira, talhao_bytes32,
+                               hash_termos, valor_indenizacao_wei, tx_emissao, bloco_emissao)
+         VALUES ('0xedicao', $1, '0xp', '0xs', '0x', '0x', 1, '0xtx', 1)`,
+        [rows[0].id],
+      );
+
+      const r = await ctx
+        .api()
+        .patch(`/api/talhoes/${rows[0].id}`)
+        .set(com(seguradora))
+        .send({ cultura: "milho" });
+      assert.equal(r.status, 409);
+    });
+
+    test("poligono com autointersecao tambem e recusado na edicao", async () => {
+      const criado = await ctx.api().post("/api/talhoes").set(com(seguradora)).send(novoTalhao());
+      const gravata = [
+        [-47.81, -21.17],
+        [-47.79, -21.19],
+        [-47.79, -21.17],
+        [-47.81, -21.19],
+      ];
+      const r = await ctx
+        .api()
+        .patch(`/api/talhoes/${criado.body.talhao.id}`)
+        .set(com(seguradora))
+        .send({ poligono: gravata });
+      assert.equal(r.status, 400);
     });
   });
 });

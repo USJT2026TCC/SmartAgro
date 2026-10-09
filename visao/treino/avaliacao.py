@@ -53,12 +53,16 @@ def recortes(dados: Path = PREPARADO, divisao: str = "validacao") -> list[Recort
         )
 
     with indice.open(encoding="utf-8") as arquivo:
-        linhas = [l for l in csv.DictReader(arquivo) if l["divisao"] == divisao]
+        linhas = [linha for linha in csv.DictReader(arquivo) if linha["divisao"] == divisao]
 
     return [
-        Recorte(dados / "images" / l["imagem"], dados / "masks" / l["mascara"], float(l["dano"]))
-        for l in linhas
-        if float(l["lavoura"]) >= COBERTURA_MINIMA
+        Recorte(
+            dados / "images" / linha["imagem"],
+            dados / "masks" / linha["mascara"],
+            float(linha["dano"]),
+        )
+        for linha in linhas
+        if float(linha["lavoura"]) >= COBERTURA_MINIMA
     ]
 
 
@@ -72,7 +76,7 @@ def dano_de_referencia(recorte: Recorte) -> float:
 
 def relatorio(titulo: str, estimados: list[float], verdadeiros: list[float]) -> dict:
     """Imprime e devolve as metricas. O vies tem sinal: + superestima, - subestima."""
-    erros = [e - v for e, v in zip(estimados, verdadeiros)]
+    erros = [e - v for e, v in zip(estimados, verdadeiros, strict=True)]
     absolutos = sorted(abs(e) for e in erros)
     trivial = sum(verdadeiros) / len(verdadeiros)  # erro medio de responder sempre 0%
 

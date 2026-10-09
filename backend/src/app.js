@@ -11,6 +11,7 @@ import { rotasDeLeituras } from "./rotas/leituras.js";
 import { rotasDoOraculo } from "./rotas/oraculo.js";
 import { rotasDeImagens } from "./rotas/imagens.js";
 import { rotasDeAcompanhamento } from "./rotas/acompanhamento.js";
+import { rotasDeContestacoes } from "./rotas/contestacoes.js";
 
 /**
  * Monta a aplicacao Express.
@@ -37,7 +38,7 @@ export function criarApp({ banco, cadeia, indexador = null }) {
   app.disable("x-powered-by");
 
   // O corpo bruto e guardado junto com o JSON interpretado: a ingestao de
-  // leituras confere a assinatura sobre os bytes exatos que chegaram (RNF19).
+  // leituras confere a assinatura sobre os bytes exatos que chegaram (RNF17).
   app.use(
     express.json({
       limit: "2mb",
@@ -89,6 +90,7 @@ export function criarApp({ banco, cadeia, indexador = null }) {
   api.use(rotasDoOraculo());
   api.use(rotasDeImagens());
   api.use(rotasDeAcompanhamento());
+  api.use(rotasDeContestacoes());
 
   app.use("/api", api);
 

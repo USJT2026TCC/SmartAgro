@@ -3,6 +3,7 @@ import { Router } from "express";
 import { conflito, naoEncontrado, pedidoInvalido } from "../erros.js";
 import { apoliceDoRecibo } from "../cadeia/leitor.js";
 import { registrarApoliceEmitida } from "../dominio/apolices.js";
+import { historicoDaCondicao } from "../dominio/historicoClimatico.js";
 import { calcularCotacao } from "../dominio/cotacao.js";
 import { descreverTermos, montarStructDeTermos, resumirTermos } from "../dominio/termos.js";
 import { auditar, exigirPerfil, exigirSessao } from "../seguranca/sessoes.js";
@@ -28,7 +29,7 @@ import { decimalPositivo, hashDeTransacao, uuid } from "../validacao.js";
  *     ele mesmo gerou no passo 2.
  *
  * O backend nao assina nada. Quem implanta o contrato continua sendo a carteira
- * da seguradora, e quem responde pela emissao na cadeia e ela (RNF12).
+ * da seguradora, e quem responde pela emissao na cadeia e ela (RNF10).
  */
 
 function propostaPublica(p) {
@@ -45,6 +46,7 @@ function propostaPublica(p) {
     termos: p.termos,
     descricaoDosTermos: p.descricao_dos_termos,
     hashTermos: p.hash_termos,
+    inicioDesejado: p.inicio_desejado,
     vigenciaInicio: p.vigencia_inicio,
     vigenciaFim: p.vigencia_fim,
     apolice: p.apolice_endereco
@@ -124,6 +126,46 @@ function termosDoProduto(produto) {
   };
 }
 
+/** Raio, em metros, das estacoes que contam como "historico da localidade". */
+const RAIO_DO_HISTORICO_M = 100_000;
+
+/** Prazo maximo entre a proposta e o inicio da cobertura. */
+const MAXIMO_DE_DIAS_ATE_O_INICIO = 120;
+
+/** Data como AAAA-MM-DD, venha do banco (Date) ou da requisicao (texto). */
+function isoDaData(valor) {
+  return valor instanceof Date ? valor.toISOString().slice(0, 10) : String(valor).slice(0, 10);
+}
+
+/**
+ * Data de inicio pedida pelo produtor (opcional). Hoje ou ate 120 dias a frente:
+ * mais longe que isso, as condicoes do produto podem mudar antes de a cobertura
+ * comecar.
+ */
+function dataDeInicio(valor, { limitarAoPrazo = true } = {}) {
+  if (valor === undefined || valor === null || valor === "") return null;
+
+  const texto = String(valor);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || Number.isNaN(Date.parse(`${texto}T00:00:00Z`))) {
+    throw pedidoInvalido("A data de inicio deve estar no formato AAAA-MM-DD.");
+  }
+
+  if (!limitarAoPrazo) return texto;
+
+  const dias =
+    (Date.parse(`${texto}T00:00:00Z`) -
+      Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`)) /
+    86_400_000;
+  // -1: a data local do produtor pode estar um dia atras do UTC (Brasil e UTC-3).
+  if (dias < -1 || dias > MAXIMO_DE_DIAS_ATE_O_INICIO) {
+    throw pedidoInvalido(
+      `A cobertura deve comecar entre hoje e daqui a ${MAXIMO_DE_DIAS_ATE_O_INICIO} dias.`,
+    );
+  }
+
+  return texto;
+}
+
 export function rotasDePropostas() {
   const r = Router();
 
@@ -145,13 +187,39 @@ export function rotasDePropostas() {
       taxaPremioBps: produto.taxa_premio_bps,
     });
 
+    const termos = termosDoProduto(produto);
+    // Na simulacao, qualquer data: o produtor pode comparar epocas do ano. So a
+    // proposta limita o inicio a 120 dias.
+    const inicio =
+      dataDeInicio(req.body?.inicioDaVigencia, { limitarAoPrazo: false }) ??
+      new Date().toISOString().slice(0, 10);
+
+    // Historico climatico da localidade (RF06): estacoes do INMET a ate 100 km
+    // do talhao, medido pelo PostGIS sobre o elipsoide.
+    const { rows: linhas } = await banco.query(
+      `SELECT h.estacao, h.data::text AS data, h.chuva_mm, h.horas_validas
+         FROM historico_chuva h
+         JOIN estacoes_inmet e ON e.codigo = h.estacao
+         JOIN talhoes t ON t.id = $1
+        WHERE ST_DWithin(e.posicao::geography, ST_Centroid(t.geometria)::geography, $2)`,
+      [talhao.id, RAIO_DO_HISTORICO_M],
+    );
+
+    const historico = historicoDaCondicao({
+      linhas,
+      inicio,
+      vigenciaDias: Number(termos.vigenciaDias),
+      termos,
+    });
+
     res.json({
       cotacao: {
         areaSeguradaHa: area,
         areaMedidaDoTalhaoHa: talhao.area_ha,
         valorIndenizacaoWei: valorIndenizacaoWei.toString(),
         premioWei: premioWei.toString(),
-        termos: termosDoProduto(produto),
+        termos,
+        historico,
       },
     });
   });
@@ -184,11 +252,12 @@ export function rotasDePropostas() {
       valorPorHectareWei: produto.valor_por_hectare_wei,
       taxaPremioBps: produto.taxa_premio_bps,
     });
+    const inicioDesejado = dataDeInicio(req.body?.inicioDaVigencia);
 
     const { rows } = await banco.query(
       `INSERT INTO propostas (produtor_id, talhao_id, produto_id, area_segurada_ha, carteira_produtor,
-                              valor_indenizacao_wei, premio_wei, termos)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                              valor_indenizacao_wei, premio_wei, termos, inicio_desejado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
       [
         req.usuario.id,
@@ -199,6 +268,7 @@ export function rotasDePropostas() {
         valorIndenizacaoWei.toString(),
         premioWei.toString(),
         JSON.stringify(termosDoProduto(produto)),
+        inicioDesejado,
       ],
     );
 
@@ -245,7 +315,14 @@ export function rotasDePropostas() {
       throw conflito("Nenhum contrato implantado na rede configurada. Implante antes de emitir.");
     }
 
-    const inicio = await cadeia.instanteAtual();
+    // A vigencia comeca na data pedida pelo produtor, a meia-noite de Brasilia
+    // (03:00 UTC), ou agora, se a data ja passou ou nao foi pedida. So com o
+    // inicio no futuro existe janela para o cancelamento do RF10.
+    const agora = await cadeia.instanteAtual();
+    const pedido = p.inicio_desejado
+      ? Math.floor(Date.parse(`${isoDaData(p.inicio_desejado)}T03:00:00Z`) / 1000)
+      : 0;
+    const inicio = Math.max(agora, pedido);
     const fim = inicio + Number(p.termos.vigenciaDias) * 86_400;
 
     const dados = {

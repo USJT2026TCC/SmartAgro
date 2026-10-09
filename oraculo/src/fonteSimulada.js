@@ -11,7 +11,7 @@ const { dataDe, somarDias } = require("./consolidador");
  * seja reproduzivel.
  *
  * A geracao e deterministica: o mesmo cenario com a mesma semente produz sempre a
- * mesma serie. Isso importa porque o RNF21 exige reprodutibilidade, e porque um
+ * mesma serie. Isso importa porque o RNF19 exige reprodutibilidade, e porque um
  * numero de gas medido sobre uma serie aleatoria nao pode ser comparado com o da
  * execucao seguinte.
  *
@@ -69,7 +69,7 @@ const CENARIOS = {
   },
 };
 
-/** Estacoes padrao do talhao. Duas fontes independentes, conforme o RNF18. */
+/** Estacoes padrao do talhao. Duas fontes independentes, conforme o RNF16. */
 const FONTES_PADRAO = ["estacao-inmet-A770", "sensor-solo-talhao-01"];
 
 /**

@@ -182,7 +182,7 @@ export default function Propostas() {
         <Aviso tipo="erro" titulo="Esta carteira nao e a seguradora da fabrica.">
           A fabrica so aceita emissao de <span className="mono">{seguradoraDaFabrica}</span>.
           Qualquer outro endereco tem a transacao revertida com <code>NaoEhSeguradora</code> — o
-          controle de acesso do RNF12 funcionando.
+          controle de acesso do RNF10 funcionando.
         </Aviso>
       ) : null}
 

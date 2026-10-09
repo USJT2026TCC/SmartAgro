@@ -26,7 +26,7 @@ contracts/
 ## Configuração
 
 Só é necessária para rede de teste pública. Copie `.env.example` para `.env` e preencha.
-Chaves privadas **nunca** vão para o repositório (RNF16).
+Chaves privadas **nunca** vão para o repositório (RNF14).
 
 ## Documentação
 

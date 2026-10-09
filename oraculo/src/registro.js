@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 /**
- * Registro de auditoria das publicacoes (RF22, RNF20, RNF25).
+ * Registro de auditoria das publicacoes (RF22, RNF18).
  *
  * Para cada publicacao grava o identificador da transacao, o gas consumido e o
  * instante de confirmacao, alem da latencia entre envio e confirmacao. Sao esses

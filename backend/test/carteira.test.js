@@ -165,7 +165,7 @@ describe("vinculo da carteira", () => {
     assert.equal(r.status, 409);
   });
 
-  test("a chave privada nunca e pedida nem aceita (RNF17)", async () => {
+  test("a chave privada nunca e pedida nem aceita (RNF15)", async () => {
     const { desafioId } = await pedirDesafio();
     const r = await ctx
       .api()

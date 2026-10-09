@@ -6,7 +6,7 @@ import { api, token } from "../api/cliente";
  * Sessao do usuario, autenticada pelo backend (RF01, RF04, HU13).
  *
  * Antes do backend, o login conferia senhas em texto claro no proprio navegador.
- * Agora a senha vai para a API, que confere contra o hash bcrypt do banco (RNF24)
+ * Agora a senha vai para a API, que confere contra o hash bcrypt do banco (HU13, criterio 1)
  * e devolve um token opaco. O navegador guarda o token, nunca a senha.
  *
  * Com o segundo fator ativo, o login tem dois tempos: a senha correta devolve um

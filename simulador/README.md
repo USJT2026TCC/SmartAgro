@@ -52,7 +52,7 @@ assina. As fontes de demonstração já vêm cadastradas.
 ## Chaves
 
 Copie `.env.example` para `.env` e preencha `CHAVE_<FONTE>` com a chave privada de cada estação.
-O `.env` está no `.gitignore` e **nunca** vai para o repositório (RNF16).
+O `.env` está no `.gitignore` e **nunca** vai para o repositório (RNF14).
 
 ## Documentação
 

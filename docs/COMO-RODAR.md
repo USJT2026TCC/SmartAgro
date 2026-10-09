@@ -68,34 +68,52 @@ PostgreSQL com PostGIS rodando dentro do processo.
 
 Os testes não precisam de rede nem de configuração.
 
-```bash
-cd contratos && npx hardhat test
-```
+| Módulo | Comando | Esperado |
+|---|---|---|
+| Contratos | `cd contratos && npx hardhat test` | **115 passing** |
+| Oráculo | `cd oraculo && npm run testar` | **70 testes, 0 falhas** |
+| Backend | `cd backend && npm run testar` | **135 testes, 0 falhas** (banco em memória, cadeia simulada) |
+| Aplicativo | `cd app && npm run testar` | **72 testes** (Vitest, telas em jsdom) |
+| Simulador | `cd simulador && .venv/Scripts/python -m pytest` | **45 testes** |
+| Visão | `cd visao && .venv/Scripts/python -m pytest` | **66 testes** |
 
-Esperado: **94 passing**.
-
-```bash
-cd oraculo && npm run testar
-```
-
-Esperado: **65 testes, 0 falhas**.
-
-```bash
-cd backend && npm run testar
-```
-
-Esperado: **83 testes, 0 falhas** (banco em memória, cadeia simulada). O teste de integração do
-indexador sobe um `hardhat node` próprio, na porta 8599:
+Os testes de integração sobem um `hardhat node` próprio (portas 8599 e seguintes) e rodam contra
+ele:
 
 ```bash
 cd backend && npm run testar:integracao
 ```
 
 ```bash
-cd simulador && .venv/Scripts/python -m pytest
+cd oraculo && npm run testar:integracao
 ```
 
-Esperado: **19 testes, 0 falhas**.
+Esperado: 6 e 7 testes.
+
+### Cobertura e estilo fora da cadeia (RNF03)
+
+| Módulo | Cobertura | Estilo |
+|---|---|---|
+| Backend, oráculo | `npm run cobertura` (no oráculo, inclui os testes de integração, que sobem um nó Hardhat) | `npx prettier --check "src/**/*.js" "test/**/*.js"` |
+| Aplicativo | `npm run cobertura` | `npx prettier --check "src/**/*.{js,jsx}"` |
+| Simulador, visão | `.venv/Scripts/python -m pytest --cov` | `.venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .` |
+
+Esperado: acima de 70% em todos (81% a 93%) e nenhum aviso de estilo.
+
+### Medições dos requisitos não funcionais
+
+Com o backend no ar e, para as duas do aplicativo, a Sepolia configurada:
+
+| Requisito | Comando |
+|---|---|
+| RNF01, banco | `cd backend && node scripts/medir-consultas.js --usuarios 20 --segundos 30` |
+| RNF01, rede | `cd app && node scripts/medir-leituras.mjs --rede sepolia --blocos 100000` |
+| RNF02 | `cd visao && .venv/Scripts/python treino/medir_lote.py --pesos pesos/unet.pt` |
+| RNF05 | `cd app && node scripts/verificar-navegadores.mjs --rede sepolia --apolice <endereco>` |
+| RNF08 | `cd contratos && node scripts/custo-por-apolice.js` |
+
+Resultados de 08/10/2026 em
+[resultados/requisitos-nao-funcionais-2026-10-08](resultados/requisitos-nao-funcionais-2026-10-08/README.md).
 
 Cobertura dos contratos:
 
@@ -355,8 +373,37 @@ que aparece na própria apólice.
 cd visao && .venv/Scripts/python -m visao servico --uma-vez
 ```
 
-Com `VISAO_PESOS=pesos/unet.pt` no `visao/.env`. Recarregando a tela, o lote mostra o dano
-estimado — ou "com o perito", se a confiança ficou abaixo de 70%.
+Com `VISAO_PESOS=pesos/unet.pt` e a mesma `CHAVE_DE_SERVICO` do backend no `visao/.env` (em
+desenvolvimento, `desenvolvimento-apenas-nao-use-em-producao`). Recarregando a tela, o lote mostra
+o dano estimado — ou "com o perito", se a confiança ficou abaixo de 70%.
+
+### No navegador — cancelar e contestar (RF10, RF28)
+
+**Cancelar.** A apólice precisa começar no futuro. Na cotação, escolha um **Início da cobertura**
+daqui a alguns dias; emitida e com a garantia depositada, o detalhe da apólice mostra **Cancelar
+apólice** para o produtor titular e para a seguradora. Confirmado, a carteira assina, a situação
+passa a *cancelada* e a garantia volta à seguradora. Por script, sem a interface:
+
+```bash
+cd contratos && npx hardhat run scripts/cancelar-apolice.js --network localhost
+```
+
+com `ENDERECO_APOLICE` definido antes (no PowerShell, `$env:ENDERECO_APOLICE="0x..."`).
+
+**Contestar.**
+
+1. Como **produtor**, no detalhe de uma apólice com índice de dano publicado, **Contestar** o
+   período e escrever o motivo.
+2. Como **perito**, em **Revisão técnica**, a contestação aparece na fila: escrever o parecer,
+   informar o índice retificado em percentual e **Deferir e retificar**.
+3. O oráculo publica a retificação no ciclo seguinte:
+
+```bash
+cd oraculo && node src/index.js servico --uma-vez
+```
+
+A linha `retificacao ... 9.98% -> 30% · ACIONOU` mostra o índice antigo, o novo e se pagou. No
+detalhe da apólice, o índice retificado aparece **ao lado** do original, que continua lá.
 
 ---
 
@@ -397,13 +444,15 @@ referência original foi preservado.
 ## 7. Rede de teste pública (Sepolia)
 
 Executado de ponta a ponta em 07/10/2026, com os dois pagamentos confirmados na rede:
-[resultados/sepolia-2026-10-07](resultados/sepolia-2026-10-07/README.md). Os contratos já estão
-implantados, e os endereços estão em `contratos/implantacoes/sepolia.json`. Os passos 7.1 a 7.3 só
-são necessários para uma implantação nova.
+[resultados/sepolia-2026-10-07](resultados/sepolia-2026-10-07/README.md). A versão com cancelamento
+e contestação foi implantada e verificada no Etherscan em 08/10/2026:
+[resultados/sepolia-2026-10-08](resultados/sepolia-2026-10-08/README.md). Os endereços estão em
+`contratos/implantacoes/sepolia.json`. Os passos 7.1 a 7.3 só são necessários para uma implantação
+nova.
 
 ### 7.1 Carteiras e ETH de teste
 
-São três endereços distintos (RNF12), todos de carteiras **só de teste**:
+São três endereços distintos (RNF10), todos de carteiras **só de teste**:
 
 | Papel | Onde fica a chave |
 |---|---|
@@ -463,8 +512,15 @@ Apólice pelo índice de dano. No PowerShell, defina antes `$env:OPERADOR="dano"
 cd contratos && npx hardhat run scripts/emitir-apolice.js --network sepolia
 ```
 
-Pela Sepolia, cada emissão leva cerca de 30 segundos e custa ~10 milhões de gas — 0,0001 ETH a
-0,01 gwei.
+Apólice que pode ser cancelada (RF10): defina antes `$env:INICIO_EM_DIAS="10"`; a vigência começa
+daqui a 10 dias. Para cancelar, com `$env:ENDERECO_APOLICE` apontando para ela:
+
+```bash
+cd contratos && npx hardhat run scripts/cancelar-apolice.js --network sepolia
+```
+
+Pela Sepolia, cada emissão leva cerca de 30 segundos e custa ~14 milhões de gas — 0,00014 ETH a
+0,01 gwei. O cancelamento custa 43 mil.
 
 ### 7.4 O backend acompanhando a Sepolia
 
@@ -507,7 +563,7 @@ A linha da apólice termina em `SIM` e no identificador da transação. Cole-o e
 
 1. Envie as fotos pela tela **Fotos da lavoura** (5A) e feche o lote.
 2. Rode a visão: `cd visao && .venv/Scripts/python -m visao servico --uma-vez`, com
-   `VISAO_PESOS=pesos/unet.pt`.
+   `VISAO_PESOS=pesos/unet.pt` e a `CHAVE_DE_SERVICO` do backend.
 3. Rode o oráculo sem `--periodo` — vale o dia de hoje, que é o dia da análise:
 
 ```bash
@@ -517,14 +573,44 @@ cd oraculo && node src/index.js servico --uma-vez
 O aviso `Nenhuma leitura valida para o proprio periodo` é esperado: o índice climático do dia fica
 em 0, e a apólice por dano não depende dele.
 
-### 7.7 Verificar o código no Etherscan
+### 7.7 Contestação com índice retificado (RF28)
 
-Opcional, e ainda não feito: precisa de uma chave grátis da API do Etherscan em
-`ETHERSCAN_API_KEY`.
+Emita uma apólice por dano com um limiar acima do que as fotos dão — `$env:OPERADOR="dano"`,
+`$env:LIMIAR_DANO_BPS="2000"`, `$env:VALOR_INDENIZACAO="0.003"` — e faça o 7.6: o oráculo publica
+cerca de 10% de dano, abaixo dos 20%, e não paga. Então, como no 5A:
+
+1. o **produtor** contesta o período no detalhe da apólice. A contestação exige que a carteira da
+   apólice esteja **vinculada** ao cadastro do produtor (**Minha carteira**, assinando com a
+   MetaMask na Sepolia);
+2. o **perito** defere com o índice retificado, acima de 20%;
+3. o oráculo publica a retificação, que paga na mesma transação:
+
+```bash
+cd oraculo && node src/index.js servico --uma-vez
+```
+
+### 7.8 Verificar o código no Etherscan
+
+Feito em 08/10/2026. Precisa de uma chave grátis da API do Etherscan em `ETHERSCAN_API_KEY`, no
+`contratos/.env`.
 
 ```bash
 cd contratos && npx hardhat verify --network sepolia <endereco do OracleRegistry> <endereco da seguradora>
 ```
+
+```bash
+cd contratos && npx hardhat verify --network sepolia <endereco da ApoliceFactory> <endereco do OracleRegistry> <endereco da seguradora>
+```
+
+Cada apólice recebe os termos no construtor; o script lê da própria cadeia e verifica, com
+`$env:ENDERECO_APOLICE` definido:
+
+```bash
+cd contratos && npx hardhat run scripts/verificar-apolice.js --network sepolia
+```
+
+Logo depois da implantação o Etherscan pode responder que o endereço não tem código: é o tempo de
+ele indexar o bloco. Espere um minuto.
 
 ---
 

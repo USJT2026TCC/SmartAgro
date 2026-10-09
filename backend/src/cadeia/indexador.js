@@ -23,7 +23,7 @@ import {
  * O `contract.on(...)` do ethers so ve o que acontece enquanto o processo esta de
  * pe. Se o backend reinicia no momento de um pagamento, o evento se perde. O
  * indexador guarda o ultimo bloco processado no banco e, ao voltar, continua dali
- * — nenhum evento fica de fora, o que e o mesmo principio do RNF22 aplicado ao
+ * — nenhum evento fica de fora, o que e o mesmo principio do RNF20 aplicado ao
  * caminho de volta, da cadeia para o sistema.
  *
  * IDEMPOTENCIA
@@ -75,6 +75,38 @@ function notificacoesDoEvento(nome, args, apolice) {
           tipo: "apolice_liquidada",
           titulo: "Apolice liquidada",
           mensagem: `Uma apolice foi acionada e pagou ${ethers.formatEther(args.valor)} ETH no periodo ${args.periodo}.`,
+        },
+      ];
+
+    case "ApoliceCancelada":
+      return [
+        {
+          para: { carteira: apolice?.produtor_carteira },
+          tipo: "apolice_cancelada",
+          titulo: "Apolice cancelada",
+          mensagem: "A apolice foi cancelada antes do inicio da vigencia. Nao ha cobertura.",
+        },
+        {
+          para: { perfil: "seguradora" },
+          tipo: "apolice_cancelada",
+          titulo: "Apolice cancelada",
+          mensagem: `Uma apolice foi cancelada antes da vigencia; ${ethers.formatEther(args.garantiaDevolvida)} ETH de garantia voltaram para a seguradora.`,
+        },
+      ];
+
+    case "IndiceRetificado":
+      return [
+        {
+          para: { carteira: apolice?.produtor_carteira },
+          tipo: "indice_retificado",
+          titulo: "Contestacao aplicada na rede",
+          mensagem: `O indice de dano do periodo ${args.periodo} foi retificado de ${Number(args.indiceDanoOriginalBps) / 100}% para ${Number(args.indiceDanoBps) / 100}%, conforme o parecer do perito.`,
+        },
+        {
+          para: { perfil: "seguradora" },
+          tipo: "indice_retificado",
+          titulo: "Indice de dano retificado",
+          mensagem: `Uma contestacao foi deferida: periodo ${args.periodo}, de ${Number(args.indiceDanoOriginalBps) / 100}% para ${Number(args.indiceDanoBps) / 100}%.`,
         },
       ];
 

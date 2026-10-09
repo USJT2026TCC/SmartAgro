@@ -17,11 +17,17 @@ campo usaria. As fontes estão em [DADOS.md](DADOS.md).
         ├── recorta a janela de datas
         ├── descarta as horas sem medição (ou envia, com --incluir-falhas)
         ├── desloca as datas para a vigência da apólice, se pedido
+        ├── põe em cada leitura a posição da estação, lida do próprio CSV
         ├── assina cada lote com a chave privada da estação  (EIP-191)
         │
         ├──► POST /api/leituras                    (--destino api)
         └──► broker MQTT ──► ponte ──► POST /api/leituras   (--destino mqtt)
+                    (os dois caminhos podem ir cifrados, com --tls-ca: RNF17)
 ```
+
+Cada leitura leva data e hora (`instante`), a medida e a coordenada da estação (`lon`, `lat`); o
+identificador da fonte vai no lote assinado — o critério 4 da HU04. O backend confere a coordenada
+contra a posição cadastrada da fonte.
 
 A assinatura é feita **na estação**, nunca na ponte. Uma ponte comprometida pode deixar de
 entregar leituras — o que aparece como falta de dado, e o oráculo sabe lidar com isso — mas não
@@ -45,22 +51,26 @@ No Linux ou macOS, `.venv/bin/python`.
 | Comando | O que faz |
 |---|---|
 | `baixar --ano 2024` | Baixa o ZIP anual do INMET para `simulador/dados/` |
-| `estacoes --uf SP --perto -21.46,-47.58` | Lista as estações mais próximas de um ponto |
+| `estacoes --uf SP --perto=-21.46,-47.58` | Lista as estações mais próximas de um ponto |
 | `analisar --estacao A770 --ano 2024` | Qualidade da série e maior estiagem, pela regra do oráculo |
 | `enviar --estacao A770 ...` | Envia a série assinada para a API ou para o MQTT |
 | `ponte --api http://localhost:3001/api` | Repassa do broker MQTT para a API |
 | `endereco --fonte estacao-inmet-a770` | Endereço público da chave, que a seguradora cadastra |
+| `historico --estacoes A770,A747 --de 2015 --ate 2025 --saida ...` | Chuva diária de vários anos (100 MB por ano de ZIP viram um CSV de 100 KB), para a cotação com histórico do backend (RF06); `--apagar-zip` libera o disco |
 
 Opções de `enviar`:
 
 | Opção | Para quê |
 |---|---|
+| `--cenario` | Janela real pré-configurada (HU04, critério 3): `estiagem_severa` (39 dias secos em 2024), `estiagem_moderada` (20) ou `safra_normal` (0) |
 | `--de` / `--ate` | Janela de datas, em AAAA-MM-DD |
 | `--fonte` | Identificador da fonte cadastrada no backend |
 | `--chave` | Chave privada da estação. Prefira o `.env` (`CHAVE_<FONTE>`) |
 | `--ate-hoje` | Desloca as datas para a série terminar ontem, **sem alterar os valores** |
 | `--incluir-falhas` | Envia também as horas sem medição, para exercitar RF12 e RF13 |
 | `--destino mqtt` | Publica no broker em vez de chamar a API |
+| `--intervalo` / `--leituras-por-envio` | Transmite aos poucos, como uma estação de verdade: um envio (por padrão, um dia de leituras) a cada tantos segundos (HU04, critério 1) |
+| `--tls-ca` | Certificado da autoridade que assinou a API em HTTPS ou o broker em TLS. O certificado é **sempre** conferido; sem a autoridade certa, a conexão é recusada (RNF17) |
 
 ### Por que `--ate-hoje` termina ONTEM
 
@@ -124,6 +134,9 @@ python -m simulador ponte --api http://localhost:3001/api
 python -m simulador enviar --estacao A770 --fonte estacao-inmet-a770 --destino mqtt --ate-hoje
 ```
 
+Com TLS no broker, `--porta 8883 --tls-ca <autoridade>` na estação e na ponte. O
+`backend/scripts/gerar-certificados.sh` cria uma autoridade local para desenvolvimento.
+
 O envelope que trafega no tópico `agrosmart/leituras/<fonte>` carrega o corpo em base64 e a
 assinatura já prontos. A ponte decodifica e repassa **os mesmos bytes**: reserializar o JSON
 quebraria a assinatura.
@@ -132,7 +145,7 @@ quebraria a assinatura.
 
 Cada estação tem seu par de chaves. O endereço público é o que a seguradora cadastra em
 *Fontes*; a chave privada fica no equipamento — aqui, no `.env` do simulador, que está no
-`.gitignore` (RNF16).
+`.gitignore` (RNF14).
 
 ```bash
 python -c "from eth_account import Account; c=Account.create(); print(c.key.hex(), c.address)"
@@ -147,13 +160,21 @@ para que a demonstração rode sem configuração. Em rede pública, cada fonte 
 cd simulador && .venv/Scripts/python -m pytest
 ```
 
-19 testes, nenhum deles precisa de rede nem de broker.
+45 testes, nenhum deles precisa de rede nem de broker; 87% das linhas (RNF03).
 
 | Arquivo | Testes | O que cobre |
 |---|---:|---|
-| `test_inmet.py` | 5 | Cabeçalho, decimal com vírgula, hora UTC, campo vazio e sentinela `-9999` |
-| `test_serie.py` | 7 | Recorte, deslocamento, soma horária, dia incompleto, formato da API, lotes |
+| `test_inmet.py` | 7 | Cabeçalho, decimal com vírgula, hora UTC, campo vazio, sentinela `-9999`, formato até 2018, posição da estação em cada leitura |
+| `test_serie.py` | 10 | Recorte, deslocamento, soma horária, dia incompleto, formato da API com a coordenada, lotes |
 | `test_assinatura.py` | 7 | Endereço recuperado, formato da mensagem, serialização única, envelope MQTT |
+| `test_cenarios.py` | 5 | Cada cenário conferido na série real; envio cadenciado |
+| `test_cli.py` | 14 | Todos os comandos, com um ZIP sintético no formato do INMET e um cliente MQTT falso que confere TLS, qos e intervalo |
+
+Estilo (RNF03), com o `ruff` configurado no `pyproject.toml`:
+
+```bash
+cd simulador && .venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .
+```
 
 O trecho de CSV usado nos testes foi copiado do arquivo real da A770, inclusive com a hora sem
 medição de chuva — que é justamente o caso que não pode virar zero.

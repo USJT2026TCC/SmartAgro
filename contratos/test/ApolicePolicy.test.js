@@ -20,7 +20,7 @@ const {
  * A organizacao acompanha o ciclo de vida do contrato: implantacao, deposito da
  * garantia, publicacao de indices, avaliacao da condicao, liquidacao e encerramento.
  * Cada bloco cita o requisito que exercita, de modo que a rastreabilidade exigida
- * pelo RNF14 fique visivel no proprio codigo de teste.
+ * pelo RNF12 fique visivel no proprio codigo de teste.
  */
 describe("ApolicePolicy", function () {
   // -------------------------------------------------------------------------

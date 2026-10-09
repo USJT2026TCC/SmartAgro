@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 /**
  * Configuracao do backend.
  *
- * Todo segredo vem de variavel de ambiente (RNF16). Nenhum valor sensivel tem
+ * Todo segredo vem de variavel de ambiente (RNF14). Nenhum valor sensivel tem
  * padrao embutido no codigo: se `SEGREDO_DE_SESSAO` ou `CHAVE_DO_ORACULO` faltar
  * em producao, o servico recusa subir, em vez de rodar com um segredo que esta
  * publicado no repositorio.
@@ -43,6 +43,15 @@ export const config = {
   porta: Number(process.env.PORTA || 3001),
 
   /**
+   * HTTPS (RNF17: leitura transmitida por canal cifrado). Com os dois caminhos
+   * definidos, a API so atende em https. Para desenvolver, gere com
+   * scripts/gerar-certificados.sh. Em producao, o usual e um proxy reverso com
+   * certificado publico na frente da API; o efeito para o RNF17 e o mesmo.
+   */
+  tlsCertificado: process.env.TLS_CERTIFICADO || "",
+  tlsChave: process.env.TLS_CHAVE || "",
+
+  /**
    * Endereco do PostgreSQL. Vazio significa usar o PostgreSQL embutido (PGlite),
    * com PostGIS, gravado em `dirBanco`. O SQL e o mesmo nos dois casos.
    */
@@ -73,13 +82,28 @@ export const config = {
   /** Liga o indexador. Os testes desligam, porque nao ha cadeia disponivel. */
   indexadorAtivo: process.env.INDEXADOR !== "desligado",
 
+  /**
+   * E-mail (RF27). Sem SMTP_URL, as mensagens vao para a caixa de saida local,
+   * em arquivos .eml. Ex.: smtps://usuario:senha@smtp.exemplo.com:465
+   */
+  smtpUrl: process.env.SMTP_URL || "",
+  remetenteEmail: process.env.EMAIL_REMETENTE || "AgroSmart <avisos@agrosmart.test>",
+  dirEmails: process.env.DIR_EMAILS || join(RAIZ, "dados", "emails"),
+  intervaloDoEmail: Number(process.env.INTERVALO_EMAIL_MS || 15000),
+  emailAtivo: process.env.EMAIL !== "desligado",
+
+  /** Explorador de blocos, para o link da transacao no e-mail. Vazio em rede local. */
+  exploradorDeBlocos:
+    process.env.EXPLORADOR_DE_BLOCOS ??
+    ((process.env.REDE || "localhost") === "sepolia" ? "https://sepolia.etherscan.io" : ""),
+
   /** Onde as imagens dos talhoes ficam gravadas. */
   dirImagens: process.env.DIR_IMAGENS || join(RAIZ, "dados", "imagens"),
 
   /** Janela aceita para a marca de tempo de um lote de leituras (antirrepeticao). */
   janelaDoLoteMin: Number(process.env.JANELA_LOTE_MIN || 10),
 
-  /** Limites de requisicao por origem nas rotas sensiveis (RNF26). */
+  /** Limites de requisicao por origem nas rotas sensiveis. */
   limiteDeLogin: Number(process.env.LIMITE_LOGIN || 10),
   limiteDeIngestao: Number(process.env.LIMITE_INGESTAO || 120),
 };

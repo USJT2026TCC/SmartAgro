@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import { sha256Hex } from "../seguranca/cripto.js";
 
 /**
- * Autenticacao das leituras na origem (RNF19).
+ * Autenticacao das leituras na origem (RNF17).
  *
  * Cada fonte — estacao ou sensor — tem um par de chaves, do mesmo tipo usado na
  * cadeia. O lote de leituras chega assinado, e a API so o aceita se a assinatura

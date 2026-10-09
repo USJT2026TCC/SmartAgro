@@ -9,7 +9,7 @@ const { config, lerImplantacao } = require("./config");
 const { ServicoOraculo } = require("./oraculo");
 const { somarDias, diaDe } = require("./consolidador");
 const { CENARIOS, gerarLeituras } = require("./fonteSimulada");
-const { FilaDePublicacoes } = require("./fila");
+const { ESTADOS, FilaDePublicacoes, descreverErro } = require("./fila");
 const { RegistroDePublicacoes } = require("./registro");
 
 /**
@@ -210,16 +210,29 @@ async function publicarPeriodo(servico, fonte, apolice, periodo) {
     if (evento.tipo === "espera")
       console.log(`  aguardando ${evento.ms}ms antes de nova tentativa`);
     if (evento.tipo === "erro") {
-      console.log(
-        `  [erro] tentativa ${evento.tentativa}: ${evento.erro.shortMessage || evento.erro.message}`,
-      );
+      console.log(`  [erro] tentativa ${evento.tentativa}: ${descreverErro(evento.erro)}`);
     }
   });
 
   const detalhe = resultado.detalhes.find((d) => d.sucesso);
 
   if (!detalhe) {
-    console.log(`  ${periodo}   publicacao nao concluida; entrada mantida na fila`);
+    const { entrada } = preparo;
+
+    // Tres situacoes diferentes, e o operador precisa saber qual e.
+    if (entrada.estado === ESTADOS.CONCLUIDA) {
+      console.log(
+        `  ${periodo}   ja publicado antes (${entrada.recibo?.txHash ?? "sem recibo"}); nada a fazer (RF20)`,
+      );
+    } else if (entrada.estado === ESTADOS.FALHA) {
+      console.log(
+        `  ${periodo}   falha definitiva: ${entrada.ultimoErro?.mensagem ?? "motivo desconhecido"}`,
+      );
+    } else {
+      console.log(
+        `  ${periodo}   publicacao nao concluida; entrada mantida na fila para retomada (RF21)`,
+      );
+    }
     return null;
   }
 
@@ -288,18 +301,72 @@ async function comandoServico(opcoes) {
       try {
         if (await servico.publicador.periodoJaPublicado(a.endereco, periodo)) continue;
 
+        if (!(await servico.publicador.dentroDaVigencia(a.endereco))) {
+          console.log(`  ${a.endereco}: fora da vigencia, nada a publicar`);
+          continue;
+        }
+
         console.log(`  apolice ${a.endereco} (talhao ${a.talhao})`);
         await publicarPeriodo(servico, fonte, a.endereco, periodo);
       } catch (erro) {
         // Uma apolice com problema nao impede as outras.
-        console.log(`  ${a.endereco}: ${erro.shortMessage || erro.message}`);
+        console.log(`  ${a.endereco}: ${descreverErro(erro)}`);
       }
     }
+
+    await publicarRetificacoes(servico);
 
     if (opcoes["uma-vez"] || parar) break;
 
     await new Promise((r) => setTimeout(r, intervalo));
   } while (!parar);
+}
+
+/**
+ * Retificacoes de contestacoes deferidas (RF28).
+ *
+ * O perito decide no backend; quem escreve na apolice continua sendo o oraculo,
+ * o unico endereco autorizado (RF18). Uma retificacao por periodo: se a rede ja
+ * tiver a retificacao (o relato anterior falhou depois do envio), nao se envia
+ * de novo.
+ */
+async function publicarRetificacoes(servico) {
+  let pendentes = [];
+
+  try {
+    pendentes = await servico.backend.retificacoesPendentes();
+  } catch (erro) {
+    console.log(`  retificacoes: backend indisponivel (${erro.message})`);
+    return;
+  }
+
+  for (const r of pendentes) {
+    try {
+      if (await servico.publicador.periodoJaRetificado(r.apolice, r.periodo)) {
+        console.log(`  retificacao ${r.id}: periodo ${r.periodo} ja retificado na rede`);
+        continue;
+      }
+
+      const recibo = await servico.publicador.publicarRetificacao({
+        apolice: r.apolice,
+        periodo: r.periodo,
+        indiceDanoBps: r.indice_retificado_bps,
+        hashEvidencias: r.hash_evidencias || ethers.ZeroHash,
+        versaoModelo: r.hash_versao_modelo || ethers.ZeroHash,
+        hashParecer: r.hash_parecer,
+      });
+
+      await servico.backend.relatarRetificacao(r.id, { txHash: recibo.txHash });
+
+      console.log(
+        `  retificacao ${r.apolice} periodo ${r.periodo}: ` +
+          `${r.indice_original_bps / 100}% -> ${r.indice_retificado_bps / 100}%` +
+          `${recibo.acionouPagamento ? " · ACIONOU" : ""} · ${recibo.txHash}`,
+      );
+    } catch (erro) {
+      console.log(`  retificacao ${r.id}: ${descreverErro(erro)}`);
+    }
+  }
 }
 
 async function comandoCiclo(opcoes) {

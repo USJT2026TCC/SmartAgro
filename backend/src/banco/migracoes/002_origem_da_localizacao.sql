@@ -1,4 +1,4 @@
--- De onde veio a coordenada de cada imagem (RF14, RNF20).
+-- De onde veio a coordenada de cada imagem (RF14, RNF18).
 --
 -- O servidor ja confere se o ponto cai dentro do talhao. O que ele nao sabia era
 -- QUANTO confiar no ponto:

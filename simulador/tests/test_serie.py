@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 from simulador.inmet import Leitura
 from simulador.serie import (
-    dias_secos_ao_final,
     deslocar_para,
+    dias_secos_ao_final,
     em_lotes,
     para_api,
     recortar,
@@ -47,7 +47,7 @@ def test_deslocamento_move_datas_e_preserva_valores():
 
     assert deslocada[-1].instante == fim
     assert deslocamento.days > 0
-    assert [l.chuva_mm for l in deslocada] == [l.chuva_mm for l in serie]
+    assert [leitura.chuva_mm for leitura in deslocada] == [leitura.chuva_mm for leitura in serie]
     # O intervalo entre leituras continua o mesmo: a serie foi movida, nao esticada.
     assert deslocada[1].instante - deslocada[0].instante == timedelta(hours=1)
 
@@ -86,3 +86,31 @@ def test_em_lotes_respeita_o_limite_da_api():
     lotes = em_lotes(horas("2024-07-02", 0) * 30, tamanho=500)
 
     assert [len(lote) for lote in lotes] == [500, 220]
+
+
+def test_cada_leitura_leva_a_coordenada_da_estacao():
+    """HU04, criterio 4: data, hora, fonte (no lote assinado) e coordenada."""
+    from dataclasses import replace
+
+    leitura = replace(horas("2024-07-02", 0.0)[0], longitude=-47.5794, latitude=-21.4611)
+    corpo = para_api(leitura)
+
+    assert corpo["lon"] == -47.5794
+    assert corpo["lat"] == -21.4611
+
+
+def test_leitura_sem_coordenada_nao_manda_campo_vazio():
+    corpo = para_api(horas("2024-07-02", 0.0)[0])
+
+    assert "lon" not in corpo and "lat" not in corpo
+
+
+def test_deslocamento_preserva_a_coordenada():
+    from dataclasses import replace
+
+    serie = [
+        replace(leitura, longitude=-47.5, latitude=-21.4) for leitura in horas("2024-07-02", 0.0)
+    ]
+    deslocadas, _ = deslocar_para(serie, datetime(2026, 10, 7, 23, tzinfo=timezone.utc))
+
+    assert {(leitura.longitude, leitura.latitude) for leitura in deslocadas} == {(-47.5, -21.4)}

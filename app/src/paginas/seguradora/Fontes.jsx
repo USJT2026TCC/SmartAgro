@@ -5,7 +5,7 @@ import { emDataHora } from "../../cadeia/formatos";
 import { Aviso, Campo, Carregando, RodapeDaFronteira, Selo } from "../../componentes/ui";
 
 /**
- * Fontes de dados de campo e a reputacao de cada uma (RF11, RF12, RF13, RNF19).
+ * Fontes de dados de campo e a reputacao de cada uma (RF11, RF12, RF13, RNF17).
  *
  * Cada estacao ou sensor tem um par de chaves. Os lotes de leitura chegam
  * assinados, e o backend so aceita os que vieram da chave cadastrada aqui. A
@@ -78,7 +78,7 @@ export default function Fontes() {
       </div>
       <p className="silencioso">
         Estacoes e sensores de cada talhao. So leituras assinadas pela chave registrada aqui entram
-        no sistema (RNF19).
+        no sistema (RNF17).
       </p>
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}

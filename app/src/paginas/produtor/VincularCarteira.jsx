@@ -12,7 +12,7 @@ import { Aviso, Campo, LinkDaCadeia } from "../../componentes/ui";
  * O desafio nasce no servidor, com numero unico e prazo de cinco minutos. A
  * carteira assina no navegador; o servidor recupera o endereco que assinou e so
  * grava o vinculo se ele for exatamente o endereco declarado. A chave privada nao
- * sai da carteira em nenhum momento (RNF17).
+ * sai da carteira em nenhum momento (RNF15).
  */
 export default function VincularCarteira() {
   const { usuario, recarregarUsuario } = useSessao();

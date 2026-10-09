@@ -44,7 +44,7 @@ Presumir seco inflaria o índice e comprometeria exatamente a auditabilidade que
 o sistema. Quando isso acontece, o resultado traz o alerta de que o número é um **piso**, não a
 medida completa da estiagem.
 
-**Alertas.** O resultado inclui avisos quando há menos de duas fontes independentes (RNF18),
+**Alertas.** O resultado inclui avisos quando há menos de duas fontes independentes (RNF16),
 quando não há leitura do próprio período, e quando a contagem parou por falta de dado.
 
 ### `reputacao.js` — escore por fonte (RF13)
@@ -59,9 +59,9 @@ cair abaixo do limiar. Com média móvel (α = 0,2), duas semanas de defeito bas
 para isso.
 
 O estado é persistido: o histórico da fonte é parte do que torna a decisão reconstituível
-(RNF20).
+(RNF18).
 
-### `fila.js` — retomada após falha (RF21, RNF22)
+### `fila.js` — retomada após falha (RF21, RNF20)
 
 Fila persistente em disco. A publicação é gravada **antes** de qualquer tentativa de envio e só
 sai da fila depois da confirmação em cadeia.
@@ -79,6 +79,13 @@ desperdício.
 Um arquivo de fila corrompido faz o serviço falhar de forma explícita, sem apagar nada: o
 arquivo contém índices ainda não publicados e precisa ser inspecionado, não descartado.
 
+**Recusa do contrato não é falha de rede.** Quando o contrato reverte com um erro próprio
+(`ForaDaVigencia`, `PeriodoJaPublicado`, `OrigemNaoAutorizada`…), a entrada vai direto a `falha`,
+com o nome e os argumentos do erro decodificado: repetir daria sempre o mesmo resultado. Só falha
+de rede volta a `pendente` para nova tentativa (DECISOES.md 2.27). Ao republicar um período, a
+mensagem distingue três casos: já publicado (com a transação), falha definitiva (com o erro do
+contrato) e pendente para retomada.
+
 ### `publicador.js` — a travessia (RF19, RF22)
 
 Única peça que fala com a rede. Assina com a chave carregada de variável de ambiente e submete
@@ -88,6 +95,11 @@ os dois índices em uma transação só.
 antecipa as rejeições previsíveis — endereço revogado, período duplicado, apólice fora de
 vigência — sem custo, e devolve o erro customizado do contrato já decodificado, em vez de um
 seletor de quatro bytes.
+
+**Retificação (RF28).** `publicarRetificacao` envia o índice de dano corrigido de um período já
+publicado, com o resumo do parecer do perito, pelo mesmo caminho de ensaio, nonce e tempo limite.
+`periodoJaRetificado` e `dentroDaVigencia` consultam o contrato antes, para não gastar gas numa
+chamada que seria recusada.
 
 **Gestão de nonce.** O oráculo publica vários períodos em sequência. Consultar o nonce na rede a
 cada envio não funciona: entre duas publicações seguidas, o nó ainda não contabilizou a
@@ -100,7 +112,7 @@ publicação à fila. O tempo limite foi reduzido para 10 segundos e a repetiç�
 importa aqui é falhar rápido, porque a entrada continua na fila e a próxima tentativa vem com
 espera crescente.
 
-### `registro.js` — trilha de auditoria (RF22, RNF20)
+### `registro.js` — trilha de auditoria (RF22, RNF18)
 
 Grava, para cada publicação: identificador da transação, gas consumido, custo em wei, bloco,
 instante de envio, instante de confirmação, latência, se acionou o pagamento, e a **procedência
@@ -119,7 +131,7 @@ Substituto temporário do simulador em Python + MQTT previsto na HU04. Existe pa
 possa ser exercitado ponta a ponta desde a Sprint 1, sem esperar a outra trilha.
 
 **A geração é determinística**: o mesmo cenário produz sempre a mesma série. Isso importa porque
-o RNF21 exige reprodutibilidade, e porque um número de gas medido sobre uma série aleatória não
+o RNF19 exige reprodutibilidade, e porque um número de gas medido sobre uma série aleatória não
 pode ser comparado com o da execução seguinte.
 
 Três cenários, conforme a HU04:
@@ -166,7 +178,7 @@ node src/index.js <comando> [opções]
 | Comando | O que faz |
 |---|---|
 | `status` | Endereço, saldo, autorização no registro, fila e reputação |
-| `servico` | **Modo de produção.** A cada intervalo, busca no backend as apólices ativas e publica o período de cada uma. `--uma-vez` roda um único ciclo |
+| `servico` | **Modo de produção.** A cada intervalo, busca no backend as apólices ativas e publica o período de cada uma (pulando a que está fora da vigência ou já tem o período); depois publica as **retificações** deferidas pelo perito (RF28). `--uma-vez` roda um único ciclo |
 | `ciclo --apolice 0x...` | Roda um cenário climático até acionar ou esgotar os períodos |
 | `publicar --apolice 0x...` | Consolida e publica um único período |
 | `ouvir --apolice 0x...` | Acompanha os eventos da apólice em tempo real |
@@ -220,7 +232,9 @@ o pagamento. Nenhum ser humano aprovou nada.
 ## 4. Configuração
 
 Copie `oraculo/.env.example` para `oraculo/.env` e preencha. O `.env` está no `.gitignore` e
-**nunca** deve ir para o repositório (RNF16).
+**nunca** deve ir para o repositório (RNF14). `ARQUIVO_ENV` escolhe outro arquivo — com
+`ARQUIVO_ENV=.env.sepolia`, o mesmo código roda contra a rede de teste pública, com carteiras e
+pasta de dados próprias (`DIR_DADOS`), sem misturar com a rede local.
 
 | Variável | Padrão | Para quê |
 |---|---|---|
@@ -252,16 +266,24 @@ tipo de projeto na véspera da apresentação.
 cd oraculo && npm run testar
 ```
 
-67 testes, nenhum deles precisa de rede.
+70 testes, nenhum deles precisa de rede. Com os 7 de integração, 90% das linhas (RNF03).
 
 | Arquivo | Testes | O que cobre |
 |---|---:|---|
-| `backend.test.js` | 9 | Cliente da API, conversão de pontos-base, relato de melhor esforço, liberação pelo perito |
+| `backend.test.js` | 10 | Cliente da API, conversão de pontos-base, relato de melhor esforço, liberação pelo perito, retificações pendentes |
 | `consolidador.test.js` | 22 | Validação, agregação, contagem de dias secos, reputação |
-| `fila.test.js` | 12 | Retomada, duplicatas, tentativas esgotadas, arquivo corrompido |
+| `fila.test.js` | 14 | Retomada, duplicatas, tentativas esgotadas, arquivo corrompido, recusa do contrato como falha definitiva |
 | `fonteSimulada.test.js` | 10 | Determinismo, cenários, injeção de defeitos |
 | `registro.test.js` | 6 | Latência, serialização de BigInt, estatísticas, procedência |
 | `reputacao.test.js` | 8 | Queda e recuperação do escore, persistência |
+
+```bash
+cd oraculo && npm run testar:integracao
+```
+
+`integracao/oraculo.test.js` (7 testes) sobe um nó Hardhat de verdade e roda os comandos como
+processos, em ambiente isolado: `status`, `publicar`, `ciclo` com falhas injetadas, `fila`,
+`estatisticas`; e o publicador direto contra a vigência e a retificação que paga.
 
 ### Comportamento sob falha, verificado na prática
 

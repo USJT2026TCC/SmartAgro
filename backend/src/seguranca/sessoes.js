@@ -108,7 +108,7 @@ export async function exigirSessaoParcial(req, _res, proximo) {
 }
 
 /**
- * Exige um dos perfis informados (RF04, RNF12).
+ * Exige um dos perfis informados (RF04, RNF10).
  *
  * E esta verificacao, no servidor, que protege de verdade. A do aplicativo so
  * esconde menus: um cliente adulterado a contorna, esta nao.
@@ -141,7 +141,7 @@ export function exigirServico(req, _res, proximo) {
 // ------------------------------------------------------------ limitadores
 
 /**
- * RNF26: limite de requisicoes por origem nas rotas sensiveis.
+ * Limite de requisicoes por origem nas rotas sensiveis.
  *
  * No login, dez tentativas por quinze minutos: suficiente para quem errou a senha
  * algumas vezes, inutil para quem tenta adivinha-la.
@@ -176,7 +176,7 @@ export const limitarIngestao = rateLimit({
 // -------------------------------------------------------------- auditoria
 
 /**
- * RNF25: registra uma acao no log de auditoria, correlacionada a transacao.
+ * Registra uma acao no log de auditoria, correlacionada a transacao.
  *
  * Falha de auditoria nao derruba a operacao principal — mas tambem nao e
  * silenciada: vai para o log de erro, porque uma trilha de auditoria com buracos

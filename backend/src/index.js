@@ -1,6 +1,11 @@
+import { readFileSync } from "node:fs";
+import https from "node:https";
+
 import { criarApp } from "./app.js";
 import { config } from "./config.js";
 import { abrirBanco } from "./banco/conexao.js";
+import { carregarHistoricoClimatico } from "./banco/historico.js";
+import { criarDespachanteDeEmail } from "./notificacoes/email.js";
 import { migrar } from "./banco/migrar.js";
 import { semear } from "./banco/semente.js";
 import { criarIndexador } from "./cadeia/indexador.js";
@@ -19,6 +24,10 @@ async function iniciar() {
 
   if (aplicadas.length > 0) console.log(`Migracoes aplicadas: ${aplicadas.join(", ")}`);
 
+  const diasDeHistorico = await carregarHistoricoClimatico(banco);
+  if (diasDeHistorico > 0)
+    console.log(`Historico de chuva do INMET carregado: ${diasDeHistorico} dias.`);
+
   if (!config.emProducao && (await semear(banco))) {
     console.log(
       "Dados de demonstracao criados. Usuarios: produtor, seguradora, perito (senha: agrosmart).",
@@ -27,26 +36,49 @@ async function iniciar() {
 
   const cadeia = criarLeitorDaCadeia();
   const indexador = config.indexadorAtivo ? criarIndexador(banco) : null;
+  const despachante = config.emailAtivo ? criarDespachanteDeEmail(banco) : null;
 
   const app = criarApp({ banco, cadeia, indexador });
 
-  const servidor = app.listen(config.porta, () => {
-    console.log(`AgroSmart backend em http://localhost:${config.porta}/api`);
+  const comTls = Boolean(config.tlsCertificado && config.tlsChave);
+  const aoOuvir = () => {
+    console.log(
+      `AgroSmart backend em ${comTls ? "https" : "http"}://localhost:${config.porta}/api`,
+    );
     console.log(`Banco: ${banco.motor}${config.urlDoBanco ? "" : ` (${config.dirBanco})`}`);
     console.log(
       cadeia.disponivel()
         ? `Cadeia: ${config.rede}, fabrica ${cadeia.enderecoDaFabrica()}`
         : `Cadeia: nenhuma implantacao encontrada para "${config.rede}"; indexador em espera.`,
     );
-  });
+  };
+
+  // RNF17: com certificado e chave, a API atende so em https.
+  const servidor = comTls
+    ? https
+        .createServer(
+          { cert: readFileSync(config.tlsCertificado), key: readFileSync(config.tlsChave) },
+          app,
+        )
+        .listen(config.porta, aoOuvir)
+    : app.listen(config.porta, aoOuvir);
 
   indexador?.iniciar();
+  despachante?.iniciar();
+  if (despachante) {
+    console.log(
+      config.smtpUrl
+        ? "E-mail: enviando pelo SMTP configurado."
+        : `E-mail: sem SMTP_URL, mensagens gravadas em ${config.dirEmails}`,
+    );
+  }
 
   // Encerramento limpo: para o indexador, fecha a porta e o banco. Sem isso, o
   // PGlite pode ficar com o diretorio de dados travado ate o proximo inicio.
   const encerrar = async (sinal) => {
     console.log(`\n${sinal} recebido, encerrando...`);
     indexador?.parar();
+    despachante?.parar();
     servidor.close();
     encerrarProvedor();
     await banco.fechar();

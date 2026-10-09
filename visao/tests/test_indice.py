@@ -85,9 +85,7 @@ def test_proporcoes_somam_um():
 
 def test_pouca_lavoura_derruba_a_confianca():
     _, observacoes = confianca_da_amostragem([0.5], 0.5, 0.9)
-    confianca_ruim, observacoes_ruins = confianca_da_amostragem(
-        [0.5], COBERTURA_MINIMA - 0.01, 0.9
-    )
+    confianca_ruim, observacoes_ruins = confianca_da_amostragem([0.5], COBERTURA_MINIMA - 0.01, 0.9)
 
     assert not any("lavoura" in o for o in observacoes)
     assert confianca_ruim < 0.9

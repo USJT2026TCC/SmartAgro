@@ -32,8 +32,8 @@ import json
 from dataclasses import dataclass
 
 from .assinatura import assinar, corpo_em_bytes
-from .inmet import Leitura
 from .envio import montar_lote
+from .inmet import Leitura
 
 TOPICO_BASE = "agrosmart/leituras"
 
@@ -56,7 +56,7 @@ class Envelope:
         )
 
     @staticmethod
-    def de_json(texto: str | bytes) -> "Envelope":
+    def de_json(texto: str | bytes) -> Envelope:
         dados = json.loads(texto)
 
         return Envelope(
@@ -78,19 +78,31 @@ def publicar(
     broker: str = "localhost",
     porta: int = 1883,
     topico_base: str = TOPICO_BASE,
+    intervalo_s: float = 0,
+    tls_ca: str | None = None,
 ) -> int:
-    """Publica cada envelope no topico da sua fonte. Devolve quantos foram publicados."""
+    """
+    Publica cada envelope no topico da sua fonte. Devolve quantos foram publicados.
+
+    `intervalo_s` espaca as publicacoes (HU04, criterio 1). `tls_ca` liga a
+    conexao cifrada com o broker (RNF17), conferindo o certificado dele contra a
+    autoridade informada; o padrao para MQTT sobre TLS e a porta 8883.
+    """
+    import time
+
     import paho.mqtt.client as mqtt
 
     cliente = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    if tls_ca:
+        cliente.tls_set(ca_certs=tls_ca)
     cliente.connect(broker, porta, keepalive=30)
     cliente.loop_start()
 
     try:
-        for envelope in envelopes:
-            info = cliente.publish(
-                f"{topico_base}/{envelope.fonte}", envelope.para_json(), qos=1
-            )
+        for indice, envelope in enumerate(envelopes):
+            if indice > 0 and intervalo_s > 0:
+                time.sleep(intervalo_s)
+            info = cliente.publish(f"{topico_base}/{envelope.fonte}", envelope.para_json(), qos=1)
             info.wait_for_publish(timeout=30)
     finally:
         cliente.loop_stop()
@@ -105,10 +117,14 @@ def ponte(
     porta: int = 1883,
     topico_base: str = TOPICO_BASE,
     ao_entregar=None,
+    tls_ca: str | None = None,
 ) -> None:
     """
     Assina o topico de leituras e repassa cada envelope para a API, sem alterar
     os bytes assinados. Roda ate ser interrompida.
+
+    `tls_ca` cifra os dois trechos (RNF17): a conexao com o broker e a chamada
+    a API em https, conferindo os certificados contra essa autoridade.
     """
     import paho.mqtt.client as mqtt
     import requests
@@ -128,6 +144,7 @@ def ponte(
                 "X-Assinatura": envelope.assinatura,
             },
             timeout=60,
+            verify=tls_ca or True,
         )
 
         print(f"{envelope.fonte}: HTTP {resposta.status_code} {resposta.text[:160]}")
@@ -137,6 +154,8 @@ def ponte(
 
     cliente = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     cliente.on_message = entregar
+    if tls_ca:
+        cliente.tls_set(ca_certs=tls_ca)
     cliente.connect(broker, porta, keepalive=30)
     cliente.subscribe(f"{topico_base}/#", qos=1)
 

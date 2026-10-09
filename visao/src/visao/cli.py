@@ -115,6 +115,23 @@ def comando_analisar(opcoes) -> None:
         print(f"  - {observacao}")
 
 
+def comando_api(opcoes) -> None:
+    """Sobe a API HTTP (FastAPI) sobre o mesmo estimador do servico."""
+    import uvicorn
+
+    from .api import criar_api
+
+    print("Modulo de visao do AgroSmart - API")
+    print("----------------------------------")
+    estimador = _estimador()
+    print(f"Endereco...: http://{opcoes.host}:{opcoes.porta}  (documentacao em /docs)")
+    print()
+
+    uvicorn.run(
+        criar_api(estimador, modelo.CAMINHO_DOS_PESOS or None), host=opcoes.host, port=opcoes.porta
+    )
+
+
 def construir_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="visao", description="Modulo de visao do AgroSmart")
     sub = parser.add_subparsers(dest="comando", required=True)
@@ -129,6 +146,11 @@ def construir_parser() -> argparse.ArgumentParser:
     analisar = sub.add_parser("analisar", help="analisa arquivos locais, sem backend")
     analisar.add_argument("arquivos", nargs="+")
     analisar.set_defaults(funcao=comando_analisar)
+
+    api = sub.add_parser("api", help="sobe a API HTTP de analise (FastAPI)")
+    api.add_argument("--host", default="127.0.0.1")
+    api.add_argument("--porta", type=int, default=8000)
+    api.set_defaults(funcao=comando_api)
 
     return parser
 

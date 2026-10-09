@@ -12,7 +12,7 @@ Cada imagem baixada e conferida contra o `sha256` que o backend registrou. O
 resumo do lote inteiro ja foi para a cadeia quando o lote foi fechado; analisar
 um arquivo diferente do que gerou aquele resumo produziria um indice que nao
 corresponde a evidencia registrada, e a reexecucao da analise — que e o que o
-RNF21 promete — daria outro numero.
+RNF19 promete — daria outro numero.
 """
 
 from __future__ import annotations

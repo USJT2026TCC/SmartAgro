@@ -18,6 +18,8 @@
  *   LIMIAR_DANO_BPS     dano da lavoura que aciona, em pontos-base (padrao: 2000 = 20%)
  *   VALOR_INDENIZACAO   valor em ether (padrao: 1.0)
  *   CULTURA / TALHAO    identificadores (padrao: soja / talhao-01)
+ *   INICIO_EM_DIAS      dias ate o inicio da vigencia (padrao: 0); com mais de zero,
+ *                       a apolice pode ser cancelada ate la (RF10)
  */
 
 const fs = require("node:fs");
@@ -44,7 +46,10 @@ async function main() {
     implantacao.contratos.ApoliceFactory,
   );
 
-  const produtor = process.env.ENDERECO_PRODUTOR || contaProdutor?.address;
+  // Em rede local o produtor e a conta 1; ENDERECO_PRODUTOR, do .env, e o da
+  // Sepolia (DECISOES.md 2.25).
+  const redeLocal = Number((await ethers.provider.getNetwork()).chainId) === 31337;
+  const produtor = (redeLocal ? null : process.env.ENDERECO_PRODUTOR) || contaProdutor?.address;
   if (!produtor) throw new Error("Defina ENDERECO_PRODUTOR: nenhuma conta disponivel na rede.");
 
   const OPERADORES = { climatico: 0, dano: 1 };
@@ -62,6 +67,7 @@ async function main() {
   const talhao = process.env.TALHAO || "talhao-01";
 
   const agora = (await ethers.provider.getBlock("latest")).timestamp;
+  const inicio = agora + Number(process.env.INICIO_EM_DIAS || 0) * DIA;
 
   // O resumo dos termos e o que torna detectavel qualquer alteracao posterior no
   // documento contratual (RF08). Ele precisa ser calculado sobre a mesma cadeia de
@@ -72,7 +78,7 @@ async function main() {
     talhao,
     condicao,
     `${ethers.formatEther(valorIndenizacao)} ETH`,
-    `vigencia ${new Date(agora * 1000).toISOString().slice(0, 10)} a ${new Date((agora + 180 * DIA) * 1000).toISOString().slice(0, 10)}`,
+    `vigencia ${new Date(inicio * 1000).toISOString().slice(0, 10)} a ${new Date((inicio + 180 * DIA) * 1000).toISOString().slice(0, 10)}`,
   ].join("|");
 
   const termos = {
@@ -86,8 +92,8 @@ async function main() {
     limiarClimaticoIntegral: 0,
     limiarDanoBps: porDano ? limiarDanoBps : 0,
     limiarDanoIntegralBps: 0,
-    vigenciaInicio: agora,
-    vigenciaFim: agora + 180 * DIA,
+    vigenciaInicio: inicio,
+    vigenciaFim: inicio + 180 * DIA,
     valorIndenizacao,
     hashTermos: ethers.keccak256(ethers.toUtf8Bytes(descricaoDosTermos)),
   };

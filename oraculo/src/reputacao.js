@@ -16,7 +16,7 @@ const path = require("node:path");
  * rapido; com razao acumulada, ele levaria meses para cair abaixo do limiar.
  *
  * O estado e persistido em disco para sobreviver a reinicio do servico, ja que o
- * historico da fonte e parte do que torna a decisao reconstituivel (RNF20).
+ * historico da fonte e parte do que torna a decisao reconstituivel (RNF18).
  */
 class RegistroReputacao {
   /**

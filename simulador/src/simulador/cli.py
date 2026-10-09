@@ -10,7 +10,7 @@ Linha de comando do simulador de estacoes (HU04).
     python -m simulador ponte --api http://localhost:3001/api
 
 As chaves privadas das estacoes vem do arquivo `.env` (CHAVE_<FONTE>) ou da
-opcao `--chave`. Nunca sao gravadas no repositorio (RNF16).
+opcao `--chave`. Nunca sao gravadas no repositorio (RNF14).
 """
 
 from __future__ import annotations
@@ -99,6 +99,19 @@ def comando_estacoes(opcoes) -> None:
         print(linha)
 
 
+def comando_historico(opcoes) -> None:
+    from .historico import gerar
+
+    anos = list(range(opcoes.de, opcoes.ate + 1))
+    estacoes = [e.strip().upper() for e in opcoes.estacoes.split(",") if e.strip()]
+
+    print(f"Historico de chuva diaria: {', '.join(estacoes)}, {anos[0]} a {anos[-1]}")
+    print("Fonte: INMET, https://portal.inmet.gov.br/dadoshistoricos")
+
+    linhas = gerar(anos, estacoes, DIR_DADOS, Path(opcoes.saida), apagar_zip=opcoes.apagar_zip)
+    print(f"{linhas} dias gravados em {opcoes.saida}")
+
+
 def comando_analisar(opcoes) -> None:
     estacao, leituras = abrir_do_zip(_zip_do_ano(opcoes.ano), opcoes.estacao)
     dias = serie.resumo_diario(leituras)
@@ -106,7 +119,7 @@ def comando_analisar(opcoes) -> None:
 
     print(f"{estacao.codigo} {estacao.nome}/{estacao.uf} ({estacao.latitude}, {estacao.longitude})")
     print(f"leituras horarias..: {len(leituras)}")
-    print(f"com medicao de chuva: {sum(1 for l in leituras if l.completa)}")
+    print(f"com medicao de chuva: {sum(1 for leitura in leituras if leitura.completa)}")
     print(f"dias com 20h ou mais: {len(completos)} de {len(dias)}")
     print(f"chuva no periodo....: {sum(d['chuva_mm'] for d in dias.values()):.1f} mm")
 
@@ -131,6 +144,13 @@ def comando_analisar(opcoes) -> None:
 
 
 def comando_enviar(opcoes) -> None:
+    if opcoes.cenario:
+        cenario = serie.CENARIOS[opcoes.cenario]
+        opcoes.ano = cenario["ano"]
+        opcoes.de = opcoes.de or cenario["de"]
+        opcoes.ate = opcoes.ate or cenario["ate"]
+        print(f"Cenario.............: {opcoes.cenario} — {cenario['descricao']}")
+
     estacao, leituras = abrir_do_zip(_zip_do_ano(opcoes.ano), opcoes.estacao)
 
     if opcoes.de or opcoes.ate:
@@ -161,7 +181,9 @@ def comando_enviar(opcoes) -> None:
     print(f"Estacao {estacao.codigo} {estacao.nome}/{estacao.uf} — fonte '{opcoes.fonte}'")
     print(f"Endereco que assina.: {endereco_de(chave)}")
     print(f"Leituras............: {len(leituras)} de {total_bruto} na janela")
-    print(f"Periodo enviado.....: {leituras[0].instante:%Y-%m-%d} a {leituras[-1].instante:%Y-%m-%d}")
+    print(
+        f"Periodo enviado.....: {leituras[0].instante:%Y-%m-%d} a {leituras[-1].instante:%Y-%m-%d}"
+    )
 
     if deslocamento:
         print(
@@ -174,31 +196,48 @@ def comando_enviar(opcoes) -> None:
     print("Fonte dos dados.....: INMET — https://portal.inmet.gov.br/dadoshistoricos")
     print()
 
+    # Com intervalo, cada envio leva `--leituras-por-envio` horas (um dia, por
+    # padrao); sem, vai em lotes do tamanho maximo que a API aceita.
+    tamanho = opcoes.leituras_por_envio if opcoes.intervalo > 0 else serie.LEITURAS_POR_LOTE
+    lotes = serie.em_lotes(leituras, tamanho)
+    if opcoes.intervalo > 0:
+        print(f"Cadencia............: {len(lotes)} envio(s), um a cada {opcoes.intervalo}s")
+
     if opcoes.destino == "mqtt":
-        envelopes = [
-            mqtt.montar_envelope(opcoes.fonte, lote, chave) for lote in serie.em_lotes(leituras)
-        ]
-        publicados = mqtt.publicar(envelopes, broker=opcoes.broker, porta=opcoes.porta)
+        envelopes = [mqtt.montar_envelope(opcoes.fonte, lote, chave) for lote in lotes]
+        publicados = mqtt.publicar(
+            envelopes,
+            broker=opcoes.broker,
+            porta=opcoes.porta,
+            intervalo_s=opcoes.intervalo,
+            tls_ca=opcoes.tls_ca,
+        )
         print(f"{publicados} lote(s) publicados em {opcoes.broker}:{opcoes.porta}")
         return
 
-    for indice, resultado in enumerate(
-        envio.enviar_serie(opcoes.api, opcoes.fonte, leituras, chave), start=1
-    ):
+    def relatar(indice, _lote, resultado):
         if resultado.erro:
             print(f"  lote {indice}: {resultado.erro}")
-            continue
+            return
 
         escore = f"{resultado.escore:.2f}" if resultado.escore is not None else "—"
         print(
             f"  lote {indice}: {resultado.aceitas} aceitas, "
             f"{resultado.recusadas} recusadas, {resultado.duplicadas} repetidas "
-            f"— reputacao {escore}"
+            f"— reputacao {escore}",
+            flush=True,
         )
+
+    envio.enviar_cadenciado(
+        lotes,
+        lambda lote: envio.enviar_lote(opcoes.api, opcoes.fonte, lote, chave, tls_ca=opcoes.tls_ca),
+        opcoes.intervalo,
+        ao_enviar=relatar,
+    )
 
 
 def comando_ponte(opcoes) -> None:
-    mqtt.ponte(opcoes.api, broker=opcoes.broker, porta=opcoes.porta)
+    mqtt.ponte(opcoes.api, broker=opcoes.broker, porta=opcoes.porta, tls_ca=opcoes.tls_ca)
 
 
 def comando_endereco(opcoes) -> None:
@@ -233,6 +272,27 @@ def construir_parser() -> argparse.ArgumentParser:
 
     enviar = sub.add_parser("enviar", help="envia a serie assinada para a API ou para o MQTT")
     enviar.add_argument("--estacao", required=True, help="codigo WMO, por exemplo A770")
+    enviar.add_argument(
+        "--cenario",
+        choices=("estiagem_severa", "estiagem_moderada", "safra_normal"),
+        help="janela real pre-configurada do INMET (HU04)",
+    )
+    enviar.add_argument(
+        "--intervalo",
+        type=float,
+        default=0,
+        help="segundos entre envios; 0 envia tudo de uma vez (HU04)",
+    )
+    enviar.add_argument(
+        "--leituras-por-envio",
+        type=int,
+        default=24,
+        help="horas por envio quando ha intervalo (padrao: um dia)",
+    )
+    enviar.add_argument(
+        "--tls-ca",
+        help="certificado da autoridade que assinou a API https ou o broker MQTT (RNF17)",
+    )
     enviar.add_argument("--ano", type=int, default=2024)
     enviar.add_argument("--de", help="AAAA-MM-DD")
     enviar.add_argument("--ate", help="AAAA-MM-DD")
@@ -258,7 +318,20 @@ def construir_parser() -> argparse.ArgumentParser:
     ponte.add_argument("--api", default=os.environ.get("API_URL", "http://localhost:3001/api"))
     ponte.add_argument("--broker", default="localhost")
     ponte.add_argument("--porta", type=int, default=1883)
+    ponte.add_argument("--tls-ca", help="autoridade do broker e da API https (RNF17)")
     ponte.set_defaults(funcao=comando_ponte)
+
+    historico = sub.add_parser(
+        "historico", help="chuva diaria de varios anos, para a cotacao com historico (RF06)"
+    )
+    historico.add_argument("--estacoes", required=True, help="codigos separados por virgula")
+    historico.add_argument("--de", type=int, required=True, help="primeiro ano")
+    historico.add_argument("--ate", type=int, required=True, help="ultimo ano")
+    historico.add_argument("--saida", required=True, help="caminho do CSV gerado")
+    historico.add_argument(
+        "--apagar-zip", action="store_true", help="apaga cada ZIP baixado depois de extrair"
+    )
+    historico.set_defaults(funcao=comando_historico)
 
     endereco = sub.add_parser("endereco", help="endereco publico da chave de uma fonte")
     endereco.add_argument("--fonte", required=True)

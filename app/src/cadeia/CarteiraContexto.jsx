@@ -8,7 +8,7 @@ import { mensagemDeErro } from "./formatos";
  * Conexao com a carteira do produtor ou da seguradora.
  *
  * A chave privada nunca passa por aqui: o aplicativo pede a assinatura, a carteira
- * assina, e o que volta e apenas o resultado. O RNF17 diz que a chave privada do
+ * assina, e o que volta e apenas o resultado. O RNF15 diz que a chave privada do
  * produtor nunca deve ser armazenada, e a forma de garantir isso e nunca te-la.
  *
  * Duas conexoes coexistem de proposito:

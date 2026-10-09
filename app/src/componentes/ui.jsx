@@ -22,7 +22,7 @@ export function Aviso({ tipo = "informacao", titulo, children }) {
 
 /** Selo colorido da situacao da apolice. */
 export function SeloSituacao({ situacao }) {
-  const cores = { 0: "alerta", 1: "informacao", 2: "sucesso", 3: "neutro" };
+  const cores = { 0: "alerta", 1: "informacao", 2: "sucesso", 3: "neutro", 4: "neutro" };
 
   return <span className={`selo ${cores[situacao] ?? "neutro"}`}>{rotuloSituacao(situacao)}</span>;
 }

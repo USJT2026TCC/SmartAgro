@@ -18,7 +18,7 @@ import { endereco as enderecoValido, uuid } from "../validacao.js";
  *  2. a carteira do produtor assina, no navegador;
  *  3. o servidor recupera o endereco que assinou e, so entao, grava o vinculo.
  *
- * A chave privada nao trafega em nenhum momento (RNF17).
+ * A chave privada nao trafega em nenhum momento (RNF15).
  */
 export function rotasDeCarteira() {
   const r = Router();

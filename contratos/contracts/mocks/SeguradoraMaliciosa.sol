@@ -21,6 +21,7 @@ contract SeguradoraMaliciosa {
 
     bool public recusar;
     bool public reentrar;
+    bool private _cancelando;
 
     uint256 public vezesRecebido;
     bool public reentradaFalhou;
@@ -46,12 +47,25 @@ contract SeguradoraMaliciosa {
         apolice.resgatarGarantia();
     }
 
+    /// @notice Cancela a apolice: a devolucao da garantia passa pelo mesmo receive (RF10).
+    function cancelar() external {
+        _cancelando = true;
+        apolice.cancelar();
+    }
+
     receive() external payable {
         vezesRecebido += 1;
 
         if (recusar) revert DevolucaoRecusada();
 
-        if (reentrar) {
+        if (reentrar && _cancelando) {
+            try apolice.cancelar() {
+                reentradaFalhou = false;
+            } catch (bytes memory erro) {
+                reentradaFalhou = true;
+                ultimoErro = erro;
+            }
+        } else if (reentrar) {
             try apolice.resgatarGarantia() {
                 reentradaFalhou = false;
             } catch (bytes memory erro) {

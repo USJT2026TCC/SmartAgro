@@ -33,7 +33,6 @@ CAMINHO_DOS_PESOS = os.environ.get("VISAO_PESOS", "")
 VERSAO = os.environ.get("VISAO_VERSAO", "visao-unet-1.0.0")
 
 
-
 class ModeloIndisponivel(RuntimeError):
     """PyTorch ausente, pesos ausentes ou incompativeis."""
 

@@ -24,5 +24,33 @@
     "hashTermos": "0x877e62208fce604cf365e32ec7af2f81688afd2d075b332685d2fc9953b5dbfb",
     "emitidaEm": "2026-10-07T23:44:01.570Z",
     "txEmissao": "0x7067e74908cccf3a3e334ffce7c9bca74570c4a205f007de2485f2bffe1b7956"
+  },
+  {
+    "endereco": "0xBB873b0890D8bb14F95F3dDAfCFe8eA7613EE7Af",
+    "produtor": "0xC8fdFcA3CfEc202D8BaBf4E89bEcaB5E57773071",
+    "cultura": "soja",
+    "talhao": "talhao-01",
+    "operador": "climatico",
+    "limiarDias": 30,
+    "limiarDanoBps": null,
+    "valorIndenizacao": "2000000000000000",
+    "descricaoDosTermos": "AgroSmart|soja|talhao-01|30 dias consecutivos sem chuva|0.002 ETH|vigencia 2026-10-18 a 2027-04-16",
+    "hashTermos": "0x31b2512a15adf92e76a66309919992f8cbfc4c71ca2aaafbc2966b482569c32d",
+    "emitidaEm": "2026-10-08T16:44:37.444Z",
+    "txEmissao": "0xd91e87ac34a33f5624cd95ea7fa4b490ed98e6116e9b7b125b4ffa69b19dd71e"
+  },
+  {
+    "endereco": "0x2c5d36d3428036eAa53B370d02cBd62be43ddA39",
+    "produtor": "0xC8fdFcA3CfEc202D8BaBf4E89bEcaB5E57773071",
+    "cultura": "soja",
+    "talhao": "talhao-01",
+    "operador": "dano",
+    "limiarDias": null,
+    "limiarDanoBps": 2000,
+    "valorIndenizacao": "3000000000000000",
+    "descricaoDosTermos": "AgroSmart|soja|talhao-01|dano de 20% da lavoura|0.003 ETH|vigencia 2026-10-08 a 2027-04-06",
+    "hashTermos": "0xf8bbd808d377118136261280650cb7921fb353dde7ea44e7325fa2315b650bd5",
+    "emitidaEm": "2026-10-08T16:45:37.751Z",
+    "txEmissao": "0xa25e621c59131a32675cc5038c8e46e3207e0bc23f4357de285ddb48784fcb10"
   }
 ]

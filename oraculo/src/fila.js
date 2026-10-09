@@ -4,12 +4,32 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 /**
- * Fila persistente de publicacoes (RF21, RNF22).
+ * Mensagem legivel de um erro de publicacao.
+ *
+ * Quando o contrato reverte com erro customizado, o ethers o decodifica em
+ * `erro.revert`, mas a `shortMessage` continua dizendo "unknown custom error".
+ * O nome do erro e o que diz ao operador o que aconteceu.
+ */
+function descreverErro(erro) {
+  if (erro?.revert?.name) {
+    const argumentos = (erro.revert.args ?? []).map((a) => String(a)).join(", ");
+    return `${erro.revert.name}(${argumentos})`;
+  }
+  return erro?.shortMessage || erro?.message || String(erro);
+}
+
+/** Verdadeiro quando o contrato recusou a chamada com um erro proprio. */
+function ehRecusaDoContrato(erro) {
+  return Boolean(erro?.revert?.name);
+}
+
+/**
+ * Fila persistente de publicacoes (RF21, RNF20).
  *
  * O problema que ela resolve: entre consolidar o indice e ve-lo confirmado na
  * cadeia existe uma janela em que tudo pode dar errado — a rede congestiona, o
  * no RPC cai, o processo do oraculo morre. Se o indice existir apenas na memoria
- * do processo, ele se perde, e o RNF22 diz que indisponibilidade do oraculo ou da
+ * do processo, ele se perde, e o RNF20 diz que indisponibilidade do oraculo ou da
  * rede nao pode causar perda de dados.
  *
  * Por isso a consolidacao grava em disco ANTES de tentar publicar, e a entrada so
@@ -124,12 +144,18 @@ class FilaDePublicacoes {
    */
   marcarErro(entrada, erro) {
     entrada.ultimoErro = {
-      mensagem: erro?.shortMessage || erro?.message || String(erro),
+      mensagem: descreverErro(erro),
       codigo: erro?.code ?? null,
+      recusaDoContrato: ehRecusaDoContrato(erro),
       em: new Date().toISOString(),
     };
 
-    entrada.estado = entrada.tentativas >= this.maxTentativas ? ESTADOS.FALHA : ESTADOS.PENDENTE;
+    // Recusa explicita do contrato e definitiva: repetir a mesma chamada da a
+    // mesma resposta. As novas tentativas do RF21 sao para a rede indisponivel.
+    entrada.estado =
+      ehRecusaDoContrato(erro) || entrada.tentativas >= this.maxTentativas
+        ? ESTADOS.FALHA
+        : ESTADOS.PENDENTE;
     entrada.atualizadoEm = new Date().toISOString();
     this.salvar();
 
@@ -181,4 +207,9 @@ class FilaDePublicacoes {
   }
 }
 
-module.exports = { FilaDePublicacoes, ESTADOS };
+module.exports = {
+  descreverErro,
+  ehRecusaDoContrato,
+  FilaDePublicacoes,
+  ESTADOS,
+};

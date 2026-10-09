@@ -7,7 +7,7 @@ const { Situacao, VALOR_INDENIZACAO, montarTermos, publicar } = require("./helpe
 /**
  * Testes de seguranca da apolice.
  *
- * Sao os testes que sustentam o RNF11 (imunidade a reentrancia) e o RNF15
+ * Sao os testes que sustentam o RNF09 (imunidade a reentrancia) e o RNF13
  * (atomicidade: nenhuma falha pode resultar em pagamento parcial ou estado
  * inconsistente), alem do criterio de aceite 5 da HU03.
  *
@@ -17,9 +17,9 @@ const { Situacao, VALOR_INDENIZACAO, montarTermos, publicar } = require("./helpe
  */
 describe("Seguranca da apolice", function () {
   // -------------------------------------------------------------------------
-  // RNF11 - Reentrancia
+  // RNF09 - Reentrancia
   // -------------------------------------------------------------------------
-  describe("reentrancia (RNF11, HU03)", function () {
+  describe("reentrancia (RNF09, HU03)", function () {
     /**
      * Monta o pior cenario possivel: o atacante e o produtor beneficiario e,
      * ao mesmo tempo, um oraculo autorizado. No instante em que recebe a
@@ -85,9 +85,9 @@ describe("Seguranca da apolice", function () {
   });
 
   // -------------------------------------------------------------------------
-  // RNF15 - Atomicidade
+  // RNF13 - Atomicidade
   // -------------------------------------------------------------------------
-  describe("atomicidade da liquidacao (RF26, RNF15)", function () {
+  describe("atomicidade da liquidacao (RF26, RNF13)", function () {
     /**
      * Produtor que rejeita qualquer transferencia. Serve para observar o que
      * acontece com o estado quando o pagamento falha.
@@ -147,7 +147,7 @@ describe("Seguranca da apolice", function () {
   // -------------------------------------------------------------------------
   // A outra ponta: a devolucao da garantia a seguradora
   // -------------------------------------------------------------------------
-  describe("resgate da garantia sob ataque (RNF11, RNF15)", function () {
+  describe("resgate da garantia sob ataque (RNF09, RNF13)", function () {
     /**
      * A apolice tem duas saidas de valor. Os testes acima cobrem a indenizacao ao
      * produtor; estes cobrem a devolucao da garantia, com uma seguradora hostil.

@@ -38,3 +38,72 @@ export function atualizarEscore(escoreAtual, resultados) {
 
   return Number(escore.toFixed(6));
 }
+
+/**
+ * Distancia maxima entre a coordenada que a leitura declara e a posicao
+ * cadastrada da fonte. Um quilometro absorve o arredondamento das coordenadas
+ * publicadas pelo INMET (quatro casas decimais, ~11 m) com folga, e ainda
+ * separa duas estacoes vizinhas, que ficam a dezenas de quilometros.
+ */
+export const TOLERANCIA_DA_POSICAO_M = 1_000;
+
+export const MOTIVOS_DE_POSICAO = {
+  COORDENADA_INVALIDA: "coordenada_invalida",
+  LONGE_DA_FONTE: "longe_da_posicao_da_fonte",
+};
+
+/** Distancia em metros entre dois pontos [lon, lat], pela formula do haversine. */
+export function distanciaEmMetros([lon1, lat1], [lon2, lat2]) {
+  const raio = 6_371_000;
+  const rad = (g) => (g * Math.PI) / 180;
+  const a =
+    Math.sin(rad(lat2 - lat1) / 2) ** 2 +
+    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+  return 2 * raio * Math.asin(Math.sqrt(a));
+}
+
+/**
+ * Confere a coordenada de uma leitura (HU04, criterio 4).
+ *
+ * Leitura sem coordenada passa: o campo e opcional. Com coordenada, ela precisa
+ * ser valida e cair a ate TOLERANCIA_DA_POSICAO_M da posicao cadastrada da
+ * fonte, quando houver uma.
+ *
+ * @param {object} bruta Leitura como chegou, com `lon` e `lat` opcionais.
+ * @param {{lon: number, lat: number}|null} posicaoDaFonte
+ * @returns {{valida: boolean, coordenada: {lon: number, lat: number}|null, motivo?: string, campo?: string}}
+ */
+export function conferirCoordenada(bruta, posicaoDaFonte) {
+  const { lon, lat } = bruta ?? {};
+  if ((lon === undefined || lon === null) && (lat === undefined || lat === null)) {
+    return { valida: true, coordenada: null };
+  }
+
+  const numero = (v) => typeof v === "number" && Number.isFinite(v);
+  if (!numero(lon) || !numero(lat) || Math.abs(lon) > 180 || Math.abs(lat) > 90) {
+    return {
+      valida: false,
+      coordenada: null,
+      motivo: MOTIVOS_DE_POSICAO.COORDENADA_INVALIDA,
+      campo: "coordenada",
+    };
+  }
+
+  const coordenada = { lon, lat };
+  if (
+    posicaoDaFonte &&
+    numero(posicaoDaFonte.lon) &&
+    numero(posicaoDaFonte.lat) &&
+    distanciaEmMetros([lon, lat], [posicaoDaFonte.lon, posicaoDaFonte.lat]) >
+      TOLERANCIA_DA_POSICAO_M
+  ) {
+    return {
+      valida: false,
+      coordenada,
+      motivo: MOTIVOS_DE_POSICAO.LONGE_DA_FONTE,
+      campo: "coordenada",
+    };
+  }
+
+  return { valida: true, coordenada };
+}

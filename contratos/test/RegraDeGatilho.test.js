@@ -10,7 +10,7 @@ const { montarTermos, cenarioApoliceAtiva, ModoPagamento, Operador } = require("
  *
  * O aplicativo reimplementa `_percentualDevido` em JavaScript, porque a tela de
  * cotacao precisa mostrar ao produtor o que aciona e o que nao aciona o pagamento
- * antes de existir qualquer contrato implantado para consultar (RNF06, e o
+ * antes de existir qualquer contrato implantado para consultar (RNF04, e o
  * criterio de aceite 2 da HU10).
  *
  * Duas implementacoes da mesma regra divergem com o tempo — e a divergencia aqui
@@ -131,7 +131,7 @@ describe("Equivalencia entre a regra do contrato e a do aplicativo", function ()
     const exemplos = regra.exemplosDeAcionamento(termos);
 
     // Precisa haver ao menos um exemplo que nao aciona e um que paga integral,
-    // senao a tela nao cumpre o que o RNF06 pede.
+    // senao a tela nao cumpre o que o RNF04 pede.
     expect(exemplos.some((e) => e.percentualBps === 0)).to.equal(true);
     expect(exemplos.some((e) => e.percentualBps === 10_000)).to.equal(true);
 

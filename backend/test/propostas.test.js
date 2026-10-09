@@ -229,6 +229,62 @@ describe("propostas e emissao", () => {
     assert.equal(ethers.decodeBytes32String(preparo.termos.talhao), "talhao-01");
   });
 
+  test("a cotacao traz o historico climatico real das estacoes do INMET proximas (RF06)", async () => {
+    const produtoIntegral = await idDoProduto(ctx.banco, "Estiagem — soja");
+    const cotar = async (inicioDaVigencia) => {
+      const r = await ctx
+        .api()
+        .post("/api/cotacoes")
+        .set(com(produtor))
+        .send({ talhaoId, produtoId: produtoIntegral, areaHa: "180", inicioDaVigencia });
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      return r.body.cotacao.historico;
+    };
+
+    // Comecando em maio, a cobertura atravessa a seca do inverno paulista: os
+    // 30 dias sem chuva aconteceram em todos os anos avaliados.
+    const seca = await cotar("2027-05-01");
+    assert.equal(seca.aplicavel, true);
+    assert.deepEqual(seca.estacoes, ["A747", "A770"]);
+    assert.ok(seca.anosAvaliados >= 8, `anos avaliados: ${seca.anosAvaliados}`);
+    assert.equal(seca.acionamentos, seca.anosAvaliados);
+
+    // Comecando em outubro, a cobertura cai nas chuvas: aciona raramente.
+    const chuvas = await cotar("2026-10-07");
+    assert.ok(chuvas.frequencia < 0.25, `frequencia: ${chuvas.frequencia}`);
+  });
+
+  test("a vigencia comeca na data pedida pelo produtor, a meia-noite de Brasilia (RF10)", async () => {
+    const daqui30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+
+    const r = await ctx
+      .api()
+      .post("/api/propostas")
+      .set(com(produtor))
+      .send({ talhaoId, produtoId, areaHa: "180", inicioDaVigencia: daqui30 });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+
+    const preparo = await preparar(r.body.proposta.id);
+    const esperado = Date.parse(`${daqui30}T03:00:00Z`) / 1000;
+
+    assert.equal(preparo.termos.vigenciaInicio, esperado);
+    assert.equal(preparo.termos.vigenciaFim, esperado + 180 * 86_400);
+  });
+
+  test("data de inicio no passado, longe demais ou mal formada e recusada", async () => {
+    const anteontem = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
+    const daqui200 = new Date(Date.now() + 200 * 86_400_000).toISOString().slice(0, 10);
+
+    for (const inicioDaVigencia of [anteontem, daqui200, "15/11/2026"]) {
+      const r = await ctx
+        .api()
+        .post("/api/propostas")
+        .set(com(produtor))
+        .send({ talhaoId, produtoId, areaHa: "180", inicioDaVigencia });
+      assert.equal(r.status, 400, inicioDaVigencia);
+    }
+  });
+
   test("emissao correta liga a apolice a proposta", async () => {
     const proposta = await novaProposta();
     const { hashTermos } = await preparar(proposta.id);

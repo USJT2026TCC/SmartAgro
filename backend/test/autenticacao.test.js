@@ -5,7 +5,7 @@ import { gerarCodigoTotp } from "../src/seguranca/cripto.js";
 import { com, entrar, montar } from "./ajuda.js";
 
 /**
- * Autenticacao e controle de acesso (RF01, RF04, RNF24, HU13).
+ * Autenticacao e controle de acesso (RF01, RF04, HU13).
  */
 describe("autenticacao", () => {
   let ctx;
@@ -53,7 +53,7 @@ describe("autenticacao", () => {
     assert.equal(r.status, 200);
   });
 
-  test("a senha fica guardada com bcrypt, nunca em texto claro (RNF24)", async () => {
+  test("a senha fica guardada com bcrypt, nunca em texto claro (HU13, criterio 1)", async () => {
     const { rows } = await ctx.banco.query(
       "SELECT hash_senha FROM usuarios WHERE identificador = 'produtor'",
     );

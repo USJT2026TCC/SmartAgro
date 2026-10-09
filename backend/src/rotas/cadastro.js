@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 
 import { conflito, naoEncontrado, pedidoInvalido } from "../erros.js";
 import { paraPoligonoGeoJson } from "../dominio/geometria.js";
+import { gerarHashDeSenha } from "../seguranca/cripto.js";
 import { auditar, exigirPerfil, exigirSessao } from "../seguranca/sessoes.js";
 import { decimalPositivo, endereco, inteiro, texto, umDe, uuid } from "../validacao.js";
 
@@ -45,7 +46,7 @@ function talhaoPublico(linha) {
       identificador: linha.produtor_identificador,
     },
     fontesAtivas: linha.fontes_ativas,
-    // RNF18: ao menos duas fontes independentes, ou evidencia por imagem.
+    // RNF16: ao menos duas fontes independentes, ou evidencia por imagem.
     atendeMinimoDeFontes: linha.fontes_ativas >= 2,
     criadoEm: linha.criado_em,
   };
@@ -70,6 +71,13 @@ function produtoPublico(p) {
   };
 }
 
+/** E-mail opcional para as notificacoes (RF27). */
+function emailOpcional(valor) {
+  const email = texto(valor, "email", { max: 200, obrigatorio: false })?.toLowerCase() ?? null;
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw pedidoInvalido("E-mail invalido.");
+  return email;
+}
+
 export function rotasDeCadastro() {
   const r = Router();
 
@@ -77,11 +85,106 @@ export function rotasDeCadastro() {
 
   r.get("/produtores", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
     const { rows } = await req.app.locals.banco.query(
-      `SELECT id, identificador, nome, documento, carteira FROM usuarios
+      `SELECT id, identificador, nome, documento, email, carteira FROM usuarios
         WHERE perfil = 'produtor' ORDER BY nome`,
     );
 
     res.json({ produtores: rows });
+  });
+
+  /**
+   * Cadastro de produtor pela seguradora (RF03, UC02). A senha inicial e
+   * definida por quem cadastra e entregue ao produtor por fora; o hash e
+   * gerado aqui, com bcrypt, como o de qualquer usuario (HU13, criterio 1).
+   */
+  r.post("/produtores", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
+    const { banco } = req.app.locals;
+    const identificador = texto(req.body?.identificador, "identificador", {
+      max: 60,
+    }).toLowerCase();
+    const nome = texto(req.body?.nome, "nome", { max: 120 });
+    const documento = texto(req.body?.documento, "documento", { max: 20, obrigatorio: false });
+    const senhaInicial = texto(req.body?.senhaInicial, "senhaInicial", { max: 200 });
+    const email = emailOpcional(req.body?.email);
+
+    if (!/^[a-z0-9._-]{3,60}$/.test(identificador)) {
+      throw pedidoInvalido(
+        "O identificador aceita letras minusculas, numeros, ponto, hifen e sublinhado.",
+      );
+    }
+    if (senhaInicial.length < 10) {
+      throw pedidoInvalido("A senha inicial precisa ter ao menos 10 caracteres.");
+    }
+
+    const { rows: existentes } = await banco.query(
+      "SELECT 1 FROM usuarios WHERE identificador = $1",
+      [identificador],
+    );
+    if (existentes[0]) throw conflito("Ja existe um usuario com esse identificador.");
+
+    const { rows } = await banco.query(
+      `INSERT INTO usuarios (identificador, nome, perfil, documento, hash_senha, email)
+       VALUES ($1, $2, 'produtor', $3, $4, $5)
+       RETURNING id, identificador, nome, documento, email, carteira`,
+      [identificador, nome, documento, await gerarHashDeSenha(senhaInicial), email],
+    );
+
+    await auditar(banco, req, "produtor_cadastrado", {
+      recurso: rows[0].id,
+      detalhes: { identificador },
+    });
+    res.status(201).json({ produtor: rows[0] });
+  });
+
+  /** Edicao do produtor (RF03): nome e documento. Identificador e carteira nao mudam aqui. */
+  r.patch("/produtores/:id", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
+    const { banco } = req.app.locals;
+    const id = uuid(req.params.id, "id");
+    const nome = texto(req.body?.nome, "nome", { max: 120, obrigatorio: false });
+    const documento = texto(req.body?.documento, "documento", { max: 20, obrigatorio: false });
+    const email = emailOpcional(req.body?.email);
+
+    const { rows } = await banco.query(
+      `UPDATE usuarios SET nome = COALESCE($2, nome), documento = COALESCE($3, documento),
+                           email = COALESCE($4, email)
+        WHERE id = $1 AND perfil = 'produtor'
+        RETURNING id, identificador, nome, documento, email, carteira`,
+      [id, nome, documento, email],
+    );
+    if (!rows[0]) throw naoEncontrado("Produtor");
+
+    await auditar(banco, req, "produtor_editado", { recurso: id });
+    res.json({ produtor: rows[0] });
+  });
+
+  // --------------------------------------------------------- propriedades
+
+  r.get("/propriedades", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
+    const { rows } = await req.app.locals.banco.query(
+      `SELECT p.id, p.nome, p.municipio, p.produtor_id, u.nome AS produtor_nome,
+              (SELECT count(*)::int FROM talhoes t WHERE t.propriedade_id = p.id) AS talhoes
+         FROM propriedades p JOIN usuarios u ON u.id = p.produtor_id
+        ORDER BY u.nome, p.nome`,
+    );
+    res.json({ propriedades: rows });
+  });
+
+  /** Edicao da propriedade (RF03): nome e municipio. */
+  r.patch("/propriedades/:id", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
+    const { banco } = req.app.locals;
+    const id = uuid(req.params.id, "id");
+    const nome = texto(req.body?.nome, "nome", { max: 120, obrigatorio: false });
+    const municipio = texto(req.body?.municipio, "municipio", { max: 120, obrigatorio: false });
+
+    const { rows } = await banco.query(
+      `UPDATE propriedades SET nome = COALESCE($2, nome), municipio = COALESCE($3, municipio)
+        WHERE id = $1 RETURNING id, nome, municipio, produtor_id`,
+      [id, nome, municipio],
+    );
+    if (!rows[0]) throw naoEncontrado("Propriedade");
+
+    await auditar(banco, req, "propriedade_editada", { recurso: id });
+    res.json({ propriedade: rows[0] });
   });
 
   // ------------------------------------------------------------- talhoes
@@ -182,6 +285,51 @@ export function rotasDeCadastro() {
 
     const { rows } = await banco.query(`${SQL_TALHAO} WHERE t.id = $1`, [talhaoId]);
     res.status(201).json({ talhao: talhaoPublico(rows[0]) });
+  });
+
+  /**
+   * Edicao do talhao (RF03): cultura e poligono.
+   *
+   * So enquanto nenhuma proposta ou apolice depender dele. Depois, o contrato
+   * ja guarda o identificador, e a area cotada e o poligono que recusa fotos de
+   * fora (RF14) precisam continuar os mesmos que o produtor aceitou.
+   */
+  r.patch("/talhoes/:id", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
+    const { banco } = req.app.locals;
+    const id = uuid(req.params.id, "id");
+    const cultura =
+      texto(req.body?.cultura, "cultura", { max: 40, obrigatorio: false })?.toLowerCase() ?? null;
+    const geojson = req.body?.poligono ? paraPoligonoGeoJson(req.body.poligono) : null;
+
+    const { rows: usos } = await banco.query(
+      `SELECT (SELECT count(*) FROM propostas WHERE talhao_id = $1 AND situacao <> 'recusada')::int
+            + (SELECT count(*) FROM apolices WHERE talhao_id = $1)::int AS n`,
+      [id],
+    );
+    if (usos[0].n > 0) {
+      throw conflito(
+        "O talhao ja tem proposta ou apolice. Alterar cultura ou poligono mudaria o que foi contratado.",
+      );
+    }
+
+    const { rowCount } = await banco.query(
+      `WITH g AS (SELECT CASE WHEN $3::text IS NULL THEN NULL
+                              ELSE ST_SetSRID(ST_GeomFromGeoJSON($3), 4326) END AS geom)
+       UPDATE talhoes t
+          SET cultura   = COALESCE($2, t.cultura),
+              geometria = COALESCE(g.geom, t.geometria),
+              area_ha   = CASE WHEN g.geom IS NULL THEN t.area_ha
+                               ELSE round((ST_Area(g.geom::geography) / 10000)::numeric, 4) END
+         FROM g
+        WHERE t.id = $1`,
+      [id, cultura, geojson ? JSON.stringify(geojson) : null],
+    );
+    if (rowCount === 0) throw naoEncontrado("Talhao");
+
+    await auditar(banco, req, "talhao_editado", { recurso: id });
+
+    const { rows } = await banco.query(`${SQL_TALHAO} WHERE t.id = $1`, [id]);
+    res.json({ talhao: talhaoPublico(rows[0]) });
   });
 
   r.delete("/talhoes/:id", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
@@ -306,7 +454,7 @@ export function rotasDeCadastro() {
   /**
    * Registro de fonte (RF11). O endereco e a chave publica com que a estacao ou
    * o sensor assina os lotes; sem ele cadastrado, nenhuma leitura da fonte e
-   * aceita (RNF19).
+   * aceita (RNF17).
    */
   r.post("/fontes", exigirSessao, exigirPerfil("seguradora"), async (req, res) => {
     const { banco } = req.app.locals;

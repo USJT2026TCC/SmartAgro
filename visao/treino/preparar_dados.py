@@ -82,7 +82,11 @@ FAIXAS_POR_CICLO = 4  # 1 de cada 4 faixas vai para a validacao
 
 
 def divisao_de(x0: int) -> str:
-    return "validacao" if (x0 // LARGURA_DA_FAIXA) % FAIXAS_POR_CICLO == FAIXAS_POR_CICLO - 1 else "treino"
+    return (
+        "validacao"
+        if (x0 // LARGURA_DA_FAIXA) % FAIXAS_POR_CICLO == FAIXAS_POR_CICLO - 1
+        else "treino"
+    )
 
 
 def conferir_classes(arquivo: zipfile.ZipFile) -> None:
@@ -125,7 +129,9 @@ def preparar(caminho_zip: Path, destino: Path) -> dict[str, dict]:
 
         with (destino / "indice.csv").open("w", newline="", encoding="utf-8") as saida:
             escritor = csv.writer(saida)
-            escritor.writerow(["divisao", "grupo", "imagem", "mascara", "y", "x", "lavoura", "dano"])
+            escritor.writerow(
+                ["divisao", "grupo", "imagem", "mascara", "y", "x", "lavoura", "dano"]
+            )
 
             for registro in registros:
                 identificador = registro["id"]
@@ -136,7 +142,9 @@ def preparar(caminho_zip: Path, destino: Path) -> dict[str, dict]:
                 )
                 mascara = traduzir(bruta)
 
-                Image.fromarray(rgb_do_npy(bandas)).save(destino / "images" / f"{identificador}.png")
+                Image.fromarray(rgb_do_npy(bandas)).save(
+                    destino / "images" / f"{identificador}.png"
+                )
                 Image.fromarray(mascara).save(destino / "masks" / f"{identificador}.png")
 
                 # Fracao de lavoura e dano de referencia, gravados para que a
@@ -150,8 +158,16 @@ def preparar(caminho_zip: Path, destino: Path) -> dict[str, dict]:
                 divisao = divisao_de(x0)
 
                 escritor.writerow(
-                    [divisao, "water", f"{identificador}.png", f"{identificador}.png",
-                     y0, x0, round(lavoura, 4), round(dano, 4)]
+                    [
+                        divisao,
+                        "water",
+                        f"{identificador}.png",
+                        f"{identificador}.png",
+                        y0,
+                        x0,
+                        round(lavoura, 4),
+                        round(dano, 4),
+                    ]
                 )
 
                 resumo[divisao]["recortes"] += 1
@@ -180,10 +196,14 @@ def main() -> None:
     for divisao, dados in resumo.items():
         media = sum(dados["dano"]) / len(dados["dano"]) if dados["dano"] else 0.0
         print(
-            f"  {divisao:10} {dados['recortes']:4d} recortes, {dados['com_lavoura']:4d} com lavoura, "
+            f"  {divisao:10} {dados['recortes']:4d} recortes, "
+            f"{dados['com_lavoura']:4d} com lavoura, "
             f"dano medio de referencia {media:.1%}"
         )
-    print("RGB montado pelas bandas nomeadas (vermelho=2, verde=1, azul=0); o .jpg da base nao e usado.")
+    print(
+        "RGB montado pelas bandas nomeadas (vermelho=2, verde=1, azul=0); "
+        "o .jpg da base nao e usado."
+    )
     print("Fonte: Suicmez, Yilmaz e Kahraman (2026), v2.1, DOI 10.5281/zenodo.22062459, CC BY 4.0")
 
 

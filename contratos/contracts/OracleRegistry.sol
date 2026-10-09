@@ -6,7 +6,7 @@ pragma solidity ^0.8.24;
  * @notice Lista de enderecos autorizados a publicar indices nas apolices.
  *
  * Atende ao RF18 (manter no contrato a lista de enderecos autorizados e rejeitar
- * publicacao de qualquer outro endereco) e ao RNF12 (controle de acesso por funcao).
+ * publicacao de qualquer outro endereco) e ao RNF10 (controle de acesso por funcao).
  *
  * A lista vive em um contrato separado, e nao dentro de cada apolice, por dois motivos:
  * 1. Revogar um oraculo comprometido passa a ser uma unica transacao, e nao uma por apolice;

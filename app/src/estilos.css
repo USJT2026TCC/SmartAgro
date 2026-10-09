@@ -728,3 +728,12 @@ tbody tr:last-child td {
     grid-column: 1 / -1;
   }
 }
+
+/* Desenho do talhao sobre o mapa (HU09) */
+.desenho-do-talhao__mapa {
+  height: 320px;
+  border-radius: 8px;
+  border: 1px solid var(--borda, #2b3a2e);
+  margin-bottom: 8px;
+  cursor: crosshair;
+}

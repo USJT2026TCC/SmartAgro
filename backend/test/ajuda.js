@@ -3,6 +3,7 @@ import request from "supertest";
 
 import { criarApp } from "../src/app.js";
 import { abrirBanco } from "../src/banco/conexao.js";
+import { carregarHistoricoClimatico } from "../src/banco/historico.js";
 import { migrar } from "../src/banco/migrar.js";
 import { semear } from "../src/banco/semente.js";
 import { interfaceFactory } from "../src/cadeia/rede.js";
@@ -77,6 +78,7 @@ export async function montar() {
   const banco = await abrirBanco({ emMemoria: true });
   await migrar(banco);
   await semear(banco);
+  await carregarHistoricoClimatico(banco);
 
   const cadeia = cadeiaFalsa();
   const app = criarApp({ banco, cadeia });

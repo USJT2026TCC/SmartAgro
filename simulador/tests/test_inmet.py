@@ -71,3 +71,40 @@ def test_distancia_ordena_estacoes_por_proximidade():
 
     assert estacao.distancia_km(-21.46, -47.58) < 1
     assert estacao.distancia_km(-23.55, -46.63) > 100
+
+
+# Formato usado pelo INMET ate 2018: cabecalhos de data e hora com outro nome e
+# hora em "00:00". Trecho do arquivo real de 2018 da estacao A747 (Pradopolis/SP).
+CSV_ATE_2018 = (
+    "REGIAO:;SE\r\n"
+    "UF:;SP\r\n"
+    "ESTACAO:;PRADOPOLIS\r\n"
+    "CODIGO (WMO):;A747\r\n"
+    "LATITUDE:;-21,33833333\r\n"
+    "LONGITUDE:;-48,11388888\r\n"
+    "ALTITUDE:;544\r\n"
+    "DATA DE FUNDACAO (YYYY-MM-DD):;2008-04-22\r\n"
+    "DATA (YYYY-MM-DD);HORA (UTC);PRECIPITAÇÃO TOTAL, HORÁRIO (mm);"
+    "TEMPERATURA DO AR - BULBO SECO, HORARIA (°C);UMIDADE RELATIVA DO AR, HORARIA (%);\r\n"
+    "2018-01-01;00:00;0;22,1;81;\r\n"
+    "2018-01-01;01:00;1,4;21,7;84;\r\n"
+).encode("latin-1")
+
+
+def test_le_tambem_o_formato_ate_2018():
+    estacao, leituras = ler_csv(CSV_ATE_2018)
+
+    assert estacao.codigo == "A747"
+    assert len(leituras) == 2
+    assert leituras[1].chuva_mm == 1.4
+    assert leituras[1].instante == datetime(2018, 1, 1, 1, tzinfo=timezone.utc)
+
+
+def test_cada_leitura_recebe_a_posicao_da_estacao():
+    estacao, leituras = ler_csv(CSV)
+
+    assert leituras
+    assert all(
+        leitura.longitude == estacao.longitude and leitura.latitude == estacao.latitude
+        for leitura in leituras
+    )

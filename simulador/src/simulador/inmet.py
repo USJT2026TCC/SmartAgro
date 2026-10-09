@@ -87,6 +87,10 @@ class Leitura:
     chuva_mm: float | None
     temperatura_c: float | None
     umidade_pct: float | None
+    # Posicao da estacao que mediu (HU04, criterio 4). A API confere contra a
+    # posicao cadastrada da fonte.
+    longitude: float | None = None
+    latitude: float | None = None
 
     @property
     def completa(self) -> bool:
@@ -125,7 +129,7 @@ def _numero(texto: str) -> float | None:
 
 
 def _instante(data: str, hora: str) -> datetime:
-    """'2024/07/02' + '0300 UTC' -> datetime com fuso UTC."""
+    """'2024/07/02' + '0300 UTC' (ou '2018-07-02' + '03:00') -> datetime com fuso UTC."""
     data = data.replace("-", "/").strip()
     hora_limpa = hora.strip().replace("UTC", "").strip()
     horas = int(hora_limpa[:2])
@@ -161,8 +165,11 @@ def ler_csv(conteudo: bytes) -> tuple[Estacao, list[Leitura]]:
     leituras: list[Leitura] = []
 
     for registro in leitor:
-        data = (registro.get("Data") or "").strip()
-        hora = (registro.get("Hora UTC") or "").strip()
+        # Ate 2018 o INMET nomeava as colunas "DATA (YYYY-MM-DD)" e "HORA (UTC)",
+        # com a hora em "00:00"; de 2019 em diante, "Data" e "Hora UTC", com
+        # "0000 UTC". Sem aceitar os dois, os anos antigos voltavam vazios.
+        data = (registro.get("Data") or registro.get("DATA (YYYY-MM-DD)") or "").strip()
+        hora = (registro.get("Hora UTC") or registro.get("HORA (UTC)") or "").strip()
 
         if not data or not hora:
             continue
@@ -176,6 +183,8 @@ def ler_csv(conteudo: bytes) -> tuple[Estacao, list[Leitura]]:
                 chuva_mm=chuva if chuva is not None and chuva >= 0 else None,
                 temperatura_c=_numero(registro.get(COLUNA_TEMPERATURA, "")),
                 umidade_pct=umidade if umidade is not None and 0 <= umidade <= 100 else None,
+                longitude=estacao.longitude,
+                latitude=estacao.latitude,
             )
         )
 
