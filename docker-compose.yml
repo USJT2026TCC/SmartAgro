@@ -1,0 +1,21 @@
+services:
+  banco:
+    image: postgis/postgis:16-3.4
+    container_name: agrosmart-banco
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agrosmart
+      POSTGRES_PASSWORD: agrosmart_dev
+      POSTGRES_DB: agrosmart
+    ports:
+      - "5433:5432"
+    volumes:
+      - dados_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrosmart -d agrosmart"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dados_pg:
