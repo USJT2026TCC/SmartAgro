@@ -39,13 +39,24 @@ AS MASCARAS SAEM JA NA ORDEM DO AGROSMART
 A traducao e feita uma vez, aqui. Treino e avaliacao leem as mascaras prontas,
 sem mapa proprio — quatro copias do mesmo mapa eram quatro lugares para errar.
 
-DIVISAO ENTRE TREINO E VALIDACAO
+DIVISAO ENTRE TREINO, VALIDACAO E TESTE
 
 Espacial, por faixas verticais de 512 px alternadas: uma faixa a cada quatro
-vai para a validacao. O estresse nao se espalha por igual no talhao (vai de
-0,3% a 9,7% conforme a regiao), e cortar o talhao em dois pedacos poria na
-validacao uma regiao so. Com faixas alternadas, a validacao ve o talhao todo, e
-recortes vizinhos continuam do mesmo lado na maior parte dos casos.
+fica fora do treino. O estresse nao se espalha por igual no talhao (vai de
+0,3% a 9,7% conforme a regiao), e cortar o talhao em dois pedacos poria numa
+das divisoes uma regiao so. Com faixas alternadas, treino, validacao e teste
+veem o talhao todo, e recortes vizinhos continuam do mesmo lado na maior parte
+dos casos.
+
+Das faixas que ficam fora do treino, metade vai para "validacao" (usada para
+escolher a melhor epoca, como sempre) e a outra metade para "teste" — nunca
+visto nem no treino, nem na escolha de epoca. O numero reportado em cima da
+divisao "teste" e o que vai no TCC como resultado honesto: nas rodadas
+anteriores (resultados/visao-unet-2.0.0), a melhor epoca era escolhida olhando
+a propria validacao, e o erro relatado era por construcao otimista (ver a
+ressalva no README daquele resultado). O conjunto de treino continua
+exatamente do mesmo tamanho de antes — so a antiga "validacao" foi recortada
+ao meio.
 """
 
 from __future__ import annotations
@@ -78,15 +89,20 @@ CLASSES_DA_BASE = {"soil": 0, "low_stress": 1, "high_stress": 2, "healthy": 3}
 MAPA_DE_CLASSES = {0: 0, 1: 2, 2: 3, 3: 1}
 
 LARGURA_DA_FAIXA = 512
-FAIXAS_POR_CICLO = 4  # 1 de cada 4 faixas vai para a validacao
+FAIXAS_POR_CICLO = 4  # 1 de cada 4 faixas fica fora do treino
 
 
 def divisao_de(x0: int) -> str:
-    return (
-        "validacao"
-        if (x0 // LARGURA_DA_FAIXA) % FAIXAS_POR_CICLO == FAIXAS_POR_CICLO - 1
-        else "treino"
-    )
+    indice_da_faixa = x0 // LARGURA_DA_FAIXA
+
+    if indice_da_faixa % FAIXAS_POR_CICLO != FAIXAS_POR_CICLO - 1:
+        return "treino"
+
+    # Dentro das faixas fora do treino, a paridade do ciclo decide entre
+    # validacao e teste — metade para cada, mantendo as duas espalhadas pelo
+    # talhao inteiro em vez de concentradas numa ponta.
+    ciclo = indice_da_faixa // FAIXAS_POR_CICLO
+    return "validacao" if ciclo % 2 == 0 else "teste"
 
 
 def conferir_classes(arquivo: zipfile.ZipFile) -> None:
@@ -119,7 +135,9 @@ def preparar(caminho_zip: Path, destino: Path) -> dict[str, dict]:
     (destino / "images").mkdir(parents=True, exist_ok=True)
     (destino / "masks").mkdir(parents=True, exist_ok=True)
 
-    resumo = {d: {"recortes": 0, "com_lavoura": 0, "dano": []} for d in ("treino", "validacao")}
+    resumo = {
+        d: {"recortes": 0, "com_lavoura": 0, "dano": []} for d in ("treino", "validacao", "teste")
+    }
 
     with zipfile.ZipFile(caminho_zip) as arquivo:
         conferir_classes(arquivo)

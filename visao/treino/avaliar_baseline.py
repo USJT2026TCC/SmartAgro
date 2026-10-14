@@ -29,7 +29,9 @@ def main() -> None:
     estimados = [indice_de_dano(classificar(r.imagem.read_bytes())) for r in lista]
     verdadeiros = [dano_de_referencia(r) for r in lista]
 
-    relatorio("HEURISTICA DE COR (visao-baseline-exg-1.0.0)", estimados, verdadeiros)
+    relatorio(
+        "HEURISTICA DE COR (visao-baseline-exg-1.0.0)", estimados, verdadeiros, opcoes.divisao
+    )
 
 
 if __name__ == "__main__":

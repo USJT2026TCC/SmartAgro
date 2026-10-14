@@ -43,12 +43,27 @@ def test_classes_da_base_sao_traduzidas_para_a_ordem_do_agrosmart():
     assert preparo.traduzir(base).tolist() == [[0, 2], [3, 1]]
 
 
-def test_uma_faixa_a_cada_quatro_vai_para_a_validacao():
+def test_uma_faixa_a_cada_quatro_fica_fora_do_treino():
     assert preparo.divisao_de(0) == "treino"
     assert preparo.divisao_de(1535) == "treino"
-    assert preparo.divisao_de(1536) == "validacao"
-    assert preparo.divisao_de(2047) == "validacao"
+    assert preparo.divisao_de(1536) in ("validacao", "teste")
+    assert preparo.divisao_de(2047) in ("validacao", "teste")
     assert preparo.divisao_de(2048) == "treino"
+
+
+def test_as_faixas_fora_do_treino_se_dividem_entre_validacao_e_teste():
+    # Faixa 3 (x0 = 1536): primeiro ciclo fora do treino, vai para a validacao,
+    # usada para escolher a melhor epoca, como sempre.
+    assert preparo.divisao_de(3 * preparo.LARGURA_DA_FAIXA) == "validacao"
+    # Faixa 7 (x0 = 3584): segundo ciclo fora do treino, vai para o teste —
+    # nunca visto no treino nem na escolha de epoca, para um numero honesto.
+    assert preparo.divisao_de(7 * preparo.LARGURA_DA_FAIXA) == "teste"
+    # Faixa 11: terceiro ciclo, volta para validacao. As duas se alternam
+    # cobrindo o talhao inteiro, em vez de uma ficar numa ponta so.
+    assert preparo.divisao_de(11 * preparo.LARGURA_DA_FAIXA) == "validacao"
+    # O treino continua do mesmo tamanho de antes: nenhuma faixa de treino
+    # virou validacao ou teste.
+    assert preparo.divisao_de(4 * preparo.LARGURA_DA_FAIXA) == "treino"
 
 
 def _zip_com_classes(mapa: dict) -> zipfile.ZipFile:

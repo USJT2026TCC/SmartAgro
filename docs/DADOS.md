@@ -104,6 +104,24 @@ como estresse.
 Multi-Head UNet++ Framework with Fractional Differential Output Refinement for UAV Multispectral
 Crop Stress Mapping. *Sensors*, v. 26, n. 10, 3228, 2026.
 
+### Por que combinar estação e imagem, e não confiar só numa das duas
+
+A justificativa não é só técnica (1.22 do DECISOES.md); tem apoio na literatura de seguro
+indexado, sob o nome de *basis risk* — o descasamento entre o que o índice contratado mede e o
+prejuízo real do segurado. Dois trabalhos sustentam a escolha de arquitetura:
+
+**NGUYEN, T. T.; MUSHTAQ, S.; KATH, J.; NGUYEN-HUY, T.; REYMONDIN, L.** Satellite-based data for
+agricultural index insurance: a systematic quantitative literature review. *Natural Hazards and
+Earth System Sciences*, v. 25, n. 2, p. 913–936, 2025. Revisão de 89 estudos; conclui que dado de
+sensoriamento remoto reduz o *basis risk* de seguros apoiados só em índice meteorológico — a razão
+pela qual o AgroSmart usa os dois índices, e não escolheu entre eles.
+
+**HAO, M.; QIAN, K.; CHAU, S. C.-K.** Blockchain-enabled Parametric Solar Energy Insurance via
+Remote Sensing. *arXiv:2305.09961*, 2023. Precedente de desenho (fora da agricultura): contrato
+inteligente que paga automaticamente a partir de um índice lido por sensoriamento remoto, na
+Ethereum. O mesmo padrão já opera em seguro agrícola paramétrico na prática, pela empresa Arbol,
+com oráculos Chainlink.
+
 ### 2.2 Alternativa de grande escala — Agriculture-Vision
 
 **Fonte:** CHIU, M. T. et al. *Agriculture-Vision: A Large Aerial Image Database for

@@ -4,6 +4,15 @@ Estima **quanto por cento da lavoura foi prejudicado** a partir das imagens do t
 esse número ao backend com uma confiança associada (RF15, RF16, RF17, HU11). Código em
 [`visao/`](../visao).
 
+**Não é uma segunda fonte de risco independente da chuva — é a mesma estiagem medida de outro
+jeito.** O índice climático do AgroSmart mede a causa: dias consecutivos sem chuva, pela estação.
+O índice de dano mede o efeito dessa mesma causa, visível na lavoura: o quanto da planta está em
+estresse hídrico. O operador `E` do contrato deixa a seguradora exigir que os dois batam no mesmo
+período antes de pagar — uma confirmação cruzada, não duas apostas separadas. Na literatura de
+seguro paramétrico, combinar um índice meteorológico a dado de sensoriamento remoto é a estratégia
+usual para reduzir o *basis risk* (o descasamento entre o que o índice mede e o prejuízo real); ver
+DECISOES.md 1.22 e as referências em DADOS.md.
+
 ---
 
 ## 1. Onde ele fica

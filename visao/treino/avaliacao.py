@@ -74,7 +74,9 @@ def dano_de_referencia(recorte: Recorte) -> float:
     return indice_de_dano(contagem(np.asarray(Image.open(recorte.mascara))))
 
 
-def relatorio(titulo: str, estimados: list[float], verdadeiros: list[float]) -> dict:
+def relatorio(
+    titulo: str, estimados: list[float], verdadeiros: list[float], divisao: str = "validacao"
+) -> dict:
     """Imprime e devolve as metricas. O vies tem sinal: + superestima, - subestima."""
     erros = [e - v for e, v in zip(estimados, verdadeiros, strict=True)]
     absolutos = sorted(abs(e) for e in erros)
@@ -92,7 +94,7 @@ def relatorio(titulo: str, estimados: list[float], verdadeiros: list[float]) -> 
     }
 
     print(titulo)
-    print(f"  Recortes avaliados..: {metricas['recortes']} (validacao, com 10% ou mais de lavoura)")
+    print(f"  Recortes avaliados..: {metricas['recortes']} ({divisao}, com 10% ou mais de lavoura)")
     print(f"  Dano medio real.....: {metricas['dano_medio_real']:.1%}")
     print(f"  Dano medio estimado.: {metricas['dano_medio_estimado']:.1%}")
     print(f"  Erro absoluto medio.: {metricas['erro_absoluto_medio']:.1%}")

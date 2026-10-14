@@ -312,6 +312,42 @@ seguradora assina cada emissão (1.20), vendo a data de início e o histórico d
 `vigenciaInicio` já está nos termos que ele lê — ou o produto ter carência, como os seguros
 agrícolas costumam ter. Fica registrado para a defesa: é a pergunta natural de quem conhece seguro.
 
+### 1.22 Índice climático e índice de dano medem o mesmo evento, não dois eventos diferentes
+
+O operador `E` do contrato (ApolicePolicy.sol) exige que os dois índices atinjam o limiar no
+mesmo período para pagar. Vale deixar explícito por que essa combinação existe, porque a leitura
+mais fácil — "duas fontes de evidência independentes" — some o motivo real.
+
+**O índice climático do AgroSmart é só seca** (dias consecutivos sem chuva abaixo de 1 mm). Não há
+produto para chuva em excesso ou enchente. Então o par certo não é "clima aciona, imagem confirma
+clima" em geral; é especificamente: a estação mede a **causa** (ausência de chuva), e o módulo de
+visão estima o **efeito visível** dessa mesma estiagem na lavoura (estresse hídrico). O operador
+`E` é o modo que faz o oráculo só pagar quando a causa medida no solo e o efeito medido na foto
+batem no mesmo período — uma confirmação cruzada do mesmo evento, não duas apostas independentes.
+
+**Isso tem nome na literatura de seguro paramétrico: *basis risk*** — o descasamento entre o que o
+índice mede e o prejuízo real. Índice climático puro erra quando a estação não representa o
+talhão; índice de imagem puro erra pelas limitações do próprio modelo (1.19, 2.31, 2.32). A revisão
+sistemática de NGUYEN et al. (2025), sobre 89 estudos de seguro agrícola indexado por satélite,
+aponta o sensoriamento remoto como caminho para reduzir esse descasamento quando combinado ao
+índice meteorológico, exatamente o papel do operador `E` aqui.
+
+**A segmentação pixel a pixel do estresse hídrico por imagem aérea é tarefa com método publicado**,
+e por uma coincidência favorável os autores do método são os mesmos da base usada no treino
+(DADOS.md): SUİÇMEZ, YILMAZ, KAHRAMAN e SÖNMEZ descrevem, num artigo separado do dataset, uma
+U-Net++ para a mesma classificação em cinco classes de estresse hídrico que `visao/src/visao/rede.py`
+resolve. O projeto não está aplicando visão computacional a uma tarefa inventada; está reproduzindo,
+numa escala menor e com uma arquitetura mais simples, uma tarefa com precedente avaliado por pares.
+
+**Precedente de combinar blockchain e sensoriamento remoto para pagamento automático também existe**
+fora da agricultura: HAO, QIAN e CHAU (2023) propõem seguro paramétrico de energia solar na Ethereum,
+com o oráculo lendo imagem de satélite; na prática, a Arbol já opera seguro agrícola paramétrico
+nesse mesmo desenho, com oráculos Chainlink.
+
+**Decisão:** manter a visão computacional como parte do trabalho, com a redação do TCC explicando
+a combinação como confirmação cruzada da mesma estiagem — causa medida pela estação, efeito medido
+pela imagem — e não como duas fontes soltas. As referências completas vão para DADOS.md.
+
 ## 2. Defeitos encontrados durante a implementação
 
 Todos foram corrigidos. Ficam registrados porque são o tipo de coisa que volta a acontecer.

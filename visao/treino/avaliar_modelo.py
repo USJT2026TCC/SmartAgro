@@ -38,7 +38,7 @@ def main() -> None:
 
     verdadeiros = [dano_de_referencia(r) for r in lista]
 
-    relatorio(f"MODELO TREINADO ({versao})", estimados, verdadeiros)
+    relatorio(f"MODELO TREINADO ({versao})", estimados, verdadeiros, opcoes.divisao)
 
 
 if __name__ == "__main__":
