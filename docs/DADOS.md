@@ -127,6 +127,24 @@ inteligente que paga automaticamente a partir de um índice lido por sensoriamen
 Ethereum. O mesmo padrão já opera em seguro agrícola paramétrico na prática, pela empresa Arbol,
 com oráculos Chainlink.
 
+### Validação externa — soja no campo, com nota de murcha
+
+**Fonte:** BANERJEE, S.; RAMOS, P.; REBERG-HORTON, C.; MIRSKY, S.; LOCKE, A.; LOBATON, E. *Study of
+Leaf Wilt in Soybean Plants*. Zenodo, 2023. DOI
+[10.5281/zenodo.8256382](https://doi.org/10.5281/zenodo.8256382). Artigo: Agriculture, v. 15, n. 6,
+art. 614, 2025. **Licença:** CC BY 4.0.
+
+1.892 fotos RGB de parcelas de soja na Carolina do Norte (2019), de câmeras fixas, com nota de murcha
+dada por especialistas. Não serve para treinar a segmentação (o rótulo é uma nota por foto, não uma
+máscara), mas é a base pública mais próxima do uso real: soja, foto comum, seca. Usada para medir o
+modelo fora do domínio do treino — resultado em
+[resultados/visao-soja-murcha-2026-10-14](resultados/visao-soja-murcha-2026-10-14/README.md).
+
+Bases avaliadas e descartadas em 13/10/2026: MH-SoyaHealthVision (soja, só doenças e pragas),
+Maize-Drought-Stress-Dataset-Raw (milho em cena controlada, rótulo por foto), Agriculture-Vision (sem
+classe de estresse hídrico). Nenhuma base pública com máscara de estresse hídrico em soja, feita por
+especialista, foi encontrada.
+
 ### 2.2 Alternativa de grande escala — Agriculture-Vision
 
 **Fonte:** CHIU, M. T. et al. *Agriculture-Vision: A Large Aerial Image Database for

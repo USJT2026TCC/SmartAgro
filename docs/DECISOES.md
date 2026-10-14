@@ -876,6 +876,24 @@ de exemplos de dano alto na base, e não a configuração do treino.
 **Por que importa:** a ressalva podia ter ficado só escrita. Medida, ela virou um número que a banca
 pode conferir, e o experimento que parecia óbvio mostrou que não resolvia.
 
+### 2.33 A confiança do modelo não percebe uma foto fora do domínio
+
+**Sintoma:** encontrado na validação externa em soja (14/10/2026). Em 1.892 fotos RGB de soja no
+campo, com nota de murcha dada por especialistas, o índice de dano não acompanhou a murcha
+(correlação de −0,05 dentro do mesmo horário) e reagiu à iluminação: mais dano com sol baixo, menos
+ao meio-dia. Mesmo assim, a confiança média foi de 82,4%, e 1.891 fotos passariam do limiar de 70%
+sem ir ao perito.
+
+**Causa:** a confiança mede o quanto o modelo está seguro entre as classes que conhece; não mede se
+a imagem se parece com as de treino. Em milho por drone, ela separa as análises duvidosas; em soja por
+foto comum, o modelo erra com a mesma segurança.
+
+**O que muda:** o índice de dano fica validado só no domínio do treino. Para a demonstração e para o
+TCC, produto que pague só pela imagem (operador `DANO`) não deve ser apresentado como seguro para
+foto de celular de soja; os produtos com operador `E` ou só climáticos continuam protegidos, porque o
+índice da estação não depende do modelo. Detectar imagem fora do domínio (antes de confiar no número)
+é trabalho futuro. Ver [resultados/visao-soja-murcha-2026-10-14](resultados/visao-soja-murcha-2026-10-14/README.md).
+
 ---
 
 ## 3. Rede de teste pública (Sepolia)
