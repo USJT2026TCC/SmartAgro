@@ -348,6 +348,25 @@ nesse mesmo desenho, com oráculos Chainlink.
 a combinação como confirmação cruzada da mesma estiagem — causa medida pela estação, efeito medido
 pela imagem — e não como duas fontes soltas. As referências completas vão para DADOS.md.
 
+### 1.23 Chuva real, talhão fictício
+
+A demonstração usa a estiagem real de 25/06 a 09/08/2024 (A770 e A747) sobre um talhão de soja
+em São Simão/SP. A chuva é real; o talhão não. **E não poderia ser**: essa janela cai no vazio
+sanitário da soja em São Paulo, quando a lei proíbe soja viva no campo (para 2025/26, de 1º/06 a
+31/08 na Região 1 e até 12 ou 15/09 nas Regiões 2 e 3, Portaria MAPA nº 1.271/2025).
+
+**Decidido pela equipe (13/10/2026): manter a série e declarar, no TCC e na apresentação, que os
+dados de chuva são reais e o talhão é fictício.** O sistema não depende da cultura nem da época:
+mudar o talhão não muda nenhuma linha de código.
+
+**Fica registrado o que os dados mostram dentro da época real da soja.** Com a mesma regra do
+oráculo, sobre a série histórica do backend (2015 a 2025), as maiores sequências de dias secos
+entre 15/out e 15/mar ficaram entre 6 e 17 dias em nove das dez safras. A única com 30 dias ou mais
+foi em 2016, de 01/09 a 28/11 (89 dias): o atraso no início das chuvas, que atinge o plantio, e
+não a lavoura formada. Um produto de soja real em São Simão precisaria de um limiar menor que 30
+dias, definido com referência agronômica — fica como trabalho futuro, junto da cotação com
+histórico (1.17), que já mostra isso ao produtor.
+
 ## 2. Defeitos encontrados durante a implementação
 
 Todos foram corrigidos. Ficam registrados porque são o tipo de coisa que volta a acontecer.
@@ -837,6 +856,25 @@ Não é defeito de código, mas foi descoberto da mesma forma: medindo o que o s
 número, e não só o número. A 3.0.0 tem o menor erro médio dos três modelos treinados e confiança
 sempre abaixo do limiar do perito. Avaliar um modelo só pela precisão teria colocado em operação
 um estimador que manda todo lote para revisão humana (ver 1.19).
+
+### 2.32 O erro do modelo de visão era medido nos mesmos recortes que escolhiam a época
+
+**Sintoma:** ressalva registrada desde o resultado 2.0.0 — a melhor época saía da validação, e o
+erro publicado (3,3 pontos) era medido na mesma validação. Um número otimista por construção.
+
+**Correção:** `treino/preparar_dados.py` separa treino, validação e teste; o treino segue com os
+mesmos 257 recortes, e a validação antiga foi dividida ao meio. Retreinada do zero nessa divisão, a
+2.0.1 erra **3,3 pontos no teste nunca visto** — o mesmo número. A ressalva estava certa em
+princípio e, medida, não mudou o resultado. Ver
+[resultados/visao-teste-nunca-visto-2026-10-13](resultados/visao-teste-nunca-visto-2026-10-13/README.md).
+
+**O experimento sugerido para o dano alto falhou.** Pesar mais as classes de estresse (2.0.2) fez o
+modelo parar de subestimar o dano alto, mas superestimar todo o resto: erro de 7,4, pior que
+responder sempre 0% (6,3). Fica como resultado negativo. A causa provável da subestimação é a falta
+de exemplos de dano alto na base, e não a configuração do treino.
+
+**Por que importa:** a ressalva podia ter ficado só escrita. Medida, ela virou um número que a banca
+pode conferir, e o experimento que parecia óbvio mostrou que não resolvia.
 
 ---
 

@@ -52,6 +52,11 @@ chuva**, e a A747 registra a mesma estiagem. É a seca histórica do Sudeste em 
 o limiar de 30 dias do produto contratado — o pagamento da demonstração acontece por causa de um
 evento climático que realmente ocorreu.
 
+**Os dados de chuva são reais; o talhão é fictício, criado para a demonstração.** A janela de
+junho a agosto cai no vazio sanitário da soja em São Paulo, quando a lei proíbe soja viva no campo
+(para 2025/26, de 1º/06 a 31/08 na Região 1 e até 12 ou 15/09 nas Regiões 2 e 3). Nenhuma lavoura
+de soja real estaria sujeita a essa seca. Ver DECISOES.md 1.23.
+
 Conferido com:
 
 ```bash

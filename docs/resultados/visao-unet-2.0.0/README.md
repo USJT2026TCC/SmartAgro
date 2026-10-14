@@ -53,13 +53,14 @@ deve ser o gatilho principal de pagamento — continua complementar ao índice c
 nos casos de baixa confiança.
 
 **Experimento sugerido:** treinar com `--expoente-dos-pesos 1.0`, que pesa mais as classes de
-estresse e tende a marcá-las com mais frequência.
+estresse e tende a marcá-las com mais frequência. **Feito em 13/10/2026, sem sucesso:** o modelo
+passou a superestimar todo o resto (ver o resultado do teste nunca visto).
 
 ## Ressalvas que vão no TCC
 
-- A melhor época foi escolhida olhando a própria validação. Nas últimas cinco épocas, o erro médio
-  recorte a recorte ficou em 5,1 — perto da resposta trivial. O 3,3 é otimista; o resultado no nível
-  do talhão é menos sensível a isso, porque não depende de acertar cada recorte.
+- ~~A melhor época foi escolhida olhando a própria validação; o 3,3 é otimista.~~ **Medido em
+  13/10/2026:** com treino, validação e teste separados, o retreino erra 3,3 no teste nunca visto,
+  o mesmo número. Ver [visao-teste-nunca-visto-2026-10-13](../visao-teste-nunca-visto-2026-10-13/README.md).
 - Um voo, 0,3 ha, milho, uma data. Aplicar à soja de São Simão, com foto de celular, é
   extrapolação.
 - Os rótulos são automáticos. O modelo aprende a prever, pelo visível, um mapa definido pelo
