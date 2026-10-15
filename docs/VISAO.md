@@ -212,13 +212,34 @@ por uma ResNet-18 pré-treinada na ImageNet, e foi treinada com os mesmos dados 
 
 **A precisão empata, e o treino custa cerca de 40% do tempo** — a justificativa da Entrega 3,
 medida. **Mas a confiança da 3.0.0 fica sempre entre 39% e 50%**: com ela, todo lote iria ao
-perito. A 2.0.0 continua em operação; a 3.0.0 entra trocando `VISAO_PESOS`, depois de calibrada.
+perito. Por isso a 2.0.0 ficou em operação nesta rodada; a decisão foi revista na rodada seguinte (3.7).
 Detalhes em [resultados/visao-unet-resnet18-3.0.0](resultados/visao-unet-resnet18-3.0.0/README.md).
 
 ### 3.6 Tempo de análise (RNF02)
 
 `treino/medir_lote.py` envia 50 fotos de celular ao `POST /analisar` e mede o lote inteiro: 6,2 s
 com qualquer das duas redes, 13,4 s com a heurística, em CPU. O limite do RNF02 é 600 s.
+
+### 3.7 Quarta rodada (bateria de 15/10/2026) — modelo em operação
+
+Doze treinos (quatro configurações, três repetições cada) na GTX 1060 de 3 GB, com a mesma base v2.1 e
+a mesma divisão (treino 257, validação 41, teste 46). Média de três rodadas, erro absoluto médio do
+índice de dano no teste, em pontos percentuais:
+
+| | Erro no teste | Viés |
+|---|---:|---:|
+| Responder sempre 0% | 6,3 | — |
+| Heurística de cor | 9,6 | +8,4 |
+| U-Net do zero, 60 épocas | 3,2 | −1,1 |
+| U-Net do zero com mais peso nas classes de estresse | 5,5 a 6,8 | +4,9 a +6,3 |
+| **U-Net com codificador ResNet-18** | **2,6** | **−0,7** |
+
+O codificador pré-treinado foi o melhor na validação e no teste, e dar mais peso ao estresse piorou o
+resultado. O modelo em operação é o `bat-resnet18-r3` (`visao-unet-resnet18-4.0.0`): erro de 2,6, viés
+de −0,9 e erro máximo de 11,0 nos 45 recortes de teste com lavoura. Sua confiança é de 46% com uma
+foto e de 76% com oito. A correlação entre confiança e erro não foi medida. Ressalvas: um voo, 0,3 ha de
+milho, teste da mesma lavoura em faixas separadas, 45 recortes e três repetições. Detalhes em
+[resultados/visao-bateria-2026-10-15](resultados/visao-bateria-2026-10-15/README.md).
 
 ## 4. TerraMind (IBM + ESA): serve, mas para outra coisa
 
@@ -320,7 +341,7 @@ Para medir o tempo de um lote de 50 fotos (RNF02):
 cd visao && .venv/Scripts/python -m pytest
 ```
 
-66 testes, sem rede e sem GPU (os de `test_rede.py` são pulados onde o PyTorch não está instalado). Cobertura de 93% das linhas (`pytest --cov`), acima dos 70% do RNF03.
+67 testes, sem rede e sem GPU (os de `test_rede.py` são pulados onde o PyTorch não está instalado). Cobertura de 93% das linhas (`pytest --cov`), acima dos 70% do RNF03.
 
 Estilo (RNF03), com o `ruff` configurado no `pyproject.toml` (o notebook do Colab fica de fora):
 

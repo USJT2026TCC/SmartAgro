@@ -32,7 +32,7 @@ que a condição de pagamento é uma função computável sobre grandezas medida
 | [`app/`](app) | **Pronto** | Aplicativo do produtor, painel da seguradora e revisão do perito: cotação com histórico climático, envio georreferenciado de fotos, talhão desenhado no mapa, cancelamento e contestação. React, integrado ao backend e aos contratos, com 72 testes, inclusive de tela |
 | [`backend/`](backend) | **Pronto** | API, PostgreSQL + PostGIS, ingestão assinada, indexador de eventos, notificações por e-mail, contestações, histórico climático e relatórios, com 130 testes e 6 de integração |
 | [`simulador/`](simulador) | **Pronto** | Estações em Python + MQTT (com TLS), enviando a série histórica real do INMET em cenários pré-configurados, assinada, com 41 testes |
-| [`visao/`](visao) | **Pronto, com ressalvas** | Índice de dano por imagem, integrado ao backend e exposto em API FastAPI, com 66 testes. Acerta o dano da área com 0,3 ponto de diferença (a heurística de cor erra por 14), mas subestima o dano alto. A rede pré-treinada empata em precisão e ainda não tem confiança calibrada. Ver [2.0.0](docs/resultados/visao-unet-2.0.0/README.md) e [3.0.0](docs/resultados/visao-unet-resnet18-3.0.0/README.md) |
+| [`visao/`](visao) | **Pronto, com ressalvas** | Índice de dano por imagem, integrado ao backend e exposto em API FastAPI, com 67 testes. O modelo em operação é a U-Net com codificador ResNet-18 (bateria de 15/10/2026): erro médio de 2,6 pontos no teste, contra 6,3 de responder sempre 0% e 9,6 da heurística de cor. Treinado só em milho, um voo, rótulos automáticos; a confiança ainda não está calibrada. Ver [bateria de 15/10](docs/resultados/visao-bateria-2026-10-15/README.md) |
 
 **Na rede pública:** em 07/10/2026 o fluxo completo rodou na Sepolia, e as duas apólices de teste
 pagaram o produtor sem intervenção humana — uma pelos 39 dias secos medidos pelo INMET, outra
@@ -128,7 +128,7 @@ oraculo      70 testes + 7 de integração com um nó real · 90% das linhas
 backend     130 testes + 6 de integração com um nó real · 81% das linhas
 simulador    41 testes · 87% das linhas
 app          72 testes, inclusive de tela · 83% das linhas
-visao        66 testes · 93% das linhas
+visao        67 testes · 93% das linhas
 ```
 
 A cobertura fora da cadeia conta também os arquivos que nenhum teste abre; o mínimo do RNF03 é 70%.

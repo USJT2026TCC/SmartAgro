@@ -197,6 +197,8 @@ O que não é falta de implementação, mas precisa ser dito na defesa:
 | RNF08 na rede principal | Atende na Sepolia (0,35%); na rede principal, só para apólices grandes. Trabalho futuro: cópias mínimas (EIP-1167) e publicação agregada (Medições) |
 | RNF05 no Firefox | Verificado no Chrome e no Edge; o Firefox não estava instalado na máquina de medição. Conferir à mão com a MetaMask antes da apresentação |
 | RNF01 com histórico longo | O nó público gratuito descarta blocos com alguns meses; uma vigência inteira pede nó com histórico completo (DECISOES 2.29) |
-| Modelo pré-treinado | Treinado e medido, mas fora de operação até a confiança ser calibrada (DECISOES 1.19) |
+| Modelo de visão | Em operação desde 15/10 o `bat-resnet18-r3` (ResNet-18 pré-treinado, erro de 2,6 pontos no teste). A confiança não está calibrada e a correlação com o erro não foi medida (DECISOES 1.19) |
+| Pesos do modelo | Fora do Git (57 MB). O RNF19 depende de guardar o arquivo, identificado pelo SHA-256 registrado em DECISOES 1.19 |
+| Alcance do modelo | Um voo, 0,3 ha de milho, rótulos automáticos. Sem validação em soja |
 | Seca anterior à vigência | Conta no índice; correção possível documentada (DECISOES 1.21) |
 | Fotos de demonstração | Recortes reais da base de referência com coordenadas inventadas; não são fotos da lavoura segurada |

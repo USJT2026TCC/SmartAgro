@@ -273,19 +273,32 @@ que alimenta todas as telas.
 **Por quê o arquivo:** a demonstração não depende de conta em provedor de e-mail, e o que seria
 enviado fica inspecionável.
 
-### 1.19 O modelo de visão em operação continua sendo o 2.0.0
+### 1.19 O modelo de visão em operação: do 2.0.0 ao ResNet-18 da bateria de 15/10
 
-A U-Net com codificador ResNet-18 pré-treinado (3.0.0) foi treinada como pede a tabela de
-tecnologias, e empata em precisão com a 2.0.0, treinada do zero: erro médio de 3,2 contra 3,3
-pontos; dano da área 4,7% contra 4,6% (real: 4,3%). Chegou ao melhor resultado na época 7, contra
-18 — a transferência de aprendizado barateou o treino, como a Entrega 3 previa.
+**Decisão (15/10/2026):** o modelo em operação é o `bat-resnet18-r3`, versão `visao-unet-resnet18-4.0.0`:
+a U-Net com codificador ResNet-18 pré-treinado, escolhida entre as 12 rodadas de uma bateria de
+treinos pelo menor erro de validação. No teste, erro médio de 2,6 pontos e viés de −0,9, contra 3,2 e
+−1,1 da U-Net do zero com 60 épocas, 6,3 de responder sempre 0% e 9,6 da heurística de cor. Detalhes,
+tabelas e ressalvas em [resultados/visao-bateria-2026-10-15](resultados/visao-bateria-2026-10-15/README.md).
 
-**Não entrou em operação porque a confiança dela não discrimina nada:** fica entre 39% e 50% em
-todos os 79 recortes de validação, e o limiar do perito é 70%. Com ela, todo lote iria ao perito. Na
-2.0.0, o único recorte abaixo do limiar é justamente o de maior erro. Calibrar a confiança da 3.0.0
-(uma temperatura ajustada na validação) é o passo que falta; baixar o limiar só para ela esconderia
-o problema. Detalhes em
-[resultados/visao-unet-resnet18-3.0.0](resultados/visao-unet-resnet18-3.0.0/README.md).
+**Por que mudou.** A 3.0.0, a primeira ResNet-18, empatava em precisão com a 2.0.0 (3,2 contra 3,3), mas
+sua confiança ficava entre 39% e 50% em todos os 79 recortes de validação, abaixo do limiar de 70% do
+perito. Com ela, todo lote iria à revisão humana, e por isso a 2.0.0 ficou em operação. O modelo da
+bateria foi treinado por mais épocas e com outra taxa de aprendizado, e a confiança dele passa do
+limiar quando o lote tem várias fotos: 46% com uma foto e 76% com oito, nas fotos de demonstração. A
+causa da diferença para a 3.0.0 não foi investigada.
+
+**O que continua em aberto:**
+
+- A correlação entre confiança e erro não foi medida para este modelo. Na 3.0.0 era fraca (cerca de
+  −0,1), então confiança alta não garante análise correta. Calibrar a confiança (temperatura ajustada
+  na validação, `treino/calibrar_confianca.py`) segue como trabalho futuro. Baixar o limiar para
+  encobrir o problema continua descartado.
+- Um voo, 0,3 ha de milho, rótulos automáticos. O modelo não foi validado em soja nem em outra
+  lavoura.
+- **Os pesos não estão no Git** (57 MB, `.gitignore`). A reexecução de uma análise contestada (RNF19)
+  depende do arquivo, identificado pelo SHA-256 `2c428d64e907b70d2a2d878bc5101f439767f2caf2c4cdc2ac13deb28198bb55`.
+  Guardar uma cópia fora da máquina de treino é parte da entrega.
 
 ### 1.20 Contratação (UC05): o produtor propõe, a seguradora assina a emissão
 
