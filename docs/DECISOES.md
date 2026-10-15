@@ -290,10 +290,15 @@ causa da diferença para a 3.0.0 não foi investigada.
 
 **O que continua em aberto:**
 
-- A correlação entre confiança e erro não foi medida para este modelo. Na 3.0.0 era fraca (cerca de
-  −0,1), então confiança alta não garante análise correta. Calibrar a confiança (temperatura ajustada
-  na validação, `treino/calibrar_confianca.py`) segue como trabalho futuro. Baixar o limiar para
-  encobrir o problema continua descartado.
+- **A confiança separa pouco os acertos dos erros.** Medido em 15/10 com `treino/calibrar_confianca.py`:
+  correlação de postos entre confiança e erro de −0,27 nos 45 recortes de teste, no sentido esperado e
+  melhor que os cerca de −0,1 da 3.0.0, mas fraca e abaixo do que 45 recortes exigiriam (cerca de
+  ±0,29) para se distinguir do acaso. A confiança média por recorte é de 82% sem calibrar, bem acima
+  do limiar de 70%. A temperatura ajustada na validação (T = 0,74) a eleva para 87% sem criar
+  discriminação, e por isso não foi aplicada. Quem leva um lote ao perito é, na prática, a redução da
+  confiança do lote quando há poucas fotos. O critério 2 da HU17 (os maiores erros concentrados abaixo
+  do limiar) ainda não foi verificado, e a 2.0.0 volta a operar se a verificação falhar. Baixar o
+  limiar para encobrir o problema continua descartado.
 - Um voo, 0,3 ha de milho, rótulos automáticos. O modelo não foi validado em soja nem em outra
   lavoura.
 - **Os pesos não estão no Git** (57 MB, `.gitignore`). A reexecução de uma análise contestada (RNF19)

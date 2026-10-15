@@ -71,8 +71,23 @@ Nas fotos de demonstração (`docs/demonstracao/fotos`):
 
 Com 8 fotos a confiança passa do limiar de 70% (RF17), e o lote seguiria ao oráculo sem o perito.
 Isso difere do registrado para o ResNet-18 da 3.0.0, em que a confiança ficava entre 39% e 50%; a
-causa não foi investigada. A correlação entre confiança e erro **não foi medida** nesta bateria, e
-a da 3.0.0 era fraca (cerca de −0,1), então a confiança alta não garante análise correta.
+causa não foi investigada. A correlação entre confiança e erro foi medida depois da bateria (seção
+seguinte), e a confiança alta não garante análise correta.
+
+## Calibração e discriminação da confiança
+
+`python treino/calibrar_confianca.py --pesos pesos/unet.pt`, em 15/10/2026, sobre o `bat-resnet18-r3`:
+
+| | Validação (34 recortes) | Teste (45 recortes) |
+|---|---:|---:|
+| Confiança média sem calibrar | 85,1% | 82,3% |
+| Confiança média calibrada (T = 0,741) | 89,5% | 87,1% |
+
+Correlação de postos entre confiança e erro no teste: **−0,27**. O sinal é o esperado, e o valor é
+melhor que o da 3.0.0 (cerca de −0,1), mas é fraco: com 45 recortes, só passaria do acaso acima de
+cerca de ±0,29. A temperatura ajustada deixa o modelo mais confiante sem separar melhor os acertos
+dos erros, e por isso não foi aplicada. Fica sem verificação o critério 2 da HU17: quantos recortes
+ficam abaixo de 70% e se concentram os maiores erros.
 
 ## Ressalvas
 

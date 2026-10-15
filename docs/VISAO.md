@@ -237,7 +237,8 @@ a mesma divisão (treino 257, validação 41, teste 46). Média de três rodadas
 O codificador pré-treinado foi o melhor na validação e no teste, e dar mais peso ao estresse piorou o
 resultado. O modelo em operação é o `bat-resnet18-r3` (`visao-unet-resnet18-4.0.0`): erro de 2,6, viés
 de −0,9 e erro máximo de 11,0 nos 45 recortes de teste com lavoura. Sua confiança é de 46% com uma
-foto e de 76% com oito. A correlação entre confiança e erro não foi medida. Ressalvas: um voo, 0,3 ha de
+foto e de 76% com oito. A correlação de postos entre confiança e erro no teste é de −0,27: no sentido
+esperado, mas fraca (T ajustada = 0,74, não aplicada). Ressalvas: um voo, 0,3 ha de
 milho, teste da mesma lavoura em faixas separadas, 45 recortes e três repetições. Detalhes em
 [resultados/visao-bateria-2026-10-15](resultados/visao-bateria-2026-10-15/README.md).
 
