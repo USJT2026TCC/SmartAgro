@@ -533,6 +533,35 @@ describe("talhoes, produtores e produtos (RF03, RF05, HU09)", () => {
     await waitFor(() => expect(chamadas.some((c) => c.metodo === "DELETE")).toBe(true));
   });
 
+  test("avisa quando a imagem decide sozinha fora do milho", async () => {
+    await abrir("/seguradora/talhoes", { perfil: "seguradora", rotas: rotasBase() });
+
+    const formulario = (await screen.findByText("Configurar produto indexado")).closest("form");
+
+    // Cultura padrao e soja; operador padrao e so clima, sem aviso ainda.
+    expect(within(formulario).queryByText(/A imagem decide sozinha/)).toBeNull();
+
+    // OU (imagem pode acionar sozinha) em soja: aparece o aviso.
+    fireEvent.change(within(formulario).getByLabelText("Operador da condicao"), {
+      target: { value: String(2) }, // OPERADOR.OU
+    });
+    expect(within(formulario).getByText(/A imagem decide sozinha, fora do milho\./)).toBeTruthy();
+
+    // Trocando para milho, o aviso some: e o dominio em que o modelo foi validado.
+    fireEvent.change(within(formulario).getByLabelText("Cultura"), {
+      target: { value: "milho" },
+    });
+    expect(within(formulario).queryByText(/A imagem decide sozinha/)).toBeNull();
+
+    // Voltando a soja, mas com operador E (clima precisa concordar): tambem nao avisa,
+    // porque uma leitura de imagem errada sozinha nao aciona o pagamento.
+    fireEvent.change(within(formulario).getByLabelText("Cultura"), { target: { value: "soja" } });
+    fireEvent.change(within(formulario).getByLabelText("Operador da condicao"), {
+      target: { value: String(3) }, // OPERADOR.E
+    });
+    expect(within(formulario).queryByText(/A imagem decide sozinha/)).toBeNull();
+  });
+
   test("configura um produto escalonado por dano", async () => {
     const { chamadas } = await abrir("/seguradora/talhoes", {
       perfil: "seguradora",

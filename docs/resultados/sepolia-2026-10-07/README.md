@@ -54,7 +54,13 @@ São três endereços distintos: quem publica o índice não é quem recebe a in
 | Transação | [`0x818ea8b1…86ca`](https://sepolia.etherscan.io/tx/0x818ea8b15b0c4586ed1eff20b316f29df95f488808c3218e021a6e94f57586ca) |
 
 As fotos são recortes reais da base de referência com coordenadas inventadas para cair no
-talhão; não são fotos da lavoura segurada (ver o LEIAME da pasta de fotos).
+talhão; não são fotos da lavoura segurada (ver o LEIAME da pasta de fotos). Essa apólice usa o
+operador `DANO` sozinho, válido para a demonstração porque a evidência é do mesmo domínio do
+treino (milho, voo de drone). Uma validação posterior mostrou que isso não se sustenta fora dele —
+em soja por foto comum, o índice não acompanha o dano real, e a confiança não percebe (DECISOES.md
+2.33; [resultados/visao-soja-murcha-2026-10-14](../visao-soja-murcha-2026-10-14/README.md)). É o
+motivo pelo qual o operador `E` existe, e por que um produto só por imagem não deveria ser
+oferecido para soja fotografada por celular sem essa ressalva.
 
 ## Gas e latência
 

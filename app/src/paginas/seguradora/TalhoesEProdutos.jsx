@@ -278,6 +278,14 @@ export default function TalhoesEProdutos() {
 
   const escalonado = Number(produto.modoPagamento) === MODO_PAGAMENTO.ESCALONADO;
   const usaDano = Number(produto.operador) !== OPERADOR.CLIMATICO;
+  // A imagem decide sozinha quando o operador e DANO ou OU; no operador E, o
+  // clima precisa concordar, e isso protege mesmo se a imagem errar (DECISOES
+  // 1.22, 2.33). O modelo so foi validado em milho, por drone; fora disso, a
+  // validacao em soja por foto comum achou indice sem relacao com o dano real
+  // (correlacao de -0,05) e confianca que nao percebeu o problema (82,4% de
+  // confianca media, quase todas as fotos acima do limiar do perito).
+  const visaoDecideSozinha =
+    usaDano && Number(produto.operador) !== OPERADOR.E && produto.cultura !== "milho";
   const usaClima = Number(produto.operador) !== OPERADOR.DANO;
 
   return (
@@ -684,6 +692,16 @@ export default function TalhoesEProdutos() {
               />
             </Campo>
           </div>
+
+          {visaoDecideSozinha ? (
+            <Aviso tipo="alerta" titulo="A imagem decide sozinha, fora do milho.">
+              O modelo de visao foi treinado e validado so em milho, por drone. Numa validacao
+              externa em soja por foto comum, o indice nao acompanhou o dano real, e a confianca nao
+              percebeu — quase toda foto passaria do limiar sem revisao do perito (DECISOES.md
+              2.33). Para {produto.cultura}, prefira o operador "Clima E dano" (os dois precisam
+              concordar) ou um produto so climatico.
+            </Aviso>
+          ) : null}
 
           <Aviso tipo="informacao" titulo="Em palavras, como o produtor vai ler:">
             {condicaoEmPalavras(termosDoFormulario(produto))}
