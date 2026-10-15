@@ -255,7 +255,11 @@ test("so a falha definitiva e relatada, e uma unica vez", async () => {
   assert.match(backend.relatos.falhas[0].motivo, /ECONNREFUSED/);
 });
 
-test("confianca baixa retem o indice de dano, a nao ser que o perito tenha liberado", () => {
+test("confianca baixa nao enfileira, quando o operador da apolice depende do dano (RF17)", () => {
+  // Achado da revisao do professor critico (09/10/2026): publicar com
+  // indiceDanoBps: 0 gravaria "sem dano" onde o certo e "ainda nao se sabe",
+  // e o periodo fica marcado como publicado para sempre (RF20) — nao ha
+  // como completar depois so o indice de dano.
   const servico = servicoComFalsos({ publicar: async () => RECIBO, backend: null });
 
   const visao = {
@@ -270,19 +274,55 @@ test("confianca baixa retem o indice de dano, a nao ser que o perito tenha liber
     periodo: 20261006,
     leituras: leiturasSecas,
     visao,
+    usaIndiceDeDano: true, // operador DANO, OU ou E
   });
-  assert.equal(retida.entrada.payload.indiceDanoBps, 0);
-  assert.ok(retida.alertas.some((a) => a.includes("RF17")));
+  assert.equal(retida.entrada, null, "nada deveria ir para a fila");
+  assert.equal(retida.danoPendente, true);
+  assert.ok(retida.alertas.some((a) => a.includes("RF17") && a.includes("adiada")));
 
   const liberada = servico.prepararPublicacao({
     apolice: "0xb",
     periodo: 20261006,
     leituras: leiturasSecas,
     visao: { ...visao, liberadaPeloPerito: true },
+    usaIndiceDeDano: true,
   });
   assert.equal(liberada.entrada.payload.indiceDanoBps, 4200);
   assert.equal(liberada.entrada.payload.confiancaBps, 5500);
   assert.ok(!liberada.alertas.some((a) => a.includes("RF17")));
+});
+
+test("confianca baixa nao atrasa uma apolice so climatica: o indice de dano nunca e lido", () => {
+  const servico = servicoComFalsos({ publicar: async () => RECIBO, backend: null });
+
+  const preparo = servico.prepararPublicacao({
+    apolice: "0xc",
+    periodo: 20261006,
+    leituras: leiturasSecas,
+    visao: { indiceDano: 0.42, confianca: 0.1 },
+    usaIndiceDeDano: false, // operador CLIMATICO
+  });
+
+  assert.ok(preparo.entrada, "a apolice so climatica nao deveria esperar o perito");
+  assert.equal(preparo.entrada.payload.indiceDanoBps, 0);
+  // danoPendente continua true: a confianca realmente estava baixa, e a
+  // publicacao so nao esperou porque este operador nunca le indiceDanoBps.
+  // Quem decide se isso bloqueou alguma coisa e `danoPendente && !entrada`.
+  assert.equal(preparo.danoPendente, true);
+});
+
+test("sem usaIndiceDeDano informado, o padrao e o lado seguro: trata como se dependesse do dano", () => {
+  const servico = servicoComFalsos({ publicar: async () => RECIBO, backend: null });
+
+  const preparo = servico.prepararPublicacao({
+    apolice: "0xd",
+    periodo: 20261006,
+    leituras: leiturasSecas,
+    visao: { indiceDano: 0.42, confianca: 0.1 },
+  });
+
+  assert.equal(preparo.entrada, null);
+  assert.equal(preparo.danoPendente, true);
 });
 
 // ------------------------------------------------------------ retificacoes

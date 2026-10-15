@@ -4,6 +4,9 @@ const { ethers } = require("ethers");
 
 const { ABI_APOLICE, ABI_REGISTRY, SITUACOES } = require("./abi");
 
+// Espelha o enum Operador do contrato (ApolicePolicy.sol): 0 = so climatico.
+const OPERADOR_CLIMATICO = 0;
+
 /**
  * Travessia da fronteira: assina e submete os indices a cadeia (RF19, RF22).
  *
@@ -154,6 +157,25 @@ class Publicador {
   }
 
   /**
+   * Se o indice de dano decide alguma coisa nesta apolice (RF17).
+   *
+   * `publicarIndices` grava os dois indices numa unica transacao, e o periodo
+   * fica marcado como publicado para sempre (RF20) — nao ha como completar
+   * depois so o pedaco que faltava. Para uma apolice CLIMATICO, o indice de
+   * dano nunca entra na avaliacao (ver `_percentualDevido` no contrato), e
+   * publicar com `indiceDanoBps: 0` antes da visao terminar e inofensivo. Para
+   * DANO, OU ou E, o mesmo zero e indistinguivel de "sem dano" e fica gravado
+   * como se fosse — por isso essas apolices nao publicam enquanto o dano
+   * estiver pendente de revisao (ver `oraculo.js`, `prepararPublicacao`).
+   */
+  async usaIndiceDeDano(enderecoApolice) {
+    const apolice = new ethers.Contract(enderecoApolice, ABI_APOLICE, this.provider);
+    const termos = await apolice.verTermos();
+
+    return Number(termos.operador) !== OPERADOR_CLIMATICO;
+  }
+
+  /**
    * Submete o indice de dano retificado depois de uma contestacao deferida (RF28).
    *
    * Mesmo caminho da publicacao: ensaio sem custo, estimativa, envio e espera
@@ -271,4 +293,4 @@ function paraBytes32(texto) {
   return ethers.keccak256(ethers.toUtf8Bytes(String(texto)));
 }
 
-module.exports = { Publicador, paraBytes32 };
+module.exports = { Publicador, paraBytes32, OPERADOR_CLIMATICO };

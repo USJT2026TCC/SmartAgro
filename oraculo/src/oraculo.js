@@ -92,10 +92,16 @@ class ServicoOraculo {
    * @param {number} entrada.periodo Periodo de referencia, em AAAAMMDD.
    * @param {object[]} entrada.leituras Leituras de campo do periodo e dos dias anteriores.
    * @param {object} [entrada.visao] Resultado do modulo de visao computacional.
+   * @param {boolean} [entrada.usaIndiceDeDano] Se o operador da apolice usa o
+   *   indice de dano (DANO, OU ou E). Por padrao `true` — na duvida, trata a
+   *   apolice como se dependesse da imagem, que e o lado seguro: o pior que
+   *   acontece e atrasar uma publicacao que nao precisava esperar, nunca
+   *   gravar um dano de 0% que pode nao ser esse.
    *
-   * @returns {{consolidacao: object, entrada: object, novo: boolean, alertas: string[]}}
+   * @returns {{consolidacao: object, entrada: object|null, novo: boolean,
+   *   alertas: string[], danoPendente: boolean}}
    */
-  prepararPublicacao({ apolice, periodo, leituras, visao = null }) {
+  prepararPublicacao({ apolice, periodo, leituras, visao = null, usaIndiceDeDano = true }) {
     const consolidacao = consolidarIndiceClimatico(leituras, {
       periodo,
       limiarChuvaMm: this.limiarChuvaMm,
@@ -110,18 +116,16 @@ class ServicoOraculo {
     let confiancaBps = 0;
     let hashEvidencias = paraBytes32(`sem-evidencia-visual:${apolice}:${periodo}`);
     let versaoModelo = paraBytes32("sem-modelo");
+    let danoPendente = false;
 
     if (visao) {
       const confianca = visao.confianca ?? 0;
 
       if (confianca < this.limiarConfiancaModelo && !visao.liberadaPeloPerito) {
-        // RF17: abaixo do limiar de confianca o resultado do modelo vai para o
-        // perito e nao entra na publicacao. O indice climatico segue normalmente,
-        // porque nao depende da inferencia.
+        danoPendente = true;
         alertas.push(
           `RF17: confianca do modelo em ${(confianca * 100).toFixed(1)}%, abaixo do limiar de ` +
-            `${(this.limiarConfiancaModelo * 100).toFixed(1)}%. O indice de dano nao sera publicado ` +
-            "e o lote deve ser encaminhado ao perito.",
+            `${(this.limiarConfiancaModelo * 100).toFixed(1)}%. O lote vai para o perito.`,
         );
       } else {
         indiceDanoBps = Math.round(visao.indiceDano * 10_000);
@@ -129,6 +133,24 @@ class ServicoOraculo {
         hashEvidencias = visao.hashEvidencias ?? paraBytes32(`lote:${apolice}:${periodo}`);
         versaoModelo = visao.versaoModelo ?? paraBytes32(visao.versao ?? "desconhecida");
       }
+    }
+
+    // O dano so impede a publicacao quando falta E importa. `publicarIndices`
+    // grava os dois indices numa unica transacao e marca o periodo como
+    // publicado para sempre (RF20): nao ha como completar depois so o pedaco
+    // que faltava. Publicar aqui com indiceDanoBps: 0 gravaria "sem dano" onde
+    // o certo e "ainda nao se sabe" — dois fatos diferentes, indistinguiveis
+    // depois de gravados. Numa apolice so climatica o zero e inofensivo (o
+    // operador CLIMATICO nunca le indiceDanoBps), entao so adia quando o
+    // operador e DANO, OU ou E.
+    if (danoPendente && usaIndiceDeDano) {
+      alertas.push(
+        `RF17: publicacao do periodo ${periodo} adiada — o indice de dano decide o pagamento ` +
+          "desta apolice, e nao ha como gravar so o indice climatico agora e completar o de dano " +
+          "depois (RF20, periodo publicado e definitivo). Retomando quando o perito decidir.",
+      );
+
+      return { consolidacao, entrada: null, novo: false, alertas, danoPendente: true };
     }
 
     const payload = {
@@ -150,7 +172,7 @@ class ServicoOraculo {
 
     const { entrada, novo } = this.fila.enfileirar({ apolice, periodo, payload });
 
-    return { consolidacao, entrada, novo, alertas };
+    return { consolidacao, entrada, novo, alertas, danoPendente };
   }
 
   /**

@@ -275,8 +275,10 @@ test.describe("oraculo contra um no real", { timeout: 240_000 }, () => {
       });
       assert.equal(await publicador.dentroDaVigencia(futura), false);
       assert.equal(await publicador.dentroDaVigencia(apoliceClimatica), true);
+      assert.equal(await publicador.usaIndiceDeDano(apoliceClimatica), false);
 
       const porDano = await emitir({ operador: 1, limiarClimatico: 0, limiarDanoBps: 2_000 });
+      assert.equal(await publicador.usaIndiceDeDano(porDano), true);
       const recebidos = [];
       const pararDeOuvir = await publicador.ouvir(porDano, (e) => recebidos.push(e));
 

@@ -52,7 +52,7 @@ Convenções: caminhos relativos à raiz do repositório; `DECISOES n` aponta pa
 |---|---|---|---|
 | RF15 | Índice de dano como percentual da área | `visao/src/visao/indice.py`, `modelo.py`, `rede.py`; API em `api.py` | `visao/tests/test_indice.py`, `test_rede.py`, `test_api.py` · [visao-unet-2.0.0](resultados/visao-unet-2.0.0/README.md) |
 | RF16 | Confiança, versão do modelo e resumo das imagens | `visao/src/visao/servico.py`, `api.py`; `backend/src/rotas/imagens.js` (`hash_evidencias`); `versaoModelo` e `hashEvidencias` em `ApolicePolicy.sol` | `visao/tests/test_servico.py`, `test_api.py`; `backend/test/imagens.test.js` |
-| RF17 | Baixa confiança vai ao perito, publicação suspensa | `backend/src/rotas/imagens.js` (`LIMIAR_CONFIANCA_BPS`); `app/src/paginas/RevisaoTecnica.jsx`; o oráculo só publica análise liberada | `backend/test/imagens.test.js`; `app/test/telas/fotos-cotacao-perito.test.jsx` · DECISOES 2.14 |
+| RF17 | Baixa confiança vai ao perito, publicação suspensa | `backend/src/rotas/imagens.js` (`LIMIAR_CONFIANCA_BPS`); `app/src/paginas/RevisaoTecnica.jsx`; `oraculo/src/publicador.js` (`usaIndiceDeDano`) decide, por apólice, se vale a pena esperar o perito | `backend/test/imagens.test.js`; `app/test/telas/fotos-cotacao-perito.test.jsx`; `oraculo/test/backend.test.js`; `oraculo/integracao/oraculo.test.js` · DECISOES 2.14, 2.34 |
 
 ### Oráculo e ponte
 

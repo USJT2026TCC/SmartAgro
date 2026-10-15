@@ -198,13 +198,29 @@ function fonteDeDados(servico, opcoes) {
 
 /** Publica um periodo de uma apolice e imprime a linha da tabela. */
 async function publicarPeriodo(servico, fonte, apolice, periodo) {
-  const [leituras, visao] = await Promise.all([
+  const [leituras, visao, usaIndiceDeDano] = await Promise.all([
     fonte.leiturasPara(apolice, periodo),
     fonte.visaoPara(apolice, periodo),
+    servico.publicador.usaIndiceDeDano(apolice),
   ]);
 
-  const preparo = servico.prepararPublicacao({ apolice, periodo, leituras, visao });
+  const preparo = servico.prepararPublicacao({
+    apolice,
+    periodo,
+    leituras,
+    visao,
+    usaIndiceDeDano,
+  });
   for (const alerta of preparo.alertas) console.log(`  [alerta] ${alerta}`);
+
+  // Dano pendente numa apolice que depende dele: nada foi enfileirado para
+  // este periodo (RF17). drenarFila ainda roda, porque pode haver outras
+  // entradas pendentes de outras apolices.
+  if (preparo.danoPendente && !preparo.entrada) {
+    await servico.drenarFila();
+    console.log(`  ${periodo}   dano pendente de revisao do perito; publicacao adiada (RF17)`);
+    return null;
+  }
 
   const resultado = await servico.drenarFila((evento) => {
     if (evento.tipo === "espera")

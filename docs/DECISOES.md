@@ -894,6 +894,47 @@ foto de celular de soja; os produtos com operador `E` ou só climáticos continu
 índice da estação não depende do modelo. Detectar imagem fora do domínio (antes de confiar no número)
 é trabalho futuro. Ver [resultados/visao-soja-murcha-2026-10-14](resultados/visao-soja-murcha-2026-10-14/README.md).
 
+### 2.34 O oráculo publicava "sem dano" quando o certo era "ainda não se sabe"
+
+**Sintoma:** achado na revisão de um professor crítico sobre a documentação de software (09/10/2026),
+e confirmado no código. O RF17 diz que, com confiança abaixo do limiar, a publicação deveria ficar
+suspensa até o perito decidir. O que o oráculo de fato fazia: publicava mesmo assim, com
+`indiceDanoBps: 0`.
+
+**Causa:** `publicarIndices` grava os dois índices numa única transação, e o período fica marcado
+como publicado para sempre (`PeriodoJaPublicado`, RF20) — não existe "completar depois só o índice
+de dano". O comentário no próprio código dizia "o índice climático segue normalmente, porque não
+depende da inferência", mas a função não tem como publicar só um dos dois: ou publica os dois, ou
+nenhum. Como a fila já enfileirava o período com o zero assim que `prepararPublicacao` rodava,
+mesmo pular o envio numa chamada não resolvia — a entrada errada continuava lá para o próximo
+ciclo.
+
+**Por que isso importa:** `indiceDanoBps: 0` fica indistinguível de "o modelo olhou e não achou
+dano". Numa apólice cujo operador lê o índice de dano (`DANO`, `OU` ou `E`), isso grava um fato
+errado, de forma imutável, sem que ninguém decida isso — o produtor só teria como corrigir
+percebendo a divergência e abrindo uma contestação (RF28), que depende do mesmo oráculo que a
+seguradora controla para publicar a correção (ver a ressalva em 2.31 sobre esse mesmo oráculo).
+
+**Correção:** `Publicador.usaIndiceDeDano(endereco)` lê `verTermos()` na própria cadeia e diz se o
+operador da apólice lê o índice de dano. `prepararPublicacao` ganhou um parâmetro
+`usaIndiceDeDano` (padrão `true` — na dúvida, trata como se dependesse da imagem, que é o lado
+seguro) e, quando a confiança está baixa e o operador depende do dano, **não enfileira nada** para
+aquele período: fica para o próximo ciclo, até o perito decidir. Para apólice só climática
+(`CLIMATICO`), nada muda — o zero nunca é lido pela avaliação, e publicar na hora continua certo,
+porque é o que RF24 ("imediatamente") pede.
+
+**O que fica sem solução ainda:** apólices com operador `OU`, quando o clima sozinho já bastaria
+para acionar, agora esperam a imagem se resolver mesmo não precisando dela. Resolver isso direito
+pediria o contrato aceitar publicação parcial (só clima, dano "pendente" como um terceiro estado,
+não zero) — mudança de contrato, fora do que cabe a 12 dias da entrega. Fica registrado como
+trabalho futuro, junto com a regra de negócio que falta escrever (ver 3 abaixo): como os dois
+índices se combinam, hoje só documentado em código.
+
+72 testes de unidade (70 antes; o teste que travava o comportamento antigo foi reescrito e dois
+novos entraram) e 7 de integração contra um nó real (2 novos) cobrem os três casos: apólice que
+depende do dano espera; apólice só climática não espera; sem informar o parâmetro, o padrão é
+esperar.
+
 ---
 
 ## 3. Rede de teste pública (Sepolia)
