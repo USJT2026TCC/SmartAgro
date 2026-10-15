@@ -42,6 +42,9 @@ def _carregar_env() -> None:
         chave, valor = linha.split("=", 1)
         os.environ.setdefault(chave.strip(), valor.strip())
 
+    modelo.CAMINHO_DOS_PESOS = os.environ.get("VISAO_PESOS", "")
+    modelo.VERSAO = os.environ.get("VISAO_VERSAO", modelo.VERSAO)
+
 
 def _estimador(registrar=print) -> Estimador:
     """

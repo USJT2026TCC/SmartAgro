@@ -22,6 +22,11 @@ from visao.rede import UNet, carregar, criar, salvar
 FOTOS = Path(__file__).resolve().parents[2] / "docs" / "demonstracao" / "fotos"
 DUAS_FOTOS = [str(FOTOS / "demo-01-com-gps.jpg"), str(FOTOS / "demo-02-com-gps.jpg")]
 
+@pytest.fixture(autouse=True)
+def sem_env_real(tmp_path, monkeypatch):
+    """Os testes nunca leem o visao/.env de quem os roda."""
+    monkeypatch.setattr(cli, "RAIZ", tmp_path / "sem-env")
+
 
 @pytest.fixture
 def sem_pesos(monkeypatch):
