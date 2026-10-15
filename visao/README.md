@@ -69,6 +69,39 @@ a base, confere a integridade do download, treina e devolve os pesos e as figura
 
 Baixe `pesos/unet.pt` ao final e aponte `VISAO_PESOS` para ele no `.env`.
 
+### Treinar na própria máquina, com uma placa pequena
+
+Funcionou numa GTX 1060 de 3 GB, no Windows. O PyTorch precisa ser a versão de CUDA, e não a de
+CPU usada nos testes:
+
+```bash
+.venv/Scripts/python -m pip uninstall -y torch torchvision
+.venv/Scripts/python -m pip install torch torchvision tqdm --index-url https://download.pytorch.org/whl/cu126
+.venv/Scripts/python -c "import torch; print(torch.cuda.is_available())"
+```
+
+O último comando precisa imprimir `True`. A instalação ocupa uns 5 GB, então confira o espaço livre
+do disco antes e, se o projeto estiver no OneDrive, pause a sincronização durante a instalação.
+
+Sobra pouca memória de vídeo quando o navegador e outros programas estão abertos: feche-os e use
+`--lote 4` (ou `--lote 2`, se aparecer `CUDA out of memory`). Uma rodada de 60 épocas leva cerca de
+8 minutos nessa placa.
+
+### Bateria de treinos
+
+`Bateria.ps1` roda 4 configurações, 3 repetições cada, e grava os pesos em `pesos/bateria/` e uma
+linha por rodada em `bateria-resultados.csv` (erro e viés na validação e no teste). Na pasta `visao`:
+
+```powershell
+$env:PYTHONUNBUFFERED = "1"
+powershell -ExecutionPolicy Bypass -File .\Bateria.ps1
+```
+
+O script pode ser interrompido e retomado: ele pula as rodadas já concluídas. A escolha da
+configuração vencedora é feita pela **validação**, e o **teste** é o número reportado. Os
+resultados da rodada de 15/10/2026 estão em
+[docs/resultados/visao-bateria-2026-10-15](../docs/resultados/visao-bateria-2026-10-15/README.md).
+
 Para um teste rápido de que o código roda, sem esperar horas:
 
 ```bash
