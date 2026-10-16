@@ -275,7 +275,7 @@ enviado fica inspecionável.
 
 ### 1.19 O modelo de visão em operação: do 2.0.0 ao ResNet-18 da bateria de 15/10
 
-**Decisão (15/10/2026):** o modelo em operação é o `bat-resnet18-r3`, versão `visao-unet-resnet18-4.0.0`:
+**Decisão (15/10/2026):** o modelo em operação é o `bat-resnet18-r3`, nome gravado dentro do arquivo de pesos e registrado com cada análise:
 a U-Net com codificador ResNet-18 pré-treinado, escolhida entre as 12 rodadas de uma bateria de
 treinos pelo menor erro de validação. No teste, erro médio de 2,6 pontos e viés de −0,9, contra 3,2 e
 −1,1 da U-Net do zero com 60 épocas, 6,3 de responder sempre 0% e 9,6 da heurística de cor. Detalhes,
