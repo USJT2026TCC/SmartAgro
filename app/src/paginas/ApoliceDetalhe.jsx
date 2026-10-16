@@ -554,7 +554,14 @@ export default function ApoliceDetalhe() {
           <Campo rotulo="Modo de pagamento">
             {t.modoPagamento === 0
               ? "Integral: paga o limite quando aciona."
-              : `Escalonado: 50% no gatilho, crescendo ate 100% em ${t.limiarClimaticoIntegral} dias.`}
+              : `Escalonado: 50% no gatilho, crescendo ate 100% ${[
+                  t.limiarClimatico > 0 ? `em ${t.limiarClimaticoIntegral} dias sem chuva` : null,
+                  t.limiarDanoBps > 0
+                    ? `com ${emPercentual(t.limiarDanoIntegralBps)} de dano`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ou ")}.`}
           </Campo>
 
           <Campo rotulo="Vigencia">
