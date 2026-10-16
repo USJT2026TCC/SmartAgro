@@ -9,9 +9,13 @@ demonstracao, e nao fotos da lavoura segurada.
 Fonte das imagens: Suicmez, Yilmaz e Kahraman (2026), v2.1,
 DOI 10.5281/zenodo.22062459, CC BY 4.0.
 
-    python treino/gerar_fotos_de_demonstracao.py
+    python treino/gerar_fotos_de_demonstracao.py                # talhao-01 (soja)
+    python treino/gerar_fotos_de_demonstracao.py --talhao 02    # talhao-02 (milho)
 
-Gera, em docs/demonstracao/fotos/:
+O modelo foi treinado em milho: para a demonstracao da visao com o modelo em
+operacao, use o talhao-02, cujas fotos saem em docs/demonstracao/fotos-milho/.
+
+Gera, em docs/demonstracao/fotos/ (ou fotos-milho/):
   - 6 fotos com GPS dentro do talhao, com estresse visivel
   - 1 foto com GPS fora do talhao, que o servidor recusa
   - 1 foto sem GPS, para localizar pelo aparelho ou marcando no mapa
@@ -19,6 +23,7 @@ Gera, em docs/demonstracao/fotos/:
 
 from __future__ import annotations
 
+import argparse
 import csv
 from datetime import datetime
 from fractions import Fraction
@@ -29,18 +34,38 @@ from PIL.TiffImagePlugin import IFDRational
 
 RAIZ = Path(__file__).resolve().parents[1]
 PREPARADO = RAIZ / "dados" / "preparado"
-DESTINO = RAIZ.parent / "docs" / "demonstracao" / "fotos"
+DEMONSTRACAO = RAIZ.parent / "docs" / "demonstracao"
 
-# Dentro do talhao-01 (lon -47,59 a -47,57; lat -21,45 a -21,47), espalhados.
-DENTRO = [
-    (-21.4535, -47.5860),
-    (-21.4560, -47.5735),
-    (-21.4610, -47.5820),
-    (-21.4645, -47.5745),
-    (-21.4675, -47.5870),
-    (-21.4630, -47.5790),
-]
-FORA = (-21.4600, -47.6000)  # uns 1,1 km a oeste do talhao
+# Talhao-01, soja (lon -47,59 a -47,57; lat -21,45 a -21,47), pontos espalhados.
+# Talhao-02, milho (lon -47,56 a -47,54; lat -21,44 a -21,46), idem.
+TALHOES = {
+    "01": {
+        "nome": "talhao-01",
+        "pasta": "fotos",
+        "dentro": [
+            (-21.4535, -47.5860),
+            (-21.4560, -47.5735),
+            (-21.4610, -47.5820),
+            (-21.4645, -47.5745),
+            (-21.4675, -47.5870),
+            (-21.4630, -47.5790),
+        ],
+        "fora": (-21.4600, -47.6000),  # uns 1,1 km a oeste do talhao
+    },
+    "02": {
+        "nome": "talhao-02",
+        "pasta": "fotos-milho",
+        "dentro": [
+            (-21.4425, -47.5575),
+            (-21.4470, -47.5440),
+            (-21.4510, -47.5520),
+            (-21.4555, -47.5465),
+            (-21.4450, -47.5500),
+            (-21.4530, -47.5415),
+        ],
+        "fora": (-21.4500, -47.5300),  # uns 2 km a leste do talhao
+    },
+}
 
 LADO = 896  # recortes de 224 ampliados 4x, para parecerem fotos e nao miniaturas
 QUANDO = datetime(2026, 9, 20, 9, 30)
@@ -78,6 +103,12 @@ def salvar(imagem: Image.Image, caminho: Path, posicao: tuple | None, instante: 
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Gera as fotos de demonstracao")
+    parser.add_argument("--talhao", choices=sorted(TALHOES), default="01")
+    alvo = TALHOES[parser.parse_args().talhao]
+    DESTINO = DEMONSTRACAO / alvo["pasta"]
+    DENTRO, FORA = alvo["dentro"], alvo["fora"]
+
     with (PREPARADO / "indice.csv").open(encoding="utf-8") as arquivo:
         linhas = [
             linha
@@ -115,7 +146,7 @@ Para testar e apresentar a tela **Fotos da lavoura** do aplicativo.
 
 **As imagens são reais; as coordenadas, não.** Cada foto é um recorte da validação da base de
 referência (Suiçmez, Yilmaz e Kahraman, 2026, v2.1, DOI 10.5281/zenodo.22062459, CC BY 4.0),
-ampliado, com um GPS inventado gravado no EXIF para cair no talhão-01 da demonstração, em São
+ampliado, com um GPS inventado gravado no EXIF para cair no {TALHAO} da demonstração, em São
 Simão/SP. Não são fotos da lavoura segurada.
 
 | Arquivo | O que mostra |
@@ -125,7 +156,7 @@ Simão/SP. Não são fotos da lavoura segurada.
 | `demo-08-sem-gps` | Sem GPS: localizar pelo aparelho ou marcando no mapa (fica registrado como manual) |
 
 Gerado por `visao/treino/gerar_fotos_de_demonstracao.py`.
-""",
+""".replace("{TALHAO}", alvo["nome"]),
         encoding="utf-8",
     )
 
