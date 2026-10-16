@@ -290,6 +290,11 @@ causa da diferença para a 3.0.0 não foi investigada.
 
 **O que continua em aberto:**
 
+- **O modelo subestima o dano alto.** Medido em 15/10 com `treino/avaliar_faixas_e_limiar.py`: nos 8
+  recortes de teste com 10% ou mais de dano, o real é 15,2% e o estimado 9,8% (viés de −5,4 pontos).
+  O dano baixo é superestimado (+1,0 a +1,7). Só há um recorte com 20% ou mais em cada conjunto.
+  Uma seca severa pode ser lida como moderada, e por isso a imagem não deve decidir sozinha o
+  pagamento (operador "Clima OU dano", e nunca "Somente dano por imagem" sem o perito).
 - **A confiança separa pouco os acertos dos erros.** Medido em 15/10 com `treino/calibrar_confianca.py`:
   correlação de postos entre confiança e erro de −0,27 nos 45 recortes de teste, no sentido esperado e
   melhor que os cerca de −0,1 da 3.0.0, mas fraca e abaixo do que 45 recortes exigiriam (cerca de
@@ -297,8 +302,13 @@ causa da diferença para a 3.0.0 não foi investigada.
   do limiar de 70%. A temperatura ajustada na validação (T = 0,74) a eleva para 87% sem criar
   discriminação, e por isso não foi aplicada. Quem leva um lote ao perito é, na prática, a redução da
   confiança do lote quando há poucas fotos. O critério 2 da HU17 (os maiores erros concentrados abaixo
-  do limiar) ainda não foi verificado, e a 2.0.0 volta a operar se a verificação falhar. Baixar o
-  limiar para encobrir o problema continua descartado.
+  do limiar) foi verificado em 15/10 e **não é atendido**: nenhuma das 45 fotos de teste, nem das 34
+  de validação, fica abaixo de 70% (mínimo de 73,5%). A confiança ordena os erros (o quarto menos
+  confiante erra 4,5 pontos contra 2,0; correlação de −0,36 pelo caminho do serviço), mas o limiar
+  fica abaixo de todas as fotos. A condição escrita nesta decisão era a 2.0.0 voltar a operar se a
+  verificação falhasse. **Pendente de decisão do grupo:** manter o `bat-resnet18-r3`, que erra menos,
+  ou voltar à 2.0.0. Baixar o limiar para encobrir o problema continua descartado, e subi-lo até
+  separar usaria o teste para escolhê-lo.
 - Um voo, 0,3 ha de milho, rótulos automáticos. O modelo não foi validado em soja nem em outra
   lavoura.
 - **Os pesos não estão no Git** (57 MB, `.gitignore`). A reexecução de uma análise contestada (RNF19)

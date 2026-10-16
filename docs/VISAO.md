@@ -242,6 +242,32 @@ esperado, mas fraca (T ajustada = 0,74, não aplicada). Ressalvas: um voo, 0,3 h
 milho, teste da mesma lavoura em faixas separadas, 45 recortes e três repetições. Detalhes em
 [resultados/visao-bateria-2026-10-15](resultados/visao-bateria-2026-10-15/README.md).
 
+**Erro por faixa de dano e critério 2 da HU17** (`treino/avaliar_faixas_e_limiar.py`, 15/10/2026, pelo
+caminho do serviço). Teste, 45 recortes, em pontos percentuais:
+
+| Dano real | Recortes | Real | Estimado | Viés |
+|---|---:|---:|---:|---:|
+| menos de 2% | 8 | 1,3% | 3,0% | +1,7 |
+| 2% a 5% | 15 | 3,4% | 4,3% | +1,0 |
+| 5% a 10% | 14 | 7,3% | 5,5% | −1,7 |
+| 10% a 20% | 7 | 14,3% | 9,7% | −4,6 |
+| 20% ou mais | 1 | 21,8% | 10,8% | −11,0 |
+| **10% ou mais** | **8** | **15,2%** | **9,8%** | **−5,4** |
+
+O modelo superestima o dano baixo e subestima o alto, e a subestimação cresce com o dano: com 10% ou
+mais, estima 9,8% onde o real é 15,2%. A validação repete o padrão (dois recortes com 10% ou mais:
+real 17,2%, estimado 8,6%). Só há um recorte com 20% ou mais em cada conjunto, então essa faixa é
+um indício, não uma medida. A consequência prática é que uma seca severa pode ser lida como
+moderada, e por isso a imagem não deve decidir sozinha o pagamento.
+
+**Critério 2 da HU17: não atendido.** Nenhuma foto fica abaixo do limiar de 70% (mínimo de 73,5% no
+teste e de 74,8% na validação), então nenhum dos maiores erros é desviado ao perito por esse limiar. A
+confiança ainda ordena os erros: o quarto menos confiante errou 4,5 pontos no teste contra 2,0 nos
+demais (3,9 contra 1,4 na validação), com correlação de postos de −0,36 no teste e −0,27 na validação,
+pelo caminho do serviço (o −0,27 da calibração usa a máscara de referência). O limiar de 70% fica, porém, abaixo de todas as
+fotos. O que leva um lote ao perito é a redução da confiança do lote quando há poucas fotos, não a
+confiança de cada uma.
+
 ## 4. TerraMind (IBM + ESA): serve, mas para outra coisa
 
 [TerraMind](https://ibm.github.io/terramind/) é um modelo fundacional multimodal de observação
